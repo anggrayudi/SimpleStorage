@@ -17,8 +17,6 @@ import androidx.core.app.ActivityCompat
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StoragePermissionCallback
-import com.anggrayudi.storage.extension.getRootDocumentFile
-import com.anggrayudi.storage.extension.isAccessible
 import com.anggrayudi.storage.extension.startActivityForResultSafely
 
 /**
@@ -103,10 +101,19 @@ class SimpleStorage(private val activity: Activity) {
         this.requestCodeStorageAccess = requestCode
     }
 
+    fun openFolderPicker(requestCode: Int) {
+        requestCodeFolderPicker = requestCode
+        if (hasStoragePermission(activity)) {
+            activity.startActivityForResultSafely(requestCode, defaultExternalStorageAccessIntent)
+        } else {
+            folderPickerCallback?.onStoragePermissionDenied()
+        }
+    }
+
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == requestCodeStorageAccess) {
             if (resultCode != Activity.RESULT_OK) {
-                storageAccessCallback?.onStoragePermissionDenied()
+                storageAccessCallback?.onCancelledByUser()
                 return
             }
             val uri = data?.data ?: return
@@ -132,7 +139,7 @@ class SimpleStorage(private val activity: Activity) {
             }
         } else if (requestCode == requestCodeFolderPicker) {
             if (resultCode != Activity.RESULT_OK) {
-                folderPickerCallback?.onUserCancelledFolderPicker()
+                folderPickerCallback?.onCancelledByUser()
                 return
             }
             val uri = data?.data ?: return
@@ -141,8 +148,8 @@ class SimpleStorage(private val activity: Activity) {
             } catch (e: SecurityException) {
                 null
             }
-            if (folder == null || !folder.getRootDocumentFile(activity).isAccessible) {
-                folderPickerCallback?.onStoragePermissionDenied()
+            if (folder == null || !DocumentFileCompat.isStorageUriPermissionGranted(activity, getStorageId(uri))) {
+                folderPickerCallback?.onStorageAccessDenied(folder)
             } else {
                 folderPickerCallback?.onFolderSelected(folder)
             }
@@ -167,11 +174,6 @@ class SimpleStorage(private val activity: Activity) {
         } catch (e: SecurityException) {
             false
         }
-    }
-
-    private fun isStorageUriPermissionGranted(storageId: String): Boolean {
-        val root = DocumentFileCompat.createDocumentUri(storageId)
-        return activity.contentResolver.persistedUriPermissions.any { it.isReadPermission && it.isWritePermission && it.uri == root }
     }
 
     companion object {

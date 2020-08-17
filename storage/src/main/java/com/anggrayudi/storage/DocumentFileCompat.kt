@@ -52,6 +52,14 @@ object DocumentFileCompat {
                 || getRootDocumentFile(context, storageId)?.run { canRead() && canWrite() } ?: false
     }
 
+    /**
+     * Check if storage has URI permission for read and write access.
+     */
+    fun isStorageUriPermissionGranted(context: Context, storageId: String): Boolean {
+        val root = createDocumentUri(storageId)
+        return context.contentResolver.persistedUriPermissions.any { it.isReadPermission && it.isWritePermission && it.uri == root }
+    }
+
     fun getStorageIds(context: Context): List<String> {
         val storageIds = mutableListOf<String>()
         val externalStoragePath = SimpleStorage.externalStoragePath

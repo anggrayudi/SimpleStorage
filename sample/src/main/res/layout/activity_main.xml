@@ -15,6 +15,12 @@
         android:text="Request Storage Permission" />
 
     <Button
+        android:id="@+id/btnRequestStorageAccess"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Request Storage Access" />
+
+    <Button
         android:id="@+id/btnSelectFolder"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

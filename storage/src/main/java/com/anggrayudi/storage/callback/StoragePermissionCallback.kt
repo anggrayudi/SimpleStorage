@@ -8,6 +8,8 @@ import androidx.documentfile.provider.DocumentFile
  */
 interface StoragePermissionCallback {
 
+    fun onCancelledByUser()
+
     fun onRootPathNotSelected(rootPath: String)
 
     fun onStoragePermissionDenied()

@@ -13,7 +13,7 @@ import com.anggrayudi.storage.StorageType
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StoragePermissionCallback
 import com.anggrayudi.storage.extension.fullPath
-import com.anggrayudi.storage.extension.startActivityForResultSafely
+import com.anggrayudi.storage.extension.inPrimaryStorage
 import com.anggrayudi.storage.extension.storageId
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
@@ -32,15 +32,17 @@ class MainActivity : AppCompatActivity() {
 
         setupSimpleStorage()
         setupFolderPickerCallback()
+        setupButtonActions()
+    }
 
+    private fun setupButtonActions() {
         btnRequestStoragePermission.setOnClickListener {
             Dexter.withContext(this)
                 .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
                 .withListener(object : MultiplePermissionsListener {
                     override fun onPermissionsChecked(report: MultiplePermissionsReport) {
-                        if (!report.areAllPermissionsGranted()) {
-                            Toast.makeText(this@MainActivity, "Please grant storage permissions", Toast.LENGTH_SHORT).show()
-                        }
+                        val grantStatus = if (report.areAllPermissionsGranted()) "granted" else "denied"
+                        Toast.makeText(baseContext, "Storage permissions are $grantStatus", Toast.LENGTH_SHORT).show()
                     }
 
                     override fun onPermissionRationaleShouldBeShown(permissions: MutableList<PermissionRequest>, token: PermissionToken) {
@@ -49,8 +51,12 @@ class MainActivity : AppCompatActivity() {
                 }).check()
         }
 
+        btnRequestStorageAccess.setOnClickListener {
+            storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS)
+        }
+
         btnSelectFolder.setOnClickListener {
-            startActivityForResultSafely(REQUEST_CODE_PICK_FOLDER, SimpleStorage.defaultExternalStorageAccessIntent)
+            storage.openFolderPicker(REQUEST_CODE_PICK_FOLDER)
         }
     }
 
@@ -66,6 +72,10 @@ class MainActivity : AppCompatActivity() {
                         storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, initialRoot)
                     }
                     .show()
+            }
+
+            override fun onCancelledByUser() {
+                Toast.makeText(baseContext, "Cancelled by user", Toast.LENGTH_SHORT).show()
             }
 
             override fun onStoragePermissionDenied() {
@@ -102,11 +112,25 @@ class MainActivity : AppCompatActivity() {
                 requestStoragePermission()
             }
 
+            override fun onStorageAccessDenied(folder: DocumentFile?) {
+                MaterialDialog(this@MainActivity)
+                    .message(
+                        text = "You have no write access to this storage, thus selecting this folder is useless." +
+                                "\nWould you like to grant access to this folder?"
+                    )
+                    .negativeButton(android.R.string.cancel)
+                    .positiveButton {
+                        val initialRoot = if (folder == null || folder.inPrimaryStorage) StorageType.EXTERNAL else StorageType.SD_CARD
+                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, initialRoot)
+                    }
+                    .show()
+            }
+
             override fun onFolderSelected(folder: DocumentFile) {
                 Toast.makeText(baseContext, folder.fullPath, Toast.LENGTH_SHORT).show()
             }
 
-            override fun onUserCancelledFolderPicker() {
+            override fun onCancelledByUser() {
                 Toast.makeText(baseContext, "Folder picker cancelled by user", Toast.LENGTH_SHORT).show()
             }
         }
