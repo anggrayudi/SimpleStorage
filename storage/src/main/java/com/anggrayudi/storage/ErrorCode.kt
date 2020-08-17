@@ -1,0 +1,18 @@
+package com.anggrayudi.storage
+
+/**
+ * Created on 16/08/20
+ * @author Anggrayudi H
+ */
+enum class ErrorCode {
+
+    STORAGE_PERMISSION_DENIED,
+    CANNOT_CREATE_FILE_IN_TARGET,
+    TARGET_FILE_EXISTS,
+    SOURCE_FILE_NOT_FOUND,
+    TARGET_FILE_NOT_FOUND,
+    UNKNOWN_IO_ERROR,
+    CANCELLED,
+    TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER,
+    NO_SPACE_LEFT_ON_TARGET_PATH
+}

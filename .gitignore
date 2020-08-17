@@ -1,0 +1,45 @@
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.war
+*.ear
+*.apk
+*.aab
+
+#built application files
+*.iml
+
+# generated files
+bin/
+gen/
+.idea
+*.class
+*.dex
+
+# Windows thumbnail db
+Thumbs.db
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+/screenshot
+/docs
+/projectFilesBackup
+/mappings
+/gradle.properties
+
+.navigation
+.gradle
+local.properties
+.DS_Store
+build
+/captures
+
+#NDK
+obj/
+.externalNativeBuild
+
+# Keystore
+*.jks
+*.keystore
