@@ -1,5 +1,6 @@
 package com.anggrayudi.storage
 
+import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.Build
@@ -25,6 +26,20 @@ object DocumentFileCompat {
     const val MIME_TYPE_UNKNOWN = "*/*"
 
     const val MIME_TYPE_BINARY_FILE = "application/octet-stream"
+
+    fun isRootUri(uri: Uri): Boolean {
+        val path = uri.path ?: return false
+        return path.indexOf(':') == path.length - 1
+    }
+
+    /**
+     * If given [Uri] with path `tree/primary:Downloads/MyVideo.mp4`, then return `primary`
+     */
+    fun getStorageId(uri: Uri): String = if (uri.scheme == ContentResolver.SCHEME_FILE) {
+        PRIMARY
+    } else {
+        uri.path!!.substringBefore(':').substringAfterLast('/')
+    }
 
     /**
      * @param storageId If in SD card, it should be integers like `6881-2249`. Otherwise, if in external storage it will be [PRIMARY]

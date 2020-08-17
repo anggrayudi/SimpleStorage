@@ -11,7 +11,7 @@ import com.anggrayudi.storage.DocumentFileCompat
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.StorageType
 import com.anggrayudi.storage.callback.FolderPickerCallback
-import com.anggrayudi.storage.callback.StoragePermissionCallback
+import com.anggrayudi.storage.callback.StorageAccessCallback
 import com.anggrayudi.storage.extension.fullPath
 import com.anggrayudi.storage.extension.inPrimaryStorage
 import com.anggrayudi.storage.extension.storageId
@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupSimpleStorage() {
         storage = SimpleStorage(this)
-        storage.storageAccessCallback = object : StoragePermissionCallback {
+        storage.storageAccessCallback = object : StorageAccessCallback {
             override fun onRootPathNotSelected(rootPath: String) {
                 MaterialDialog(this@MainActivity)
                     .message(text = "Please select $rootPath")
@@ -89,7 +89,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestStoragePermission() {
-        Dexter.withContext(this@MainActivity)
+        Dexter.withContext(this)
             .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
             .withListener(object : MultiplePermissionsListener {
                 override fun onPermissionsChecked(report: MultiplePermissionsReport) {

@@ -26,7 +26,7 @@ import java.io.*
  * otherwise it is a SD Card and will return integers like `6881-2249`.
  */
 val DocumentFile.storageId: String
-    get() = SimpleStorage.getStorageId(uri)
+    get() = DocumentFileCompat.getStorageId(uri)
 
 val DocumentFile.storageType: StorageType
     get() = if (inPrimaryStorage) StorageType.EXTERNAL else StorageType.SD_CARD
