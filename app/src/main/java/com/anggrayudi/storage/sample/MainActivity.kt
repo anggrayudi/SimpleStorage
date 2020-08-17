@@ -10,7 +10,10 @@ import com.afollestad.materialdialogs.MaterialDialog
 import com.anggrayudi.storage.DocumentFileCompat
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.StorageType
+import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StoragePermissionCallback
+import com.anggrayudi.storage.extension.fullPath
+import com.anggrayudi.storage.extension.startActivityForResultSafely
 import com.anggrayudi.storage.extension.storageId
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
@@ -28,6 +31,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         setupSimpleStorage()
+        setupFolderPickerCallback()
 
         btnRequestStoragePermission.setOnClickListener {
             Dexter.withContext(this)
@@ -46,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnSelectFolder.setOnClickListener {
-//            startActivityForResult(storage.requireExternalStorageRootAccess(), 100)
+            startActivityForResultSafely(REQUEST_CODE_PICK_FOLDER, SimpleStorage.defaultExternalStorageAccessIntent)
         }
     }
 
@@ -65,25 +69,45 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onStoragePermissionDenied() {
-                Dexter.withContext(this@MainActivity)
-                    .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
-                    .withListener(object : MultiplePermissionsListener {
-                        override fun onPermissionsChecked(report: MultiplePermissionsReport) {
-                            if (report.areAllPermissionsGranted()) {
-                                storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS)
-                            } else {
-                                Toast.makeText(baseContext, "Please grant storage permissions", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-
-                        override fun onPermissionRationaleShouldBeShown(permissions: MutableList<PermissionRequest>, token: PermissionToken) {
-                            // no-op
-                        }
-                    }).check()
+                requestStoragePermission()
             }
 
             override fun onRootPathPermissionGranted(root: DocumentFile) {
                 Toast.makeText(baseContext, "Storage access has been granted for ${root.storageId}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun requestStoragePermission() {
+        Dexter.withContext(this@MainActivity)
+            .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
+            .withListener(object : MultiplePermissionsListener {
+                override fun onPermissionsChecked(report: MultiplePermissionsReport) {
+                    if (report.areAllPermissionsGranted()) {
+                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS)
+                    } else {
+                        Toast.makeText(baseContext, "Please grant storage permissions", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                override fun onPermissionRationaleShouldBeShown(permissions: MutableList<PermissionRequest>, token: PermissionToken) {
+                    // no-op
+                }
+            }).check()
+    }
+
+    private fun setupFolderPickerCallback() {
+        storage.folderPickerCallback = object : FolderPickerCallback {
+            override fun onStoragePermissionDenied() {
+                requestStoragePermission()
+            }
+
+            override fun onFolderSelected(folder: DocumentFile) {
+                Toast.makeText(baseContext, folder.fullPath, Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onUserCancelledFolderPicker() {
+                Toast.makeText(baseContext, "Folder picker cancelled by user", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -110,5 +134,6 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val REQUEST_CODE_STORAGE_ACCESS = 1
+        const val REQUEST_CODE_PICK_FOLDER = 2
     }
 }

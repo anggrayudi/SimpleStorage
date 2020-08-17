@@ -15,7 +15,10 @@ import android.provider.DocumentsContract
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.documentfile.provider.DocumentFile
+import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StoragePermissionCallback
+import com.anggrayudi.storage.extension.getRootDocumentFile
+import com.anggrayudi.storage.extension.isAccessible
 import com.anggrayudi.storage.extension.startActivityForResultSafely
 
 /**
@@ -26,7 +29,10 @@ class SimpleStorage(private val activity: Activity) {
 
     var storageAccessCallback: StoragePermissionCallback? = null
 
-    private var requestCode = 0
+    var folderPickerCallback: FolderPickerCallback? = null
+
+    private var requestCodeStorageAccess = 0
+    private var requestCodeFolderPicker = 0
 
     /**
      * It returns an intent to be dispatched via startActivityResult
@@ -66,13 +72,6 @@ class SimpleStorage(private val activity: Activity) {
         } ?: defaultExternalStorageAccessIntent
     }
 
-    private val defaultExternalStorageAccessIntent: Intent
-        get() = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-            if (Build.VERSION.SDK_INT >= 26) {
-                putExtra(DocumentsContract.EXTRA_INITIAL_URI, DocumentFileCompat.createDocumentUri(DocumentFileCompat.PRIMARY))
-            }
-        }
-
     /**
      * Even though storage permission has been granted via [hasStoragePermission], read and write access may have not been granted yet.
      *
@@ -101,46 +100,63 @@ class SimpleStorage(private val activity: Activity) {
             externalStorageRootAccessIntent()
         }
         activity.startActivityForResultSafely(requestCode, intent)
-        this.requestCode = requestCode
+        this.requestCodeStorageAccess = requestCode
     }
 
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (this.requestCode != requestCode) {
-            return
-        }
-        if (resultCode != Activity.RESULT_OK) {
-            storageAccessCallback?.onStoragePermissionDenied()
-            return
-        }
-        val uri = data?.data ?: return
-        val storageId = getStorageId(uri)
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageId == DocumentFileCompat.PRIMARY) {
-            saveUriPermission(uri)
-            storageAccessCallback?.onRootPathPermissionGranted(DocumentFile.fromTreeUri(activity, uri) ?: return)
-            return
-        }
-        if (isRootUri(uri)) {
-            if (saveUriPermission(uri)) {
-                storageAccessCallback?.onRootPathPermissionGranted(DocumentFile.fromTreeUri(activity, uri) ?: return)
-            } else {
+        if (requestCode == requestCodeStorageAccess) {
+            if (resultCode != Activity.RESULT_OK) {
                 storageAccessCallback?.onStoragePermissionDenied()
+                return
             }
-        } else {
-            val rootPath = if (storageId == DocumentFileCompat.PRIMARY) {
-                externalStoragePath
+            val uri = data?.data ?: return
+            val storageId = getStorageId(uri)
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageId == DocumentFileCompat.PRIMARY) {
+                saveUriPermission(uri)
+                storageAccessCallback?.onRootPathPermissionGranted(DocumentFile.fromTreeUri(activity, uri) ?: return)
+                return
+            }
+            if (isRootUri(uri)) {
+                if (saveUriPermission(uri)) {
+                    storageAccessCallback?.onRootPathPermissionGranted(DocumentFile.fromTreeUri(activity, uri) ?: return)
+                } else {
+                    storageAccessCallback?.onStoragePermissionDenied()
+                }
             } else {
-                "$storageId:"
+                val rootPath = if (storageId == DocumentFileCompat.PRIMARY) {
+                    externalStoragePath
+                } else {
+                    "$storageId:"
+                }
+                storageAccessCallback?.onRootPathNotSelected(rootPath)
             }
-            storageAccessCallback?.onRootPathNotSelected(rootPath)
+        } else if (requestCode == requestCodeFolderPicker) {
+            if (resultCode != Activity.RESULT_OK) {
+                folderPickerCallback?.onUserCancelledFolderPicker()
+                return
+            }
+            val uri = data?.data ?: return
+            val folder = try {
+                DocumentFile.fromTreeUri(activity, uri)
+            } catch (e: SecurityException) {
+                null
+            }
+            if (folder == null || !folder.getRootDocumentFile(activity).isAccessible) {
+                folderPickerCallback?.onStoragePermissionDenied()
+            } else {
+                folderPickerCallback?.onFolderSelected(folder)
+            }
         }
     }
 
     fun onSaveInstanceState(outState: Bundle) {
-        outState.putInt(REQUEST_CODE_STORAGE_ACCESS, requestCode)
+        outState.putInt(REQUEST_CODE_STORAGE_ACCESS, requestCodeStorageAccess)
+        outState.putInt(REQUEST_CODE_FOLDER_PICKER, requestCodeFolderPicker)
     }
 
     fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        requestCode = savedInstanceState.getInt(REQUEST_CODE_STORAGE_ACCESS)
+        requestCodeStorageAccess = savedInstanceState.getInt(REQUEST_CODE_STORAGE_ACCESS)
+        requestCodeFolderPicker = savedInstanceState.getInt(REQUEST_CODE_FOLDER_PICKER)
     }
 
     private fun saveUriPermission(root: Uri): Boolean {
@@ -161,10 +177,18 @@ class SimpleStorage(private val activity: Activity) {
     companion object {
 
         private const val REQUEST_CODE_STORAGE_ACCESS = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeStorageAccess"
+        private const val REQUEST_CODE_FOLDER_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFolderPicker"
 
         @Suppress("DEPRECATION")
         val externalStoragePath: String
             get() = Environment.getExternalStorageDirectory().absolutePath
+
+        val defaultExternalStorageAccessIntent: Intent
+            get() = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                if (Build.VERSION.SDK_INT >= 26) {
+                    putExtra(DocumentsContract.EXTRA_INITIAL_URI, DocumentFileCompat.createDocumentUri(DocumentFileCompat.PRIMARY))
+                }
+            }
 
         fun hasStoragePermission(context: Context): Boolean {
             return ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED

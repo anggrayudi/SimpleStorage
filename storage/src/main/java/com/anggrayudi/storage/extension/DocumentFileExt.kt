@@ -124,6 +124,9 @@ fun DocumentFile.recreateFile(): DocumentFile? {
 
 fun DocumentFile.getRootDocumentFile(context: Context) = DocumentFileCompat.getRootDocumentFile(context, storageId)
 
+val DocumentFile?.isAccessible: Boolean
+    get() = this != null && canRead() && canWrite()
+
 /**
  * Useful for creating temporary files. The extension is `*.bin`
  */
