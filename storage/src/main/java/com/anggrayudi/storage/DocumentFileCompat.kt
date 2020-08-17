@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.StatFs
 import android.system.ErrnoException
 import android.system.Os
+import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.extension.getAppDirectory
 import java.io.File
@@ -45,6 +46,29 @@ object DocumentFileCompat {
 
     fun createDocumentUri(storageId: String, filePath: String = ""): Uri =
         Uri.parse("content://com.android.externalstorage.documents/tree/" + Uri.encode("$storageId:$filePath"))
+
+    fun isAccessGranted(context: Context, storageId: String): Boolean {
+        return storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+                || getRootDocumentFile(context, storageId)?.run { canRead() && canWrite() } ?: false
+    }
+
+    fun getStorageIds(context: Context): List<String> {
+        val storageIds = mutableListOf<String>()
+        val externalStoragePath = SimpleStorage.externalStoragePath
+        ContextCompat.getExternalFilesDirs(context, null).map { it.path }.forEach {
+            if (it.startsWith(externalStoragePath)) {
+                // Path -> /storage/emulated/0/Android/data/com.anggrayudi.storage.sample/files
+                storageIds.add(PRIMARY)
+            } else {
+                // Path -> /storage/131D-261A/Android/data/com.anggrayudi.storage.sample/files
+                val sdCardId = it.replaceFirst("/storage/", "").substringBefore('/')
+                storageIds.add(sdCardId)
+            }
+        }
+        return storageIds
+    }
+
+    fun getSdCardIds(context: Context) = getStorageIds(context).filter { it != PRIMARY }
 
     /**
      * Create folders. You should do this process in background.
@@ -134,13 +158,6 @@ object DocumentFileCompat {
         }
     }
 
-    /**
-     * Get [DocumentFile] object from SD card.
-     * @param directory SD card ID followed by directory name, for example `6881-2249:Download/Archive`,
-     * where ID for SD card is `6881-2249`
-     * @param fileName for example `intel_haxm.zip`
-     * @return `null` if does not exist
-     */
     private fun exploreFile(context: Context, storageId: String, filePath: String): DocumentFile? {
         var current = getRootDocumentFile(context, storageId) ?: return null
         getDirectorySequence(filePath).forEach {

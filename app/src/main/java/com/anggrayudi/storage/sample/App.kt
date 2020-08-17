@@ -10,6 +10,5 @@ class App : MultiDexApplication() {
 
     override fun onCreate() {
         super.onCreate()
-        ContextHelper.initialize(this)
     }
 }

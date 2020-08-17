@@ -9,10 +9,7 @@ import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.core.content.FileProvider
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.DocumentFileCompat
-import com.anggrayudi.storage.ErrorCode
-import com.anggrayudi.storage.FileSize
-import com.anggrayudi.storage.SimpleStorage
+import com.anggrayudi.storage.*
 import com.anggrayudi.storage.callback.FileCallback
 import com.anggrayudi.storage.callback.FileCopyCallback
 import com.anggrayudi.storage.callback.FileMoveCallback
@@ -30,6 +27,9 @@ import java.io.*
  */
 val DocumentFile.storageId: String
     get() = SimpleStorage.getStorageId(uri)
+
+val DocumentFile.storageType: StorageType
+    get() = if (inPrimaryStorage) StorageType.EXTERNAL else StorageType.SD_CARD
 
 /**
  * `true` if this file located in primary storage, i.e. external storage
@@ -59,7 +59,7 @@ val DocumentFile.baseName: String
  * File extension
  */
 val DocumentFile.extension: String
-    get() = name.orEmpty().substringAfterLast('.')
+    get() = name.orEmpty().substringAfterLast('.', "")
 
 /**
  * @return `null` if you try to read files from SD Card
@@ -122,8 +122,7 @@ fun DocumentFile.recreateFile(): DocumentFile? {
     }
 }
 
-fun DocumentFile.getRootDocumentFile(context: Context) =
-    DocumentFileCompat.getRootDocumentFile(context, storageId)
+fun DocumentFile.getRootDocumentFile(context: Context) = DocumentFileCompat.getRootDocumentFile(context, storageId)
 
 /**
  * Useful for creating temporary files. The extension is `*.bin`
@@ -182,9 +181,9 @@ fun DocumentFile.openInputStream(context: Context): InputStream? {
 
 @UiThread
 fun DocumentFile.openFileIntent(context: Context, authority: String) = Intent(Intent.ACTION_VIEW)
+    .setData(if (isJavaFile) FileProvider.getUriForFile(context, authority, File(uri.path!!)) else uri)
     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    .setData(if (isJavaFile) FileProvider.getUriForFile(context, authority, File(uri.path!!)) else uri)
 
 @WorkerThread
 fun DocumentFile.copyTo(context: Context, targetStorageId: String, targetFolderPath: String, callback: FileCopyCallback? = null) {
@@ -210,34 +209,6 @@ fun DocumentFile.copyTo(context: Context, targetStorageId: String, targetFolderP
 
     val reportInterval = callback?.onStartCopying() ?: 0
     val watchProgress = reportInterval > 0
-    if (Build.VERSION.SDK_INT > 23 && !watchProgress) {
-        try {
-            val targetDocumentUri = DocumentFileCompat.createDocumentUri(targetStorageId, targetFolderPath)
-            val newFileUri = DocumentsContract.copyDocument(context.contentResolver, uri, targetDocumentUri)
-            if (newFileUri == null) {
-                callback?.onFailed(ErrorCode.UNKNOWN_IO_ERROR)
-                return
-            }
-            val newFile = DocumentFile.fromTreeUri(context, newFileUri)
-            if (newFile == null) {
-                callback?.onFailed(ErrorCode.TARGET_FILE_NOT_FOUND)
-            } else if (callback?.onCompleted(newFile) == true) {
-                delete()
-            }
-        } catch (e: FileNotFoundException) {
-            callback?.onFailed(ErrorCode.SOURCE_FILE_NOT_FOUND)
-        } catch (e: SecurityException) {
-            callback?.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
-        } catch (e: IOException) {
-            callback?.onFailed(ErrorCode.UNKNOWN_IO_ERROR)
-        } catch (e: InterruptedIOException) {
-            callback?.onFailed(ErrorCode.CANCELLED)
-        } catch (e: InterruptedException) {
-            callback?.onFailed(ErrorCode.CANCELLED)
-        }
-        return
-    }
-
     try {
         val targetFile = createTargetFile(context, targetStorageId, targetFolderPath, callback) ?: return
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
