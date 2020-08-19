@@ -3,6 +3,7 @@ package com.anggrayudi.storage.extension
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import androidx.fragment.app.Fragment
 
 /**
  * Created on 17/08/20
@@ -21,6 +22,12 @@ fun Context.startActivitySafely(intent: Intent) {
 
 fun Activity.startActivityForResultSafely(requestCode: Int, intent: Intent) {
     if (intent.hasActivityHandler(this)) {
+        startActivityForResult(intent, requestCode)
+    }
+}
+
+fun Fragment.startActivityForResultSafely(requestCode: Int, intent: Intent) {
+    if (intent.hasActivityHandler(requireContext())) {
         startActivityForResult(intent, requestCode)
     }
 }

@@ -78,9 +78,12 @@ fun DocumentFile.toJavaFile(): File? {
 val DocumentFile.filePath: String
     get() = when {
         isJavaFile -> if (uri.path == SimpleStorage.externalStoragePath) "" else uri.path.orEmpty()
-        inPrimaryStorage -> uri.path.orEmpty().substringAfter(':').replaceFirst(SimpleStorage.externalStoragePath, "").let {
-            if (it.startsWith("/")) it.replaceFirst("/", "") else it
-        }
+        // TODO: 18/08/20 Sometimes not work, because content://com.android.externalstorage.documents/tree/primary%3ADCIM/document/primary%3ADCIM
+        inPrimaryStorage -> uri.path.orEmpty()
+            .substringAfter(':')
+            .replaceFirst(SimpleStorage.externalStoragePath, "").let {
+                if (it.startsWith("/")) it.replaceFirst("/", "") else it
+            }
         else -> uri.path.orEmpty().substringAfter(':')
     }
 
@@ -124,6 +127,9 @@ fun DocumentFile.recreateFile(): DocumentFile? {
 
 fun DocumentFile.getRootDocumentFile(context: Context) = DocumentFileCompat.getRootDocumentFile(context, storageId)
 
+/**
+ * @return `true` if this file has read and write access, or this file has URI permission for read and write access.
+ */
 val DocumentFile.isAccessible: Boolean
     get() = canRead() && canWrite()
 
@@ -318,6 +324,7 @@ private fun DocumentFile.copyFileStream(
             writeSpeed += read
             read = inputStream.read(buffer)
         }
+        timer?.cancel()
         if (callback is FileCopyCallback && callback.onCompleted(targetFile) || callback is FileMoveCallback) {
             delete()
         }
@@ -359,6 +366,7 @@ fun DocumentFile.moveTo(context: Context, targetStorageId: String, targetFolderP
             val targetDocumentUri = DocumentFileCompat.createDocumentUri(targetStorageId, targetFolderPath)
             val movedFileUri = DocumentsContract.moveDocument(context.contentResolver, uri, parentFile!!.uri, targetDocumentUri)
             if (movedFileUri != null) {
+                // TODO: 18/08/20 Check if fromTreeUri() usage is corrent
                 val newFile = DocumentFile.fromTreeUri(context, movedFileUri)
                 if (newFile != null) {
                     callback?.onCompleted(newFile)

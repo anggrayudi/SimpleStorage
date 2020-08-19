@@ -14,16 +14,20 @@ import android.provider.DocumentsContract
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.documentfile.provider.DocumentFile
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
-import com.anggrayudi.storage.extension.startActivityForResultSafely
 
 /**
  * @author Anggrayudi Hardiannico A. (anggrayudi.hardiannico@dana.id)
  * @version SimpleStorage, v 0.0.1 09/08/20 19.08 by Anggrayudi Hardiannico A.
  */
-// TODO: 18/08/20 What if we use it in Fragment? onActivityResult wont be called if we call from fragment
-class SimpleStorage(private val activity: Activity) {
+class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
+
+    constructor(activity: FragmentActivity) : this(ActivityWrapper(activity))
+
+    constructor(fragment: Fragment) : this(FragmentWrapper(fragment))
 
     var storageAccessCallback: StorageAccessCallback? = null
 
@@ -33,11 +37,11 @@ class SimpleStorage(private val activity: Activity) {
     private var requestCodeFolderPicker = 0
 
     /**
-     * It returns an intent to be dispatched via startActivityResult
+     * It returns an intent to be dispatched via [Activity.startActivityForResult]
      */
     private fun externalStorageRootAccessIntent(): Intent {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val sm = activity.getSystemService(Context.STORAGE_SERVICE) as StorageManager
+            val sm = wrapper.context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
             sm.primaryStorageVolume.createOpenDocumentTreeIntent()
         } else {
             defaultExternalStorageIntent
@@ -45,17 +49,15 @@ class SimpleStorage(private val activity: Activity) {
     }
 
     /**
-     * It returns an intent to be dispatched via startActivityResult to access to
+     * It returns an intent to be dispatched via [Activity.startActivityForResult] to access to
      * the first removable no primary storage. This method requires at least Nougat
      * because on previous Android versions there's no reliable way to get the
      * volume/path of SdCard, and no, SdCard != External Storage.
-     *
-     * @return Null if no storage is found, the intent object otherwise
      */
     @Suppress("DEPRECATION")
     @RequiresApi(api = Build.VERSION_CODES.N)
     private fun sdCardRootAccessIntent(): Intent {
-        val sm = activity.getSystemService(Context.STORAGE_SERVICE) as StorageManager
+        val sm = wrapper.context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
         return sm.storageVolumes.firstOrNull { it.isRemovable }?.let {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 it.createOpenDocumentTreeIntent()
@@ -77,7 +79,7 @@ class SimpleStorage(private val activity: Activity) {
      * @return `true` if storage pemissions and URI permissions are granted for read and write access.
      * @see [DocumentFileCompat.getStorageIds]
      */
-    fun isStorageAccessGranted(storageId: String) = DocumentFileCompat.isAccessGranted(activity, storageId)
+    fun isStorageAccessGranted(storageId: String) = DocumentFileCompat.isAccessGranted(wrapper.context, storageId)
 
     /**
      * Managing files in direct storage requires root access. Thus we need to make sure users select root path.
@@ -86,7 +88,7 @@ class SimpleStorage(private val activity: Activity) {
      */
     fun requestStorageAccess(requestCode: Int, initialRootPath: StorageType = StorageType.EXTERNAL) {
         if (initialRootPath == StorageType.EXTERNAL && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            val root = DocumentFileCompat.getRootDocumentFile(activity, DocumentFileCompat.PRIMARY) ?: return
+            val root = DocumentFileCompat.getRootDocumentFile(wrapper.context, DocumentFileCompat.PRIMARY) ?: return
             saveUriPermission(root.uri)
             storageAccessCallback?.onRootPathPermissionGranted(root)
             return
@@ -97,14 +99,14 @@ class SimpleStorage(private val activity: Activity) {
         } else {
             externalStorageRootAccessIntent()
         }
-        activity.startActivityForResultSafely(requestCode, intent)
+        wrapper.startActivityForResult(requestCode, intent)
         this.requestCodeStorageAccess = requestCode
     }
 
     fun openFolderPicker(requestCode: Int) {
         requestCodeFolderPicker = requestCode
-        if (hasStoragePermission(activity)) {
-            activity.startActivityForResultSafely(requestCode, defaultExternalStorageIntent)
+        if (hasStoragePermission(wrapper.context)) {
+            wrapper.startActivityForResult(requestCode, defaultExternalStorageIntent)
         } else {
             folderPickerCallback?.onStoragePermissionDenied()
         }
@@ -120,12 +122,12 @@ class SimpleStorage(private val activity: Activity) {
             val storageId = DocumentFileCompat.getStorageId(uri)
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageId == DocumentFileCompat.PRIMARY) {
                 saveUriPermission(uri)
-                storageAccessCallback?.onRootPathPermissionGranted(DocumentFile.fromTreeUri(activity, uri) ?: return)
+                storageAccessCallback?.onRootPathPermissionGranted(DocumentFile.fromTreeUri(wrapper.context, uri) ?: return)
                 return
             }
             if (DocumentFileCompat.isRootUri(uri)) {
                 if (saveUriPermission(uri)) {
-                    storageAccessCallback?.onRootPathPermissionGranted(DocumentFile.fromTreeUri(activity, uri) ?: return)
+                    storageAccessCallback?.onRootPathPermissionGranted(DocumentFile.fromTreeUri(wrapper.context, uri) ?: return)
                 } else {
                     storageAccessCallback?.onStoragePermissionDenied()
                 }
@@ -144,11 +146,11 @@ class SimpleStorage(private val activity: Activity) {
             }
             val uri = data?.data ?: return
             val folder = try {
-                DocumentFile.fromTreeUri(activity, uri)
+                DocumentFile.fromTreeUri(wrapper.context, uri)
             } catch (e: SecurityException) {
                 null
             }
-            if (folder == null || !DocumentFileCompat.isStorageUriPermissionGranted(activity, DocumentFileCompat.getStorageId(uri))) {
+            if (folder == null || !DocumentFileCompat.isStorageUriPermissionGranted(wrapper.context, DocumentFileCompat.getStorageId(uri))) {
                 folderPickerCallback?.onStorageAccessDenied(folder)
             } else {
                 folderPickerCallback?.onFolderSelected(folder)
@@ -169,7 +171,7 @@ class SimpleStorage(private val activity: Activity) {
     private fun saveUriPermission(root: Uri): Boolean {
         return try {
             val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            activity.contentResolver.takePersistableUriPermission(root, takeFlags)
+            wrapper.context.contentResolver.takePersistableUriPermission(root, takeFlags)
             true
         } catch (e: SecurityException) {
             false

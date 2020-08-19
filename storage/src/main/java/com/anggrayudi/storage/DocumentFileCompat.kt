@@ -33,7 +33,7 @@ object DocumentFileCompat {
     }
 
     /**
-     * If given [Uri] with path `tree/primary:Downloads/MyVideo.mp4`, then return `primary`
+     * If given [Uri] with path `/tree/primary:Downloads/MyVideo.mp4`, then return `primary`
      */
     fun getStorageId(uri: Uri): String = if (uri.scheme == ContentResolver.SCHEME_FILE) {
         PRIMARY
