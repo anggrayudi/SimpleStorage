@@ -24,24 +24,33 @@ import java.io.*
 /**
  * ID of this storage. For external storage, it will return [DocumentFileCompat.PRIMARY],
  * otherwise it is a SD Card and will return integers like `6881-2249`.
+ * However, it will return empty `String` if this [DocumentFile] is picked from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT]
  */
 val DocumentFile.storageId: String
     get() = DocumentFileCompat.getStorageId(uri)
 
-val DocumentFile.storageType: StorageType
-    get() = if (inPrimaryStorage) StorageType.EXTERNAL else StorageType.SD_CARD
+val DocumentFile.isReadOnly: Boolean
+    get() = uri.authority != DocumentFileCompat.FOLDER_PICKER_AUTHORITY
 
 /**
- * `true` if this file located in primary storage, i.e. external storage
+ * Returns `null` if this [DocumentFile] is picked from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT]
+ */
+val DocumentFile.storageType: StorageType?
+    get() = if (isReadOnly) null else {
+        if (inPrimaryStorage) StorageType.EXTERNAL else StorageType.SD_CARD
+    }
+
+/**
+ * `true` if this file located in primary storage, i.e. external storage.
  */
 val DocumentFile.inPrimaryStorage: Boolean
-    get() = storageId == DocumentFileCompat.PRIMARY || isJavaFile
+    get() = !isReadOnly && (storageId == DocumentFileCompat.PRIMARY || isJavaFile)
 
 /**
  * `true` if this file located in SD Card
  */
 val DocumentFile.inSdCardStorage: Boolean
-    get() = storageId != DocumentFileCompat.PRIMARY && !isJavaFile
+    get() = !isReadOnly && (storageId != DocumentFileCompat.PRIMARY && !isJavaFile)
 
 /**
  * `true` if this file was created with [File]
@@ -62,7 +71,8 @@ val DocumentFile.extension: String
     get() = name.orEmpty().substringAfterLast('.', "")
 
 /**
- * @return `null` if you try to read files from SD Card
+ * @return `null` if you try to read files from SD Card or you want to convert a file picked
+ * from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT]
  */
 fun DocumentFile.toJavaFile(): File? {
     return when {
@@ -73,74 +83,27 @@ fun DocumentFile.toJavaFile(): File? {
 }
 
 /**
- * @return File path without storage ID, otherwise return empty `String` if this is the root path
+ * @return File path without storage ID, otherwise return empty `String` if this is the root path or if this [DocumentFile] is picked
+ * from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT]
  */
 val DocumentFile.filePath: String
-    get() = if (isJavaFile) {
-        uri.path.orEmpty().replaceFirst(SimpleStorage.externalStoragePath, "")
-    } else {
-        uri.path.orEmpty().substringAfterLast("/document/$storageId:", "")
+    get() = when {
+        isJavaFile -> uri.path.orEmpty().replaceFirst(SimpleStorage.externalStoragePath, "")
+        isReadOnly -> ""
+        else -> uri.path.orEmpty().substringAfterLast("/document/$storageId:", "")
     }
-
-internal fun String.splitToPairAt(text: String, occurence: Int): Pair<String, String>? {
-    var index = indexOf(text)
-    if (text.isEmpty() || index == -1 || occurence < 1) {
-        return null
-    }
-    var count = 0
-    do {
-        count++
-        if (occurence == count) {
-            return Pair(
-                substring(0, index),
-                substring(index + text.length, length)
-            )
-        }
-        index = indexOf(text, startIndex = index + text.length)
-    } while (index in 1 until length)
-    return null
-}
-
-/**
- * @return `null` if file not found
- */
-fun DocumentFile.toStraightfowrardDocumentFile(context: Context): DocumentFile? {
-    if (hasStraightforwardPath) {
-        return this
-    } else {
-        // Given /tree/primary:DCIM/document/primary:DCIM
-        val path = uri.path!!.replaceFirst("/tree/", "") // -> primary:DCIM/document/primary:DCIM
-        val d = (path.count("/document/") + 1) / 2 // -> 1
-        val pair = path.splitToPairAt("/document/", d) ?: return null
-        return if (pair.first == pair.second) { // if ("primary:DCIM" == "primary:DCIM")
-            DocumentFileCompat.fromPath(context, storageId, pair.first.substringAfter(':'))
-        } else {
-            null
-        }
-    }
-}
-
-/**
- * * This URI does not have straightforward path: `content://com.android.externalstorage.documents/tree/primary:DCIM/document/primary:DCIM`
- * This kind of URI is retrieved via [Intent.ACTION_OPEN_DOCUMENT_TREE] and not safe for file management because the file path is confusing.
- * You may need to convert it to straightforward [DocumentFile] via [toStraightfowrardDocumentFile].
- *
- * * This URI has straightforward path: `content://com.android.externalstorage.documents/tree/primary:/document/primary:DCIM`
- * The file path is clear, i.e. `primary:DCIM`
- */
-val DocumentFile.hasStraightforwardPath: Boolean
-    get() = uri.path!!.run { count("$storageId:") == 1 && count("/document/") % 2 == 0 }
 
 /**
  * Root path of this file.
+ * * For file picked from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT], it will return empty `String`
  * * For file stored in external or primary storage, it will return [SimpleStorage.externalStoragePath].
  * * For file stored in SD Card, it will return integers like `6881-2249:`
  */
 val DocumentFile.rootPath: String
-    get() = if (inSdCardStorage) {
-        "$storageId:"
-    } else {
-        SimpleStorage.externalStoragePath
+    get() = when {
+        isReadOnly -> ""
+        inSdCardStorage -> "$storageId:"
+        else -> SimpleStorage.externalStoragePath
     }
 
 /**
@@ -148,6 +111,7 @@ val DocumentFile.rootPath: String
  */
 val DocumentFile.fullPath: String
     get() = when {
+        isReadOnly -> ""
         isJavaFile -> uri.path.orEmpty()
         inPrimaryStorage -> "${SimpleStorage.externalStoragePath}/$filePath"
         else -> "$storageId:$filePath"
@@ -158,7 +122,7 @@ val DocumentFile.fullPath: String
  * It cannot be applied if current [DocumentFile] is a directory.
  */
 fun DocumentFile.recreateFile(): DocumentFile? {
-    return if (isDirectory) {
+    return if (isReadOnly || isDirectory) {
         null
     } else {
         val filename = name.orEmpty()
@@ -169,16 +133,16 @@ fun DocumentFile.recreateFile(): DocumentFile? {
     }
 }
 
-fun DocumentFile.getRootDocumentFile(context: Context) = DocumentFileCompat.getRootDocumentFile(context, storageId)
+fun DocumentFile.getRootDocumentFile(context: Context) = if (isReadOnly) null else DocumentFileCompat.getRootDocumentFile(context, storageId)
 
 /**
  * @return `true` if this file has read and write access, or this file has URI permission for read and write access.
  */
 val DocumentFile.isAccessible: Boolean
-    get() = canRead() && canWrite()
+    get() = canRead() && canWrite() && !isReadOnly
 
 fun DocumentFile.isRootUriPermissionGranted(context: Context): Boolean {
-    return DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)
+    return !isReadOnly && DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)
 }
 
 /**
@@ -189,22 +153,28 @@ fun DocumentFile.createBinaryFile(
     appendBinFileExtension: Boolean = true,
     mimeType: String = DocumentFileCompat.MIME_TYPE_BINARY_FILE
 ): DocumentFile? {
-    return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-        val filename = if (appendBinFileExtension) {
-            if (name.endsWith(".bin")) name else "$name.bin"
-        } else {
-            name
+    return when {
+        isReadOnly || isFile -> null
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> {
+            val filename = if (appendBinFileExtension) {
+                if (name.endsWith(".bin")) name else "$name.bin"
+            } else {
+                name
+            }
+            createFile(mimeType, filename)
         }
-        createFile(mimeType, filename)
-    } else {
-        val filename = name.removeSuffix(".bin")
-        createFile(mimeType, filename)?.apply {
-            if (!appendBinFileExtension) {
-                renameTo(name)
+        else -> {
+            val filename = name.removeSuffix(".bin")
+            createFile(mimeType, filename)?.apply {
+                if (!appendBinFileExtension) {
+                    renameTo(name)
+                }
             }
         }
     }
 }
+
+// TODO: 20/08/20 Create searchFile(fileOnlyFilter recursive: Boolean = false)
 
 /**
  * @param append if `false` and the file already exists, it will recreate the file.
@@ -215,7 +185,7 @@ fun DocumentFile.openOutputStream(context: Context, append: Boolean = true): Out
         if (isJavaFile) {
             FileOutputStream(toJavaFile(), append)
         } else {
-            context.contentResolver.openOutputStream(uri, if (append) "wa" else "w")
+            context.contentResolver.openOutputStream(uri, if (append && !isReadOnly) "wa" else "w")
         }
     } catch (e: FileNotFoundException) {
         null
@@ -412,7 +382,7 @@ fun DocumentFile.moveTo(context: Context, targetStorageId: String, targetFolderP
             if (movedFileUri != null) {
                 // TODO: 18/08/20 Check if fromTreeUri() usage is corrent
                 val newFile = DocumentFile.fromTreeUri(context, movedFileUri)
-                if (newFile != null) {
+                if (newFile != null && newFile.isFile) {
                     callback?.onCompleted(newFile)
                 } else {
                     callback?.onFailed(ErrorCode.TARGET_FILE_NOT_FOUND)

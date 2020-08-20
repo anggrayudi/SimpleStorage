@@ -9,10 +9,10 @@ import androidx.documentfile.provider.DocumentFile
 import com.afollestad.materialdialogs.MaterialDialog
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.StorageType
+import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
 import com.anggrayudi.storage.extension.fullPath
-import com.anggrayudi.storage.extension.inPrimaryStorage
 import com.anggrayudi.storage.extension.storageId
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
 
         setupSimpleStorage()
         setupFolderPickerCallback()
+        setupFilePickerCallback()
         setupButtonActions()
     }
 
@@ -56,6 +57,10 @@ class MainActivity : AppCompatActivity() {
 
         btnSelectFolder.setOnClickListener {
             storage.openFolderPicker(REQUEST_CODE_PICK_FOLDER)
+        }
+
+        btnSelectFile.setOnClickListener {
+            storage.openFilePicker(REQUEST_CODE_PICK_FILE)
         }
     }
 
@@ -110,7 +115,7 @@ class MainActivity : AppCompatActivity() {
                 requestStoragePermission()
             }
 
-            override fun onStorageAccessDenied(folder: DocumentFile?) {
+            override fun onStorageAccessDenied(folder: DocumentFile?, storageType: StorageType) {
                 MaterialDialog(this@MainActivity)
                     .message(
                         text = "You have no write access to this storage, thus selecting this folder is useless." +
@@ -118,8 +123,7 @@ class MainActivity : AppCompatActivity() {
                     )
                     .negativeButton(android.R.string.cancel)
                     .positiveButton {
-                        val initialRoot = if (folder == null || folder.inPrimaryStorage) StorageType.EXTERNAL else StorageType.SD_CARD
-                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, initialRoot)
+                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, storageType)
                     }
                     .show()
             }
@@ -130,6 +134,22 @@ class MainActivity : AppCompatActivity() {
 
             override fun onCancelledByUser() {
                 Toast.makeText(baseContext, "Folder picker cancelled by user", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun setupFilePickerCallback() {
+        storage.filePickerCallback = object : FilePickerCallback {
+            override fun onCancelledByUser() {
+                Toast.makeText(baseContext, "File picker cancelled by user", Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onStoragePermissionDenied(file: DocumentFile?) {
+                requestStoragePermission()
+            }
+
+            override fun onFileSelected(file: DocumentFile) {
+                Toast.makeText(baseContext, "File selected: ${file.name}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -157,5 +177,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val REQUEST_CODE_STORAGE_ACCESS = 1
         const val REQUEST_CODE_PICK_FOLDER = 2
+        const val REQUEST_CODE_PICK_FILE = 3
     }
 }

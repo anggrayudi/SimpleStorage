@@ -26,4 +26,10 @@
         android:layout_height="wrap_content"
         android:text="Select Folder" />
 
+    <Button
+        android:id="@+id/btnSelectFile"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select File" />
+
 </LinearLayout>

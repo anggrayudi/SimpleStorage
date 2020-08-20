@@ -27,18 +27,22 @@ object DocumentFileCompat {
 
     const val MIME_TYPE_BINARY_FILE = "application/octet-stream"
 
+    const val FOLDER_PICKER_AUTHORITY = "com.android.externalstorage.documents"
+
     fun isRootUri(uri: Uri): Boolean {
         val path = uri.path ?: return false
-        return path.indexOf(':') == path.length - 1
+        return uri.authority == FOLDER_PICKER_AUTHORITY && path.indexOf(':') == path.length - 1
     }
 
     /**
-     * If given [Uri] with path `/tree/primary:Downloads/MyVideo.mp4`, then return `primary`
+     * If given [Uri] with path `/tree/primary:Downloads/MyVideo.mp4`, then return `primary`.
      */
     fun getStorageId(uri: Uri): String = if (uri.scheme == ContentResolver.SCHEME_FILE) {
         PRIMARY
     } else {
-        uri.path!!.substringBefore(':').substringAfterLast('/')
+        if (uri.authority == FOLDER_PICKER_AUTHORITY) {
+            uri.path!!.substringBefore(':').substringAfterLast('/')
+        } else ""
     }
 
     /**
@@ -60,7 +64,7 @@ object DocumentFileCompat {
     }
 
     fun createDocumentUri(storageId: String, filePath: String = ""): Uri =
-        Uri.parse("content://com.android.externalstorage.documents/tree/" + Uri.encode("$storageId:$filePath"))
+        Uri.parse("content://$FOLDER_PICKER_AUTHORITY/tree/" + Uri.encode("$storageId:$filePath"))
 
     fun isAccessGranted(context: Context, storageId: String): Boolean {
         return storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q

@@ -16,6 +16,7 @@ import androidx.core.app.ActivityCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
 
@@ -33,8 +34,11 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
     var folderPickerCallback: FolderPickerCallback? = null
 
+    var filePickerCallback: FilePickerCallback? = null
+
     private var requestCodeStorageAccess = 0
     private var requestCodeFolderPicker = 0
+    private var requestCodeFilePicker = 0
 
     /**
      * It returns an intent to be dispatched via [Activity.startActivityForResult]
@@ -112,6 +116,17 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
     }
 
+    fun openFilePicker(requestCode: Int, filterMimeType: String = "*/*") {
+        requestCodeFilePicker = requestCode
+        if (hasStorageReadPermission(wrapper.context)) {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .setType(filterMimeType)
+            wrapper.startActivityForResult(requestCode, intent)
+        } else {
+            filePickerCallback?.onStoragePermissionDenied(null)
+        }
+    }
+
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == requestCodeStorageAccess) {
             if (resultCode != Activity.RESULT_OK) {
@@ -150,9 +165,30 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 null
             }
             if (folder == null || !DocumentFileCompat.isStorageUriPermissionGranted(wrapper.context, DocumentFileCompat.getStorageId(uri))) {
-                folderPickerCallback?.onStorageAccessDenied(folder)
+                val storageType = if (DocumentFileCompat.getStorageId(uri) == DocumentFileCompat.PRIMARY) {
+                    StorageType.EXTERNAL
+                } else {
+                    StorageType.SD_CARD
+                }
+                folderPickerCallback?.onStorageAccessDenied(folder, storageType)
             } else {
                 folderPickerCallback?.onFolderSelected(folder)
+            }
+        } else if (requestCode == requestCodeFilePicker) {
+            if (resultCode != Activity.RESULT_OK) {
+                filePickerCallback?.onCancelledByUser()
+                return
+            }
+            val uri = data?.data ?: return
+            val file = try {
+                DocumentFile.fromSingleUri(wrapper.context, uri)
+            } catch (e: SecurityException) {
+                null
+            }
+            if (file == null || !file.canRead()) {
+                filePickerCallback?.onStoragePermissionDenied(file)
+            } else {
+                filePickerCallback?.onFileSelected(file)
             }
         }
     }
@@ -193,9 +229,19 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 }
             }
 
+        /**
+         * For read and write permissions
+         */
         fun hasStoragePermission(context: Context): Boolean {
             return ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-                    && ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+                    && hasStorageReadPermission(context)
+        }
+
+        /**
+         * For read permission only
+         */
+        fun hasStorageReadPermission(context: Context): Boolean {
+            return ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
     }
 }
