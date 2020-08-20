@@ -8,12 +8,12 @@ import androidx.documentfile.provider.DocumentFile
  */
 interface FilePickerCallback {
 
-    fun onCancelledByUser()
+    fun onCancelledByUser(requestCode: Int)
 
     /**
      * Called when you have no read permission to current path
      */
-    fun onStoragePermissionDenied(file: DocumentFile?)
+    fun onStoragePermissionDenied(requestCode: Int, file: DocumentFile?)
 
-    fun onFileSelected(file: DocumentFile)
+    fun onFileSelected(requestCode: Int, file: DocumentFile)
 }

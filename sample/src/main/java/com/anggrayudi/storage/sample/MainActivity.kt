@@ -3,15 +3,23 @@ package com.anggrayudi.storage.sample
 import android.Manifest
 import android.content.Intent
 import android.os.Bundle
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
 import com.afollestad.materialdialogs.MaterialDialog
+import com.afollestad.materialdialogs.customview.customView
+import com.afollestad.materialdialogs.customview.getCustomView
+import com.anggrayudi.storage.ErrorCode
+import com.anggrayudi.storage.FileSize
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.StorageType
+import com.anggrayudi.storage.callback.FileCopyCallback
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
+import com.anggrayudi.storage.extension.copyTo
 import com.anggrayudi.storage.extension.fullPath
 import com.anggrayudi.storage.extension.storageId
 import com.karumi.dexter.Dexter
@@ -20,8 +28,17 @@ import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionRequest
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.view_file_picked.view.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
+
+    private val job = Job()
+    private val ioScope = CoroutineScope(Dispatchers.IO + job)
+    private val uiScope = CoroutineScope(Dispatchers.Main + job)
 
     private lateinit var storage: SimpleStorage
 
@@ -62,6 +79,8 @@ class MainActivity : AppCompatActivity() {
         btnSelectFile.setOnClickListener {
             storage.openFilePicker(REQUEST_CODE_PICK_FILE)
         }
+
+        setupFileCopy()
     }
 
     private fun setupSimpleStorage() {
@@ -111,11 +130,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupFolderPickerCallback() {
         storage.folderPickerCallback = object : FolderPickerCallback {
-            override fun onStoragePermissionDenied() {
+            override fun onStoragePermissionDenied(requestCode: Int) {
                 requestStoragePermission()
             }
 
-            override fun onStorageAccessDenied(folder: DocumentFile?, storageType: StorageType) {
+            override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType) {
                 MaterialDialog(this@MainActivity)
                     .message(
                         text = "You have no write access to this storage, thus selecting this folder is useless." +
@@ -128,11 +147,17 @@ class MainActivity : AppCompatActivity() {
                     .show()
             }
 
-            override fun onFolderSelected(folder: DocumentFile) {
-                Toast.makeText(baseContext, folder.fullPath, Toast.LENGTH_SHORT).show()
+            override fun onFolderSelected(requestCode: Int, folder: DocumentFile) {
+                when (requestCode) {
+                    REQUEST_CODE_PICK_FOLDER_TARGET_FOR_COPY -> layoutCopyToFolder.run {
+                        tag = folder
+                        tvFilePath.text = folder.fullPath
+                    }
+                    else -> Toast.makeText(baseContext, folder.fullPath, Toast.LENGTH_SHORT).show()
+                }
             }
 
-            override fun onCancelledByUser() {
+            override fun onCancelledByUser(requestCode: Int) {
                 Toast.makeText(baseContext, "Folder picker cancelled by user", Toast.LENGTH_SHORT).show()
             }
         }
@@ -140,16 +165,99 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupFilePickerCallback() {
         storage.filePickerCallback = object : FilePickerCallback {
-            override fun onCancelledByUser() {
+            override fun onCancelledByUser(requestCode: Int) {
                 Toast.makeText(baseContext, "File picker cancelled by user", Toast.LENGTH_SHORT).show()
             }
 
-            override fun onStoragePermissionDenied(file: DocumentFile?) {
+            override fun onStoragePermissionDenied(requestCode: Int, file: DocumentFile?) {
                 requestStoragePermission()
             }
 
-            override fun onFileSelected(file: DocumentFile) {
-                Toast.makeText(baseContext, "File selected: ${file.name}", Toast.LENGTH_SHORT).show()
+            override fun onFileSelected(requestCode: Int, file: DocumentFile) {
+                when (requestCode) {
+                    REQUEST_CODE_PICK_FILE_FOR_COPY -> layoutCopyFromFile.run {
+                        tag = file
+                        tvFilePath.text = file.name
+                    }
+                    else -> Toast.makeText(baseContext, "File selected: ${file.name}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun setupFileCopy() {
+        layoutCopyFromFile.btnBrowse.setOnClickListener {
+            storage.openFilePicker(REQUEST_CODE_PICK_FILE_FOR_COPY)
+        }
+        layoutCopyToFolder.btnBrowse.setOnClickListener {
+            storage.openFolderPicker(REQUEST_CODE_PICK_FOLDER_TARGET_FOR_COPY)
+        }
+        btnStartCopyFile.setOnClickListener {
+            if (layoutCopyFromFile.tag == null) {
+                Toast.makeText(this, "Please select file to copy", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (layoutCopyToFolder.tag == null) {
+                Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val file = layoutCopyFromFile.tag as DocumentFile
+            val targetFolder = layoutCopyToFolder.tag as DocumentFile
+            ioScope.launch {
+                file.copyTo(it.context, targetFolder, object : FileCopyCallback {
+
+                    var dialog: MaterialDialog? = null
+                    var tvStatus: TextView? = null
+                    var progressBar: ProgressBar? = null
+
+                    override fun onCheckFreeSpace(freeSpace: Long, fileSize: Long): Boolean {
+                        return fileSize + 100 * FileSize.MB < freeSpace // Give tolerant 100MB
+                    }
+
+                    override fun onStartCopying(fileSize: Long): Long {
+                        // only show dialog if file size greater than 10Mb
+                        if (fileSize > 10 * FileSize.MB) {
+                            uiScope.launch {
+                                dialog = MaterialDialog(it.context)
+                                    .cancelable(false)
+                                    .positiveButton(android.R.string.cancel) {
+                                        // TODO: 20/08/20 Interrupt thread and cancel copy
+                                    }
+                                    .customView(R.layout.dialog_copy_progress).apply {
+                                        tvStatus = getCustomView().findViewById<TextView>(R.id.tvProgressStatus).apply {
+                                            text = "Copying file: 0%"
+                                        }
+
+                                        progressBar = getCustomView().findViewById<ProgressBar>(R.id.progressCopy).apply {
+                                            isIndeterminate = true
+                                        }
+                                        show()
+                                    }
+                            }
+                        }
+                        return 500 // 0.5 second
+                    }
+
+                    override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int) {
+                        uiScope.launch {
+                            tvStatus?.text = "Copying file: ${progress.toInt()}%"
+                            progressBar?.isIndeterminate = false
+                            progressBar?.progress = progress.toInt()
+                        }
+                    }
+
+                    override fun onFailed(errorCode: ErrorCode) {
+                        uiScope.launch { dialog?.dismiss() }
+                    }
+
+                    override fun onCompleted(file: DocumentFile): Boolean {
+                        uiScope.launch {
+                            dialog?.dismiss()
+                            Toast.makeText(it.context, "File copied successfully", Toast.LENGTH_SHORT).show()
+                        }
+                        return false
+                    }
+                })
             }
         }
     }
@@ -169,14 +277,16 @@ class MainActivity : AppCompatActivity() {
         storage.onRestoreInstanceState(savedInstanceState)
     }
 
-    override fun onResume() {
-        super.onResume()
-        btnSelectFolder.isEnabled = SimpleStorage.hasStoragePermission(this)
+    override fun onDestroy() {
+        job.cancel()
+        super.onDestroy()
     }
 
     companion object {
         const val REQUEST_CODE_STORAGE_ACCESS = 1
         const val REQUEST_CODE_PICK_FOLDER = 2
         const val REQUEST_CODE_PICK_FILE = 3
+        const val REQUEST_CODE_PICK_FILE_FOR_COPY = 4
+        const val REQUEST_CODE_PICK_FOLDER_TARGET_FOR_COPY = 5
     }
 }

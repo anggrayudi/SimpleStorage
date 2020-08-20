@@ -29,6 +29,8 @@ object DocumentFileCompat {
 
     const val FOLDER_PICKER_AUTHORITY = "com.android.externalstorage.documents"
 
+    const val DOWNLOADS_FOLDER_AUTHORITY = "com.android.providers.downloads.documents"
+
     fun isRootUri(uri: Uri): Boolean {
         val path = uri.path ?: return false
         return uri.authority == FOLDER_PICKER_AUTHORITY && path.indexOf(':') == path.length - 1
@@ -54,6 +56,25 @@ object DocumentFileCompat {
             getRootDocumentFile(context, storageId)
         } else {
             exploreFile(context, storageId, filePath)
+        }
+    }
+
+    /**
+     * Since Android 10, only app directory that is accessible by [File], e.g. `/storage/emulated/0/Android/data/com.anggrayudi.storage.sample/files`
+     *
+     * This function allows you to read and write files in external storage, regardless of API levels. Suppose that you input a [File] with
+     * path `/storage/emulated/0/Music` on Android 10. This function will convert the [File] to [DocumentFile] with URI
+     * `content://com.android.externalstorage.documents/tree/primary:/document/primary:Music`
+     */
+    fun fromFile(context: Context, file: File): DocumentFile? {
+        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            DocumentFile.fromFile(file)
+        } else {
+            var filePath = file.path.replaceFirst(SimpleStorage.externalStoragePath, "").removeProhibitedCharsFromFilename()
+            if (filePath.startsWith("/")) {
+                filePath = filePath.replaceFirst("/", "")
+            }
+            exploreFile(context, PRIMARY, filePath)
         }
     }
 
@@ -103,7 +124,7 @@ object DocumentFileCompat {
      * @return `null` if you have no storage permission. Will return to current directory if not success.
      */
     fun mkdirs(context: Context, storageId: String = PRIMARY, folderPath: String): DocumentFile? {
-        if (storageId == PRIMARY) {
+        if (storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             // use java.io.File for faster performance
             val file = File(SimpleStorage.externalStoragePath + "/" + folderPath.removeProhibitedCharsFromFilename())
             file.mkdirs()
@@ -131,7 +152,7 @@ object DocumentFileCompat {
      * @return `null` if you don't have storage permission.
      */
     fun createFile(context: Context, storageId: String = PRIMARY, filePath: String, mimeType: String = MIME_TYPE_UNKNOWN): DocumentFile? {
-        return if (storageId == PRIMARY) {
+        return if (storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             val file = File(SimpleStorage.externalStoragePath + "/" + filePath.removeProhibitedCharsFromFilename())
             file.parentFile?.mkdirs()
             if (create(file)) DocumentFile.fromFile(file) else null
@@ -158,7 +179,7 @@ object DocumentFileCompat {
     private fun getFileNameFromPath(filePath: String) = filePath.substringAfterLast('/')
 
     fun recreate(context: Context, storageId: String = PRIMARY, filePath: String, mimeType: String = MIME_TYPE_UNKNOWN): DocumentFile? {
-        if (storageId == PRIMARY) {
+        if (storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             val file = File(filePath.removeProhibitedCharsFromFilename())
             file.delete()
             file.parentFile?.mkdirs()

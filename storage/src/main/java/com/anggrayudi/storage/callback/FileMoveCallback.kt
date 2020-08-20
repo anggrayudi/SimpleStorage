@@ -31,7 +31,9 @@ interface FileMoveCallback : FileCallback {
      * @param progress   in percent
      * @param writeSpeed in bytes
      */
-    override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int)
+    override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int) {
+        // default implementation
+    }
 
     /**
      * @param file newly moved file

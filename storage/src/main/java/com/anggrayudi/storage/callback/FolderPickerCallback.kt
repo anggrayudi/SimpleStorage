@@ -10,16 +10,16 @@ import com.anggrayudi.storage.StorageType
  */
 interface FolderPickerCallback {
 
-    fun onCancelledByUser()
+    fun onCancelledByUser(requestCode: Int)
 
-    fun onStoragePermissionDenied()
+    fun onStoragePermissionDenied(requestCode: Int)
 
     /**
      * Called when storage permissions are granted, but [DocumentFileCompat.isStorageUriPermissionGranted] returns `false`
      *
      * @param folder selected folder that has no read and write permission
      */
-    fun onStorageAccessDenied(folder: DocumentFile?, storageType: StorageType)
+    fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType)
 
-    fun onFolderSelected(folder: DocumentFile)
+    fun onFolderSelected(requestCode: Int, folder: DocumentFile)
 }

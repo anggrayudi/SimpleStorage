@@ -29,14 +29,26 @@ import java.io.*
 val DocumentFile.storageId: String
     get() = DocumentFileCompat.getStorageId(uri)
 
-val DocumentFile.isReadOnly: Boolean
+/**
+ * Check whether this [DocumentFile] is created from [DocumentFile.fromSingleUri]
+ */
+val DocumentFile.hasSingleUri: Boolean
     get() = uri.authority != DocumentFileCompat.FOLDER_PICKER_AUTHORITY
+
+/**
+ * Check whether this [DocumentFile] is created from [DocumentFile.fromTreeUri]
+ */
+val DocumentFile.hasTreeUri: Boolean
+    get() = uri.authority == DocumentFileCompat.FOLDER_PICKER_AUTHORITY
+
+val DocumentFile.isReadOnly: Boolean
+    get() = hasSingleUri || canRead() && !canWrite()
 
 /**
  * Returns `null` if this [DocumentFile] is picked from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT]
  */
 val DocumentFile.storageType: StorageType?
-    get() = if (isReadOnly) null else {
+    get() = if (hasSingleUri) null else {
         if (inPrimaryStorage) StorageType.EXTERNAL else StorageType.SD_CARD
     }
 
@@ -44,13 +56,13 @@ val DocumentFile.storageType: StorageType?
  * `true` if this file located in primary storage, i.e. external storage.
  */
 val DocumentFile.inPrimaryStorage: Boolean
-    get() = !isReadOnly && (storageId == DocumentFileCompat.PRIMARY || isJavaFile)
+    get() = !hasSingleUri && (storageId == DocumentFileCompat.PRIMARY || isJavaFile)
 
 /**
  * `true` if this file located in SD Card
  */
 val DocumentFile.inSdCardStorage: Boolean
-    get() = !isReadOnly && (storageId != DocumentFileCompat.PRIMARY && !isJavaFile)
+    get() = !hasSingleUri && (storageId != DocumentFileCompat.PRIMARY && !isJavaFile)
 
 /**
  * `true` if this file was created with [File]
@@ -71,8 +83,11 @@ val DocumentFile.extension: String
     get() = name.orEmpty().substringAfterLast('.', "")
 
 /**
+ * Please notice that accessing files with [File] only works on app private directory since Android 10. You had better to stay using [DocumentFile].
+ *
  * @return `null` if you try to read files from SD Card or you want to convert a file picked
- * from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT]
+ * from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT].
+ * @see toDocumentFile
  */
 fun DocumentFile.toJavaFile(): File? {
     return when {
@@ -82,14 +97,18 @@ fun DocumentFile.toJavaFile(): File? {
     }
 }
 
+fun File.toDocumentFile(context: Context) = DocumentFileCompat.fromFile(context, this)
+
 /**
  * @return File path without storage ID, otherwise return empty `String` if this is the root path or if this [DocumentFile] is picked
  * from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT]
  */
 val DocumentFile.filePath: String
     get() = when {
-        isJavaFile -> uri.path.orEmpty().replaceFirst(SimpleStorage.externalStoragePath, "")
-        isReadOnly -> ""
+        isJavaFile -> uri.path.orEmpty().replaceFirst(SimpleStorage.externalStoragePath, "").run {
+            if (startsWith("/")) replaceFirst("/", "") else this
+        }
+        hasSingleUri -> ""
         else -> uri.path.orEmpty().substringAfterLast("/document/$storageId:", "")
     }
 
@@ -101,7 +120,7 @@ val DocumentFile.filePath: String
  */
 val DocumentFile.rootPath: String
     get() = when {
-        isReadOnly -> ""
+        hasSingleUri -> ""
         inSdCardStorage -> "$storageId:"
         else -> SimpleStorage.externalStoragePath
     }
@@ -111,7 +130,7 @@ val DocumentFile.rootPath: String
  */
 val DocumentFile.fullPath: String
     get() = when {
-        isReadOnly -> ""
+        hasSingleUri -> ""
         isJavaFile -> uri.path.orEmpty()
         inPrimaryStorage -> "${SimpleStorage.externalStoragePath}/$filePath"
         else -> "$storageId:$filePath"
@@ -122,7 +141,7 @@ val DocumentFile.fullPath: String
  * It cannot be applied if current [DocumentFile] is a directory.
  */
 fun DocumentFile.recreateFile(): DocumentFile? {
-    return if (isReadOnly || isDirectory) {
+    return if (hasSingleUri || isDirectory) {
         null
     } else {
         val filename = name.orEmpty()
@@ -133,16 +152,16 @@ fun DocumentFile.recreateFile(): DocumentFile? {
     }
 }
 
-fun DocumentFile.getRootDocumentFile(context: Context) = if (isReadOnly) null else DocumentFileCompat.getRootDocumentFile(context, storageId)
+fun DocumentFile.getRootDocumentFile(context: Context) = if (hasSingleUri) null else DocumentFileCompat.getRootDocumentFile(context, storageId)
 
 /**
  * @return `true` if this file has read and write access, or this file has URI permission for read and write access.
  */
-val DocumentFile.isAccessible: Boolean
-    get() = canRead() && canWrite() && !isReadOnly
+val DocumentFile.isModifiable: Boolean
+    get() = !hasSingleUri && canRead() && canWrite()
 
 fun DocumentFile.isRootUriPermissionGranted(context: Context): Boolean {
-    return !isReadOnly && DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)
+    return !hasSingleUri && DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)
 }
 
 /**
@@ -154,7 +173,7 @@ fun DocumentFile.createBinaryFile(
     mimeType: String = DocumentFileCompat.MIME_TYPE_BINARY_FILE
 ): DocumentFile? {
     return when {
-        isReadOnly || isFile -> null
+        hasSingleUri || isFile -> null
         Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> {
             val filename = if (appendBinFileExtension) {
                 if (name.endsWith(".bin")) name else "$name.bin"
@@ -185,7 +204,7 @@ fun DocumentFile.openOutputStream(context: Context, append: Boolean = true): Out
         if (isJavaFile) {
             FileOutputStream(toJavaFile(), append)
         } else {
-            context.contentResolver.openOutputStream(uri, if (append && !isReadOnly) "wa" else "w")
+            context.contentResolver.openOutputStream(uri, if (append && !hasSingleUri) "wa" else "w")
         }
     } catch (e: FileNotFoundException) {
         null
@@ -213,7 +232,17 @@ fun DocumentFile.openFileIntent(context: Context, authority: String) = Intent(In
     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
 @WorkerThread
+fun DocumentFile.copyTo(context: Context, targetFolder: DocumentFile, callback: FileCopyCallback? = null) {
+    copyTo(context, targetFolder.storageId, targetFolder.filePath, callback)
+}
+
+@WorkerThread
 fun DocumentFile.copyTo(context: Context, targetStorageId: String, targetFolderPath: String, callback: FileCopyCallback? = null) {
+    if (targetStorageId.isEmpty()) {
+        callback?.onFailed(ErrorCode.TARGET_FOLDER_NOT_FOUND)
+        return
+    }
+
     if (targetStorageId == storageId && targetFolderPath == parentFile?.filePath) {
         callback?.onFailed(ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER)
         return
@@ -234,7 +263,7 @@ fun DocumentFile.copyTo(context: Context, targetStorageId: String, targetFolderP
         return
     }
 
-    val reportInterval = callback?.onStartCopying() ?: 0
+    val reportInterval = callback?.onStartCopying(length()) ?: 0
     val watchProgress = reportInterval > 0
     try {
         val targetFile = createTargetFile(context, targetStorageId, targetFolderPath, callback) ?: return
@@ -297,6 +326,8 @@ private fun DocumentFile.createTargetFile(
         targetFile = targetFolder.createFile(type ?: DocumentFileCompat.MIME_TYPE_UNKNOWN, name.orEmpty())
         if (targetFile == null) {
             callback?.onFailed(ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
+        } else {
+            return targetFile
         }
     } catch (e: SecurityException) {
         callback?.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
@@ -339,10 +370,10 @@ private fun DocumentFile.copyFileStream(
             read = inputStream.read(buffer)
         }
         timer?.cancel()
-        if (callback is FileCopyCallback && callback.onCompleted(targetFile) || callback is FileMoveCallback) {
+        if (callback is FileCopyCallback && callback.onCompleted(targetFile)) {
             delete()
-        }
-        if (callback is FileMoveCallback) {
+        } else if (callback is FileMoveCallback) {
+            delete()
             callback.onCompleted(targetFile)
         }
     } finally {

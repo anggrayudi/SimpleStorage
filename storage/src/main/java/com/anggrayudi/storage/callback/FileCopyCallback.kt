@@ -20,7 +20,7 @@ interface FileCopyCallback : FileCallback {
     /**
      * @return Time interval to watch copy progress in milliseconds, otherwise `0` if you don't want to watch at all.
      */
-    fun onStartCopying(): Long {
+    fun onStartCopying(fileSize: Long): Long {
         // default implementation
         return 0
     }
@@ -31,7 +31,9 @@ interface FileCopyCallback : FileCallback {
      * @param progress   in percent
      * @param writeSpeed in bytes
      */
-    override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int)
+    override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int) {
+        // default implementation
+    }
 
     /**
      * @param file newly copied file

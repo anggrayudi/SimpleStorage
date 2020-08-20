@@ -112,7 +112,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         if (hasStoragePermission(wrapper.context)) {
             wrapper.startActivityForResult(requestCode, defaultExternalStorageIntent)
         } else {
-            folderPickerCallback?.onStoragePermissionDenied()
+            folderPickerCallback?.onStoragePermissionDenied(requestCode)
         }
     }
 
@@ -123,7 +123,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 .setType(filterMimeType)
             wrapper.startActivityForResult(requestCode, intent)
         } else {
-            filePickerCallback?.onStoragePermissionDenied(null)
+            filePickerCallback?.onStoragePermissionDenied(requestCode, null)
         }
     }
 
@@ -155,7 +155,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             }
         } else if (requestCode == requestCodeFolderPicker) {
             if (resultCode != Activity.RESULT_OK) {
-                folderPickerCallback?.onCancelledByUser()
+                folderPickerCallback?.onCancelledByUser(requestCode)
                 return
             }
             val uri = data?.data ?: return
@@ -163,20 +163,23 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 DocumentFile.fromTreeUri(wrapper.context, uri)
             } catch (e: SecurityException) {
                 null
-            }
-            if (folder == null || !DocumentFileCompat.isStorageUriPermissionGranted(wrapper.context, DocumentFileCompat.getStorageId(uri))) {
-                val storageType = if (DocumentFileCompat.getStorageId(uri) == DocumentFileCompat.PRIMARY) {
-                    StorageType.EXTERNAL
-                } else {
-                    StorageType.SD_CARD
-                }
-                folderPickerCallback?.onStorageAccessDenied(folder, storageType)
+            }// TODO: Not work for Downloads location => content://com.android.providers.downloads.documents/tree/downloads/document/downloads
+            val storageId = DocumentFileCompat.getStorageId(uri)
+            val storageType = if (storageId == DocumentFileCompat.PRIMARY) {
+                StorageType.EXTERNAL
             } else {
-                folderPickerCallback?.onFolderSelected(folder)
+                StorageType.SD_CARD
+            }
+            if (folder != null && (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageType == StorageType.EXTERNAL
+                        || DocumentFileCompat.isStorageUriPermissionGranted(wrapper.context, storageId))
+            ) {
+                folderPickerCallback?.onFolderSelected(requestCode, folder)
+            } else {
+                folderPickerCallback?.onStorageAccessDenied(requestCode, folder, storageType)
             }
         } else if (requestCode == requestCodeFilePicker) {
             if (resultCode != Activity.RESULT_OK) {
-                filePickerCallback?.onCancelledByUser()
+                filePickerCallback?.onCancelledByUser(requestCode)
                 return
             }
             val uri = data?.data ?: return
@@ -186,9 +189,9 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 null
             }
             if (file == null || !file.canRead()) {
-                filePickerCallback?.onStoragePermissionDenied(file)
+                filePickerCallback?.onStoragePermissionDenied(requestCode, file)
             } else {
-                filePickerCallback?.onFileSelected(file)
+                filePickerCallback?.onFileSelected(requestCode, file)
             }
         }
     }
