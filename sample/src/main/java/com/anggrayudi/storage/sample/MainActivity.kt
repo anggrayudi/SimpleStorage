@@ -15,12 +15,10 @@ import com.anggrayudi.storage.ErrorCode
 import com.anggrayudi.storage.FileSize
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.StorageType
-import com.anggrayudi.storage.callback.FileCopyCallback
-import com.anggrayudi.storage.callback.FilePickerCallback
-import com.anggrayudi.storage.callback.FolderPickerCallback
-import com.anggrayudi.storage.callback.StorageAccessCallback
+import com.anggrayudi.storage.callback.*
 import com.anggrayudi.storage.extension.copyTo
 import com.anggrayudi.storage.extension.fullPath
+import com.anggrayudi.storage.extension.moveTo
 import com.anggrayudi.storage.extension.storageId
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
@@ -81,6 +79,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupFileCopy()
+        setupFileMove()
     }
 
     private fun setupSimpleStorage() {
@@ -153,6 +152,10 @@ class MainActivity : AppCompatActivity() {
                         tag = folder
                         tvFilePath.text = folder.fullPath
                     }
+                    REQUEST_CODE_PICK_FOLDER_TARGET_FOR_MOVE -> layoutMoveToFolder.run {
+                        tag = folder
+                        tvFilePath.text = folder.fullPath
+                    }
                     else -> Toast.makeText(baseContext, folder.fullPath, Toast.LENGTH_SHORT).show()
                 }
             }
@@ -179,6 +182,10 @@ class MainActivity : AppCompatActivity() {
                         tag = file
                         tvFilePath.text = file.name
                     }
+                    REQUEST_CODE_PICK_FILE_FOR_MOVE -> layoutMoveFromFile.run {
+                        tag = file
+                        tvFilePath.text = file.name
+                    }
                     else -> Toast.makeText(baseContext, "File selected: ${file.name}", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -194,7 +201,7 @@ class MainActivity : AppCompatActivity() {
         }
         btnStartCopyFile.setOnClickListener {
             if (layoutCopyFromFile.tag == null) {
-                Toast.makeText(this, "Please select file to copy", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Please select file to be copied", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             if (layoutCopyToFolder.tag == null) {
@@ -214,9 +221,9 @@ class MainActivity : AppCompatActivity() {
                         return fileSize + 100 * FileSize.MB < freeSpace // Give tolerant 100MB
                     }
 
-                    override fun onStartCopying(fileSize: Long): Long {
+                    override fun onStartCopying(file: DocumentFile): Long {
                         // only show dialog if file size greater than 10Mb
-                        if (fileSize > 10 * FileSize.MB) {
+                        if (file.length() > 10 * FileSize.MB) {
                             uiScope.launch {
                                 dialog = MaterialDialog(it.context)
                                     .cancelable(false)
@@ -262,6 +269,82 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupFileMove() {
+        layoutMoveFromFile.btnBrowse.setOnClickListener {
+            storage.openFilePicker(REQUEST_CODE_PICK_FILE_FOR_MOVE)
+        }
+        layoutMoveToFolder.btnBrowse.setOnClickListener {
+            storage.openFolderPicker(REQUEST_CODE_PICK_FOLDER_TARGET_FOR_MOVE)
+        }
+        btnStartMoveFile.setOnClickListener {
+            if (layoutMoveFromFile.tag == null) {
+                Toast.makeText(this, "Please select file to be moved", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (layoutMoveToFolder.tag == null) {
+                Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val file = layoutMoveFromFile.tag as DocumentFile
+            val targetFolder = layoutMoveToFolder.tag as DocumentFile
+            ioScope.launch {
+                file.moveTo(it.context, targetFolder, object : FileMoveCallback {
+
+                    var dialog: MaterialDialog? = null
+                    var tvStatus: TextView? = null
+                    var progressBar: ProgressBar? = null
+
+                    override fun onCheckFreeSpace(freeSpace: Long, fileSize: Long): Boolean {
+                        return fileSize + 100 * FileSize.MB < freeSpace // Give tolerant 100MB
+                    }
+
+                    override fun onStartMoving(file: DocumentFile): Long {
+                        // only show dialog if file size greater than 10Mb
+                        if (file.length() > 10 * FileSize.MB) {
+                            uiScope.launch {
+                                dialog = MaterialDialog(it.context)
+                                    .cancelable(false)
+                                    .positiveButton(android.R.string.cancel) {
+                                        // TODO: 20/08/20 Interrupt thread and cancel copy
+                                    }
+                                    .customView(R.layout.dialog_copy_progress).apply {
+                                        tvStatus = getCustomView().findViewById<TextView>(R.id.tvProgressStatus).apply {
+                                            text = "Moving file: 0%"
+                                        }
+
+                                        progressBar = getCustomView().findViewById<ProgressBar>(R.id.progressCopy).apply {
+                                            isIndeterminate = true
+                                        }
+                                        show()
+                                    }
+                            }
+                        }
+                        return 500 // 0.5 second
+                    }
+
+                    override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int) {
+                        uiScope.launch {
+                            tvStatus?.text = "Moving file: ${progress.toInt()}%"
+                            progressBar?.isIndeterminate = false
+                            progressBar?.progress = progress.toInt()
+                        }
+                    }
+
+                    override fun onFailed(errorCode: ErrorCode) {
+                        uiScope.launch { dialog?.dismiss() }
+                    }
+
+                    override fun onCompleted(file: DocumentFile) {
+                        uiScope.launch {
+                            dialog?.dismiss()
+                            Toast.makeText(it.context, "File moved successfully", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                })
+            }
+        }
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         storage.onActivityResult(requestCode, resultCode, data)
@@ -286,7 +369,11 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_CODE_STORAGE_ACCESS = 1
         const val REQUEST_CODE_PICK_FOLDER = 2
         const val REQUEST_CODE_PICK_FILE = 3
+
         const val REQUEST_CODE_PICK_FILE_FOR_COPY = 4
         const val REQUEST_CODE_PICK_FOLDER_TARGET_FOR_COPY = 5
+
+        const val REQUEST_CODE_PICK_FILE_FOR_MOVE = 6
+        const val REQUEST_CODE_PICK_FOLDER_TARGET_FOR_MOVE = 7
     }
 }

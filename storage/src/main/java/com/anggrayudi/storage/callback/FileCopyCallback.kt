@@ -20,7 +20,7 @@ interface FileCopyCallback : FileCallback {
     /**
      * @return Time interval to watch copy progress in milliseconds, otherwise `0` if you don't want to watch at all.
      */
-    fun onStartCopying(fileSize: Long): Long {
+    fun onStartCopying(file: DocumentFile): Long {
         // default implementation
         return 0
     }

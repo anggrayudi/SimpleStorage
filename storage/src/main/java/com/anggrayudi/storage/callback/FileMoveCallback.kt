@@ -21,7 +21,7 @@ interface FileMoveCallback : FileCallback {
     /**
      * @return Time interval to watch copy progress in milliseconds, otherwise `0` if you don't want to watch at all.
      */
-    fun onStartMoving(): Long {
+    fun onStartMoving(file: DocumentFile): Long {
         return 0
     }
 

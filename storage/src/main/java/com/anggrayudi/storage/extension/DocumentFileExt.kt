@@ -56,13 +56,13 @@ val DocumentFile.storageType: StorageType?
  * `true` if this file located in primary storage, i.e. external storage.
  */
 val DocumentFile.inPrimaryStorage: Boolean
-    get() = !hasSingleUri && (storageId == DocumentFileCompat.PRIMARY || isJavaFile)
+    get() = hasTreeUri && (storageId == DocumentFileCompat.PRIMARY || isJavaFile)
 
 /**
  * `true` if this file located in SD Card
  */
 val DocumentFile.inSdCardStorage: Boolean
-    get() = !hasSingleUri && (storageId != DocumentFileCompat.PRIMARY && !isJavaFile)
+    get() = hasTreeUri && (storageId != DocumentFileCompat.PRIMARY && !isJavaFile)
 
 /**
  * `true` if this file was created with [File]
@@ -158,10 +158,10 @@ fun DocumentFile.getRootDocumentFile(context: Context) = if (hasSingleUri) null 
  * @return `true` if this file has read and write access, or this file has URI permission for read and write access.
  */
 val DocumentFile.isModifiable: Boolean
-    get() = !hasSingleUri && canRead() && canWrite()
+    get() = hasTreeUri && canRead() && canWrite()
 
 fun DocumentFile.isRootUriPermissionGranted(context: Context): Boolean {
-    return !hasSingleUri && DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)
+    return hasTreeUri && DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)
 }
 
 /**
@@ -204,7 +204,7 @@ fun DocumentFile.openOutputStream(context: Context, append: Boolean = true): Out
         if (isJavaFile) {
             FileOutputStream(toJavaFile(), append)
         } else {
-            context.contentResolver.openOutputStream(uri, if (append && !hasSingleUri) "wa" else "w")
+            context.contentResolver.openOutputStream(uri, if (append && hasTreeUri) "wa" else "w")
         }
     } catch (e: FileNotFoundException) {
         null
@@ -263,7 +263,7 @@ fun DocumentFile.copyTo(context: Context, targetStorageId: String, targetFolderP
         return
     }
 
-    val reportInterval = callback?.onStartCopying(length()) ?: 0
+    val reportInterval = callback?.onStartCopying(this) ?: 0
     val watchProgress = reportInterval > 0
     try {
         val targetFile = createTargetFile(context, targetStorageId, targetFolderPath, callback) ?: return
@@ -384,6 +384,11 @@ private fun DocumentFile.copyFileStream(
 }
 
 @WorkerThread
+fun DocumentFile.moveTo(context: Context, targetFolder: DocumentFile, callback: FileMoveCallback? = null) {
+    moveTo(context, targetFolder.storageId, targetFolder.filePath, callback)
+}
+
+@WorkerThread
 fun DocumentFile.moveTo(context: Context, targetStorageId: String, targetFolderPath: String, callback: FileMoveCallback? = null) {
     if (targetStorageId == storageId && targetFolderPath == parentFile?.filePath) {
         callback?.onFailed(ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER)
@@ -396,8 +401,10 @@ fun DocumentFile.moveTo(context: Context, targetStorageId: String, targetFolderP
     }
 
     if (inPrimaryStorage && targetStorageId == DocumentFileCompat.PRIMARY) {
-        val sourceFile = File(uri.path!!)
-        val targetFile = File(SimpleStorage.externalStoragePath + "/" + targetFolderPath, name.orEmpty())
+        val sourcePath = uri.path!!.substringAfterLast("/document/$storageId:", "")
+        val externalStoragePath = SimpleStorage.externalStoragePath
+        val sourceFile = File("$externalStoragePath/$sourcePath")
+        val targetFile = File("$externalStoragePath/$targetFolderPath", name.orEmpty())
         if (sourceFile.renameTo(targetFile)) {
             callback?.onCompleted(DocumentFile.fromFile(targetFile))
             return
@@ -405,13 +412,10 @@ fun DocumentFile.moveTo(context: Context, targetStorageId: String, targetFolderP
     }
 
     try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && inSdCardStorage
-            && targetStorageId != DocumentFileCompat.PRIMARY && storageId == targetStorageId
-        ) {
-            val targetDocumentUri = DocumentFileCompat.createDocumentUri(targetStorageId, targetFolderPath)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && storageId == targetStorageId) {
+            val targetDocumentUri = DocumentFileCompat.fromPath(context, targetStorageId, targetFolderPath)?.uri ?: return
             val movedFileUri = DocumentsContract.moveDocument(context.contentResolver, uri, parentFile!!.uri, targetDocumentUri)
             if (movedFileUri != null) {
-                // TODO: 18/08/20 Check if fromTreeUri() usage is corrent
                 val newFile = DocumentFile.fromTreeUri(context, movedFileUri)
                 if (newFile != null && newFile.isFile) {
                     callback?.onCompleted(newFile)
@@ -431,7 +435,7 @@ fun DocumentFile.moveTo(context: Context, targetStorageId: String, targetFolderP
         return
     }
 
-    val reportInterval = callback?.onStartMoving() ?: 0
+    val reportInterval = callback?.onStartMoving(this) ?: 0
     val watchProgress = reportInterval > 0
 
     try {
