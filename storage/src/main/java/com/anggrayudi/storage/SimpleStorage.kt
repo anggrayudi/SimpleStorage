@@ -39,14 +39,13 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     /**
      * It returns an intent to be dispatched via [Activity.startActivityForResult]
      */
-    private fun externalStorageRootAccessIntent(): Intent {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+    private val externalStorageRootAccessIntent: Intent
+        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val sm = wrapper.context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
             sm.primaryStorageVolume.createOpenDocumentTreeIntent()
         } else {
             defaultExternalStorageIntent
         }
-    }
 
     /**
      * It returns an intent to be dispatched via [Activity.startActivityForResult] to access to
@@ -54,23 +53,24 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      * because on previous Android versions there's no reliable way to get the
      * volume/path of SdCard, and no, SdCard != External Storage.
      */
-    @Suppress("DEPRECATION")
-    @RequiresApi(api = Build.VERSION_CODES.N)
-    private fun sdCardRootAccessIntent(): Intent {
-        val sm = wrapper.context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
-        return sm.storageVolumes.firstOrNull { it.isRemovable }?.let {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                it.createOpenDocumentTreeIntent()
-            } else {
-                //Access to the entire volume is only available for non-primary volumes
-                if (it.isPrimary) {
-                    defaultExternalStorageIntent
+    private val sdCardRootAccessIntent: Intent
+        @Suppress("DEPRECATION")
+        @RequiresApi(api = Build.VERSION_CODES.N)
+        get() {
+            val sm = wrapper.context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
+            return sm.storageVolumes.firstOrNull { it.isRemovable }?.let {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    it.createOpenDocumentTreeIntent()
                 } else {
-                    it.createAccessIntent(null)
+                    //Access to the entire volume is only available for non-primary volumes
+                    if (it.isPrimary) {
+                        defaultExternalStorageIntent
+                    } else {
+                        it.createAccessIntent(null)
+                    }
                 }
-            }
-        } ?: defaultExternalStorageIntent
-    }
+            } ?: defaultExternalStorageIntent
+        }
 
     /**
      * Even though storage permission has been granted via [hasStoragePermission], read and write access may have not been granted yet.
@@ -95,9 +95,9 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
 
         val intent = if (initialRootPath == StorageType.SD_CARD && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            sdCardRootAccessIntent()
+            sdCardRootAccessIntent
         } else {
-            externalStorageRootAccessIntent()
+            externalStorageRootAccessIntent
         }
         wrapper.startActivityForResult(requestCode, intent)
         this.requestCodeStorageAccess = requestCode
@@ -132,12 +132,11 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                     storageAccessCallback?.onStoragePermissionDenied()
                 }
             } else {
-                val rootPath = if (storageId == DocumentFileCompat.PRIMARY) {
-                    externalStoragePath
+                if (storageId == DocumentFileCompat.PRIMARY) {
+                    storageAccessCallback?.onRootPathNotSelected(externalStoragePath, StorageType.EXTERNAL)
                 } else {
-                    "$storageId:"
+                    storageAccessCallback?.onRootPathNotSelected("$storageId:", StorageType.SD_CARD)
                 }
-                storageAccessCallback?.onRootPathNotSelected(rootPath)
             }
         } else if (requestCode == requestCodeFolderPicker) {
             if (resultCode != Activity.RESULT_OK) {

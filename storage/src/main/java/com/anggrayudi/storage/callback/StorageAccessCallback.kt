@@ -1,6 +1,7 @@
 package com.anggrayudi.storage.callback
 
 import androidx.documentfile.provider.DocumentFile
+import com.anggrayudi.storage.StorageType
 
 /**
  * @author Anggrayudi Hardiannico A. (anggrayudi.hardiannico@dana.id)
@@ -10,7 +11,7 @@ interface StorageAccessCallback {
 
     fun onCancelledByUser()
 
-    fun onRootPathNotSelected(rootPath: String)
+    fun onRootPathNotSelected(rootPath: String, rootStorageType: StorageType)
 
     fun onStoragePermissionDenied()
 

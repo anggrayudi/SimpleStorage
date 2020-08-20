@@ -76,16 +76,60 @@ fun DocumentFile.toJavaFile(): File? {
  * @return File path without storage ID, otherwise return empty `String` if this is the root path
  */
 val DocumentFile.filePath: String
-    get() = when {
-        isJavaFile -> if (uri.path == SimpleStorage.externalStoragePath) "" else uri.path.orEmpty()
-        // TODO: 18/08/20 Sometimes not work, because content://com.android.externalstorage.documents/tree/primary%3ADCIM/document/primary%3ADCIM
-        inPrimaryStorage -> uri.path.orEmpty()
-            .substringAfter(':')
-            .replaceFirst(SimpleStorage.externalStoragePath, "").let {
-                if (it.startsWith("/")) it.replaceFirst("/", "") else it
-            }
-        else -> uri.path.orEmpty().substringAfter(':')
+    get() = if (isJavaFile) {
+        uri.path.orEmpty().replaceFirst(SimpleStorage.externalStoragePath, "")
+    } else {
+        uri.path.orEmpty().substringAfterLast("/document/$storageId:", "")
     }
+
+internal fun String.splitToPairAt(text: String, occurence: Int): Pair<String, String>? {
+    var index = indexOf(text)
+    if (text.isEmpty() || index == -1 || occurence < 1) {
+        return null
+    }
+    var count = 0
+    do {
+        count++
+        if (occurence == count) {
+            return Pair(
+                substring(0, index),
+                substring(index + text.length, length)
+            )
+        }
+        index = indexOf(text, startIndex = index + text.length)
+    } while (index in 1 until length)
+    return null
+}
+
+/**
+ * @return `null` if file not found
+ */
+fun DocumentFile.toStraightfowrardDocumentFile(context: Context): DocumentFile? {
+    if (hasStraightforwardPath) {
+        return this
+    } else {
+        // Given /tree/primary:DCIM/document/primary:DCIM
+        val path = uri.path!!.replaceFirst("/tree/", "") // -> primary:DCIM/document/primary:DCIM
+        val d = (path.count("/document/") + 1) / 2 // -> 1
+        val pair = path.splitToPairAt("/document/", d) ?: return null
+        return if (pair.first == pair.second) { // if ("primary:DCIM" == "primary:DCIM")
+            DocumentFileCompat.fromPath(context, storageId, pair.first.substringAfter(':'))
+        } else {
+            null
+        }
+    }
+}
+
+/**
+ * * This URI does not have straightforward path: `content://com.android.externalstorage.documents/tree/primary:DCIM/document/primary:DCIM`
+ * This kind of URI is retrieved via [Intent.ACTION_OPEN_DOCUMENT_TREE] and not safe for file management because the file path is confusing.
+ * You may need to convert it to straightforward [DocumentFile] via [toStraightfowrardDocumentFile].
+ *
+ * * This URI has straightforward path: `content://com.android.externalstorage.documents/tree/primary:/document/primary:DCIM`
+ * The file path is clear, i.e. `primary:DCIM`
+ */
+val DocumentFile.hasStraightforwardPath: Boolean
+    get() = uri.path!!.run { count("$storageId:") == 1 && count("/document/") % 2 == 0 }
 
 /**
  * Root path of this file.
@@ -153,7 +197,7 @@ fun DocumentFile.createBinaryFile(
         }
         createFile(mimeType, filename)
     } else {
-        val filename = if (name.endsWith(".bin")) name.removeSuffix(".bin") else name
+        val filename = name.removeSuffix(".bin")
         createFile(mimeType, filename)?.apply {
             if (!appendBinFileExtension) {
                 renameTo(name)

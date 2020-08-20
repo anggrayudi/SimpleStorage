@@ -7,7 +7,6 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
 import com.afollestad.materialdialogs.MaterialDialog
-import com.anggrayudi.storage.DocumentFileCompat
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.StorageType
 import com.anggrayudi.storage.callback.FolderPickerCallback
@@ -63,13 +62,12 @@ class MainActivity : AppCompatActivity() {
     private fun setupSimpleStorage() {
         storage = SimpleStorage(this)
         storage.storageAccessCallback = object : StorageAccessCallback {
-            override fun onRootPathNotSelected(rootPath: String) {
+            override fun onRootPathNotSelected(rootPath: String, rootStorageType: StorageType) {
                 MaterialDialog(this@MainActivity)
                     .message(text = "Please select $rootPath")
                     .negativeButton(android.R.string.cancel)
                     .positiveButton {
-                        val initialRoot = if (rootPath == DocumentFileCompat.PRIMARY) StorageType.EXTERNAL else StorageType.SD_CARD
-                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, initialRoot)
+                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, rootStorageType)
                     }
                     .show()
             }

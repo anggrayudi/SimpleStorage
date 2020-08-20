@@ -101,13 +101,13 @@ object DocumentFileCompat {
     fun mkdirs(context: Context, storageId: String = PRIMARY, folderPath: String): DocumentFile? {
         if (storageId == PRIMARY) {
             // use java.io.File for faster performance
-            val file = File(SimpleStorage.externalStoragePath + "/" + folderPath)
+            val file = File(SimpleStorage.externalStoragePath + "/" + folderPath.removeProhibitedCharsFromFilename())
             file.mkdirs()
             if (file.isDirectory)
                 return DocumentFile.fromFile(file)
         } else {
             var currentDirectory = getRootDocumentFile(context, storageId) ?: return null
-            getDirectorySequence(folderPath).forEach {
+            getDirectorySequence(folderPath.removeProhibitedCharsFromFilename()).forEach {
                 try {
                     val file = currentDirectory.findFile(it)
                     if (file == null || file.isFile)
@@ -128,12 +128,12 @@ object DocumentFileCompat {
      */
     fun createFile(context: Context, storageId: String = PRIMARY, filePath: String, mimeType: String = MIME_TYPE_UNKNOWN): DocumentFile? {
         return if (storageId == PRIMARY) {
-            val file = File(SimpleStorage.externalStoragePath + "/" + filePath)
+            val file = File(SimpleStorage.externalStoragePath + "/" + filePath.removeProhibitedCharsFromFilename())
             file.parentFile?.mkdirs()
             if (create(file)) DocumentFile.fromFile(file) else null
         } else try {
             val directory = mkdirsParentDirectory(context, storageId, filePath)
-            val filename = getFileNameFromPath(filePath)
+            val filename = getFileNameFromPath(filePath).removeProhibitedCharsFromFilename()
             if (filename.isEmpty()) null else directory?.createFile(mimeType, filename)
         } catch (e: Throwable) {
             null
@@ -155,13 +155,13 @@ object DocumentFileCompat {
 
     fun recreate(context: Context, storageId: String = PRIMARY, filePath: String, mimeType: String = MIME_TYPE_UNKNOWN): DocumentFile? {
         if (storageId == PRIMARY) {
-            val file = File(filePath)
+            val file = File(filePath.removeProhibitedCharsFromFilename())
             file.delete()
             file.parentFile?.mkdirs()
             return if (create(file)) DocumentFile.fromFile(file) else null
         } else {
             val directory = mkdirsParentDirectory(context, storageId, filePath)
-            val filename = getFileNameFromPath(filePath)
+            val filename = getFileNameFromPath(filePath).removeProhibitedCharsFromFilename()
             if (filename.isEmpty()) {
                 return null
             }
@@ -180,6 +180,8 @@ object DocumentFileCompat {
             false
         }
     }
+
+    private fun String.removeProhibitedCharsFromFilename(): String = replace(":", "_")
 
     private fun exploreFile(context: Context, storageId: String, filePath: String): DocumentFile? {
         var current = getRootDocumentFile(context, storageId) ?: return null
