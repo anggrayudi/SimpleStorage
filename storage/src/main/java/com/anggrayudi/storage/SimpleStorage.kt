@@ -19,6 +19,7 @@ import androidx.fragment.app.FragmentActivity
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
+import com.anggrayudi.storage.extension.isModifiable
 
 /**
  * @author Anggrayudi Hardiannico A. (anggrayudi.hardiannico@dana.id)
@@ -91,7 +92,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      * @param initialRootPath It will open [StorageType.EXTERNAL] instead for API 23 and lower, and when no SD Card inserted.
      */
     fun requestStorageAccess(requestCode: Int, initialRootPath: StorageType = StorageType.EXTERNAL) {
-        if (initialRootPath == StorageType.EXTERNAL && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        if (initialRootPath == StorageType.EXTERNAL && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !isSdCardPresent) {
             val root = DocumentFileCompat.getRootDocumentFile(wrapper.context, DocumentFileCompat.PRIMARY) ?: return
             saveUriPermission(root.uri)
             storageAccessCallback?.onRootPathPermissionGranted(root)
@@ -134,6 +135,10 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 return
             }
             val uri = data?.data ?: return
+            if (uri.authority != DocumentFileCompat.FOLDER_PICKER_AUTHORITY) {
+                storageAccessCallback?.onRootPathNotSelected(externalStoragePath, StorageType.EXTERNAL)
+                return
+            }
             val storageId = DocumentFileCompat.getStorageId(uri)
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageId == DocumentFileCompat.PRIMARY) {
                 saveUriPermission(uri)
@@ -163,14 +168,15 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 DocumentFile.fromTreeUri(wrapper.context, uri)
             } catch (e: SecurityException) {
                 null
-            }// TODO: Not work for Downloads location => content://com.android.providers.downloads.documents/tree/downloads/document/downloads
+            }
             val storageId = DocumentFileCompat.getStorageId(uri)
-            val storageType = if (storageId == DocumentFileCompat.PRIMARY) {
-                StorageType.EXTERNAL
-            } else {
-                StorageType.SD_CARD
+            val storageType = when (storageId) {
+                "" -> null
+                DocumentFileCompat.PRIMARY -> StorageType.EXTERNAL
+                else -> StorageType.SD_CARD
             }
             if (folder != null && (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageType == StorageType.EXTERNAL
+                        || uri.authority != DocumentFileCompat.FOLDER_PICKER_AUTHORITY && folder.isModifiable
                         || DocumentFileCompat.isStorageUriPermissionGranted(wrapper.context, storageId))
             ) {
                 folderPickerCallback?.onFolderSelected(requestCode, folder)
@@ -224,6 +230,9 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         @Suppress("DEPRECATION")
         val externalStoragePath: String
             get() = Environment.getExternalStorageDirectory().absolutePath
+
+        val isSdCardPresent: Boolean
+            get() = Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED
 
         val defaultExternalStorageIntent: Intent
             get() = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {

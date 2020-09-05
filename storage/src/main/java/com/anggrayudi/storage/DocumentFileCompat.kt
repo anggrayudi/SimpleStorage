@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.os.StatFs
 import android.system.ErrnoException
 import android.system.Os
@@ -31,6 +32,8 @@ object DocumentFileCompat {
 
     const val DOWNLOADS_FOLDER_AUTHORITY = "com.android.providers.downloads.documents"
 
+    const val MEDIA_FOLDER_AUTHORITY = "com.android.providers.media.documents"
+
     fun isRootUri(uri: Uri): Boolean {
         val path = uri.path ?: return false
         return uri.authority == FOLDER_PICKER_AUTHORITY && path.indexOf(':') == path.length - 1
@@ -42,20 +45,31 @@ object DocumentFileCompat {
     fun getStorageId(uri: Uri): String = if (uri.scheme == ContentResolver.SCHEME_FILE) {
         PRIMARY
     } else {
-        if (uri.authority == FOLDER_PICKER_AUTHORITY) {
-            uri.path!!.substringBefore(':').substringAfterLast('/')
-        } else ""
+        if (uri.authority == FOLDER_PICKER_AUTHORITY) uri.path!!.substringBefore(':').substringAfterLast('/') else ""
     }
 
     /**
      * @param storageId If in SD card, it should be integers like `6881-2249`. Otherwise, if in external storage it will be [PRIMARY]
-     * @param filePath If in Downloads folder of SD card, it will be `Downloads/MyMovie.mp4`. If in internal storage it will be `Downloads/MyMovie.mp4` as well.
+     * @param filePath If in Downloads folder of SD card, it will be `Downloads/MyMovie.mp4`.
+     *                 If in external storage it will be `Downloads/MyMovie.mp4` as well.
      */
     fun fromPath(context: Context, storageId: String = PRIMARY, filePath: String): DocumentFile? {
         return if (filePath.isEmpty()) {
             getRootDocumentFile(context, storageId)
         } else {
             exploreFile(context, storageId, filePath)
+        }
+    }
+
+    /**
+     * @param fileFullPath For file in external storage => `/storage/emulated/0/Downloads/MyMovie.mp4`.
+     *                     For file in SD card => `9016-4EF8:Downloads/MyMovie.mp4`
+     */
+    fun fromFullPath(context: Context, fileFullPath: String): DocumentFile? {
+        return if (fileFullPath.startsWith('/')) {
+            fromFile(context, File(fileFullPath))
+        } else {
+            fromPath(context, fileFullPath.substringBefore(':'), fileFullPath.substringAfter(':'))
         }
     }
 
@@ -75,6 +89,23 @@ object DocumentFileCompat {
                 filePath = filePath.replaceFirst("/", "")
             }
             exploreFile(context, PRIMARY, filePath)
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    fun fromPublicFolder(context: Context, type: PublicDirectory): DocumentFile? {
+        return try {
+            when {
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> {
+                    DocumentFile.fromFile(Environment.getExternalStoragePublicDirectory(type.folderName))
+                }
+                type == PublicDirectory.DOWNLOADS -> {
+                    DocumentFile.fromTreeUri(context, Uri.parse("content://$DOWNLOADS_FOLDER_AUTHORITY/tree/downloads"))
+                }
+                else -> fromPath(context, filePath = type.folderName)
+            }
+        } catch (e: SecurityException) {
+            null
         }
     }
 

@@ -133,7 +133,11 @@ class MainActivity : AppCompatActivity() {
                 requestStoragePermission()
             }
 
-            override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType) {
+            override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType?) {
+                if (storageType == null) {
+                    requestStoragePermission()
+                    return
+                }
                 MaterialDialog(this@MainActivity)
                     .message(
                         text = "You have no write access to this storage, thus selecting this folder is useless." +
