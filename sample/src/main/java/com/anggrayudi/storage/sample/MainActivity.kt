@@ -225,9 +225,9 @@ class MainActivity : AppCompatActivity() {
                         return fileSize + 100 * FileSize.MB < freeSpace // Give tolerant 100MB
                     }
 
-                    override fun onStartCopying(file: DocumentFile): Long {
+                    override fun onStartCopying(file: Any): Long {
                         // only show dialog if file size greater than 10Mb
-                        if (file.length() > 10 * FileSize.MB) {
+                        if ((file as DocumentFile).length() > 10 * FileSize.MB) {
                             uiScope.launch {
                                 dialog = MaterialDialog(it.context)
                                     .cancelable(false)
@@ -261,7 +261,7 @@ class MainActivity : AppCompatActivity() {
                         uiScope.launch { dialog?.dismiss() }
                     }
 
-                    override fun onCompleted(file: DocumentFile): Boolean {
+                    override fun onCompleted(file: Any): Boolean {
                         uiScope.launch {
                             dialog?.dismiss()
                             Toast.makeText(it.context, "File copied successfully", Toast.LENGTH_SHORT).show()
@@ -302,9 +302,9 @@ class MainActivity : AppCompatActivity() {
                         return fileSize + 100 * FileSize.MB < freeSpace // Give tolerant 100MB
                     }
 
-                    override fun onStartMoving(file: DocumentFile): Long {
+                    override fun onStartMoving(file: Any): Long {
                         // only show dialog if file size greater than 10Mb
-                        if (file.length() > 10 * FileSize.MB) {
+                        if ((file as DocumentFile).length() > 10 * FileSize.MB) {
                             uiScope.launch {
                                 dialog = MaterialDialog(it.context)
                                     .cancelable(false)
@@ -338,7 +338,7 @@ class MainActivity : AppCompatActivity() {
                         uiScope.launch { dialog?.dismiss() }
                     }
 
-                    override fun onCompleted(file: DocumentFile) {
+                    override fun onCompleted(file: Any) {
                         uiScope.launch {
                             dialog?.dismiss()
                             Toast.makeText(it.context, "File moved successfully", Toast.LENGTH_SHORT).show()

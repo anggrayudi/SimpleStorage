@@ -84,14 +84,16 @@ object DocumentFileCompat {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             DocumentFile.fromFile(file)
         } else {
-            var filePath = file.path.replaceFirst(SimpleStorage.externalStoragePath, "").removeProhibitedCharsFromFilename()
-            if (filePath.startsWith("/")) {
-                filePath = filePath.replaceFirst("/", "")
-            }
+            val filePath = file.path.replaceFirst(SimpleStorage.externalStoragePath, "")
+                .removeProhibitedCharsFromFilename()
+                .trim { it == '/' }
             exploreFile(context, PRIMARY, filePath)
         }
     }
 
+    /**
+     * Returns `null` if folder does not exist or you have no permission on this directory
+     */
     @Suppress("DEPRECATION")
     fun fromPublicFolder(context: Context, type: PublicDirectory): DocumentFile? {
         return try {
@@ -289,7 +291,7 @@ object DocumentFileCompat {
                     (stat.blockSize * stat.availableBlocks).toLong()
             } else if (Build.VERSION.SDK_INT >= 21) {
                 try {
-                    val fileUri = getRootDocumentFile(context, storageId)?.uri ?: return 0
+                    val fileUri = getDocumentFileForStorageInfo(context, storageId)?.uri ?: return 0
                     context.contentResolver.openFileDescriptor(fileUri, "r")?.use {
                         val stats = Os.fstatvfs(it.fileDescriptor)
                         return stats.f_bavail * stats.f_frsize
@@ -320,7 +322,7 @@ object DocumentFileCompat {
                     (stat.blockSize * stat.blockCount - stat.blockSize * stat.availableBlocks).toLong()
             } else if (Build.VERSION.SDK_INT >= 21) {
                 try {
-                    val fileUri = getRootDocumentFile(context, storageId)?.uri ?: return 0
+                    val fileUri = getDocumentFileForStorageInfo(context, storageId)?.uri ?: return 0
                     context.contentResolver.openFileDescriptor(fileUri, "r")?.use {
                         val stats = Os.fstatvfs(it.fileDescriptor)
                         return stats.f_blocks * stats.f_frsize - stats.f_bavail * stats.f_frsize
@@ -350,7 +352,7 @@ object DocumentFileCompat {
                     (stat.blockSize * stat.blockCount).toLong()
             } else if (Build.VERSION.SDK_INT >= 21) {
                 try {
-                    val fileUri = getRootDocumentFile(context, storageId)?.uri ?: return 0
+                    val fileUri = getDocumentFileForStorageInfo(context, storageId)?.uri ?: return 0
                     context.contentResolver.openFileDescriptor(fileUri, "r")?.use {
                         val stats = Os.fstatvfs(it.fileDescriptor)
                         return stats.f_blocks * stats.f_frsize
@@ -367,6 +369,17 @@ object DocumentFileCompat {
             // ignore
         }
         return 0
+    }
+
+    private fun getDocumentFileForStorageInfo(context: Context, storageId: String): DocumentFile? {
+        return if (storageId == PRIMARY) {
+            // use app private directory, so no permissions required
+            val privateAppDirectory = context.getExternalFilesDir(null) ?: return null
+            privateAppDirectory.mkdirs()
+            DocumentFile.fromFile(privateAppDirectory)
+        } else {
+            getRootDocumentFile(context, storageId)
+        }
     }
 
     fun getFileNameFromUrl(url: String): String {

@@ -1,6 +1,7 @@
 package com.anggrayudi.storage.callback
 
 import androidx.documentfile.provider.DocumentFile
+import com.anggrayudi.storage.media.MediaFile
 
 /**
  * Created on 17/08/20
@@ -19,9 +20,10 @@ interface FileMoveCallback : FileCallback {
     override fun onCheckFreeSpace(freeSpace: Long, fileSize: Long): Boolean
 
     /**
+     * @param file can be [DocumentFile] or [MediaFile]
      * @return Time interval to watch copy progress in milliseconds, otherwise `0` if you don't want to watch at all.
      */
-    fun onStartMoving(file: DocumentFile): Long {
+    fun onStartMoving(file: Any): Long {
         return 0
     }
 
@@ -36,9 +38,10 @@ interface FileMoveCallback : FileCallback {
     }
 
     /**
+     * @param file can be [DocumentFile] or [MediaFile]
      * @param file newly moved file
      */
-    fun onCompleted(file: DocumentFile) {
+    fun onCompleted(file: Any) {
         // default implementation
     }
 }

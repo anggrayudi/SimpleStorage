@@ -260,6 +260,8 @@ fun DocumentFile.copyTo(context: Context, targetStorageId: String, targetFolderP
         return
     }
 
+    // TODO: 06/09/20 What if users want to move to Download directory backed by com.android.providers.downloads.documents
+
     try {
         if (callback?.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetStorageId), length()) == false) {
             callback.onFailed(ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH)
