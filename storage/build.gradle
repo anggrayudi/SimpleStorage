@@ -2,15 +2,18 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
+group = 'com.anggrayudi'
+version = "$STORAGE_VERSION"
+
 android {
-    compileSdkVersion 29
-    buildToolsVersion "30.0.2"
+    compileSdkVersion build_versions.compile_sdk
+    buildToolsVersion build_versions.build_tools
 
     defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 29
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
         versionCode 1
-        versionName "1.0"
+        versionName version
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -34,18 +37,49 @@ android {
 }
 
 dependencies {
-    implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation 'androidx.core:core-ktx:1.3.1'
-    implementation 'androidx.appcompat:appcompat:1.2.0'
-    api 'androidx.documentfile:documentfile:1.0.1'
-    api 'com.karumi:dexter:6.2.1'
-    def coroutinesVersion = '1.3.7'
-    api "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion"
-    api "org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVersion"
+    implementation deps.kotlin.stdlib
+    implementation deps.core_ktx
+    implementation deps.appcompat
+    api deps.documentfile
+    api deps.dexter
+    api deps.coroutines.core
+    api deps.coroutines.android
 
-    testImplementation 'junit:junit:4.13'
-    testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
-    androidTestImplementation 'androidx.test.ext:junit:1.1.2'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+    testImplementation deps.junit
+    testImplementation deps.mockito.kotlin
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso
 }
+
+ext {
+    // POM
+    POM_ARTIFACT_ID = archivesBaseName
+    VERSION_NAME = version
+
+    POM_NAME = archivesBaseName
+    POM_PACKAGING = 'aar'
+    POM_DESCRIPTION = 'Simplify Android Storage Access Framework for file management across API levels.'
+
+    // Project
+    VCS_URL = "https://github.com/anggrayudi/SimpleStorage.git"
+    GROUP = "com.anggrayudi"
+
+    // POM Project
+    POM_URL = "https://github.com/anggrayudi/SimpleStorage"
+
+    // POM SCM
+    POM_SCM_URL = "https://github.com/anggrayudi/SimpleStorage"
+    POM_SCM_CONNECTION = "scm:git:git://github.com/anggrayudi/SimpleStorage.git"
+    POM_SCM_DEV_CONNECTION = "scm:git:ssh://github.com:anggrayudi/SimpleStorage.git"
+
+    // POM Licenses
+    POM_LICENCE_NAME = "The Apache Software License, Version 2.0"
+    POM_LICENCE_URL = "https://github.com/anggrayudi/SimpleStorage/blob/master/LICENSE"
+
+    // POM Developers
+    POM_DEVELOPER_ID = "anggrayudi"
+    POM_DEVELOPER_NAME = "Anggrayudi H"
+    POM_DEVELOPER_URL = "https://github.com/anggrayudi/"
+}
+
+apply plugin: "com.vanniktech.maven.publish"

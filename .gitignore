@@ -27,7 +27,6 @@ hs_err_pid*
 /docs
 /projectFilesBackup
 /mappings
-/gradle.properties
 
 .navigation
 .gradle
