@@ -1,6 +1,7 @@
 package com.anggrayudi.storage.media
 
 import android.annotation.SuppressLint
+import android.annotation.TargetApi
 import android.app.RecoverableSecurityException
 import android.content.*
 import android.net.Uri
@@ -47,8 +48,9 @@ class MediaFile(_context: Context, val uri: Uri) {
      */
     var accessCallback: AccessCallback? = null
 
+    @Suppress("DEPRECATION")
     val name: String?
-        get() = getColumnInfoString(MediaStore.MediaColumns.DISPLAY_NAME)
+        get() = toJavaFile()?.name ?: getColumnInfoString(MediaStore.MediaColumns.DISPLAY_NAME)
 
     val baseName: String
         get() = name.orEmpty().substringBeforeLast('.')
@@ -63,6 +65,7 @@ class MediaFile(_context: Context, val uri: Uri) {
     val length: Long
         get() = toJavaFile()?.length() ?: getColumnInfoLong(MediaStore.MediaColumns.SIZE)
 
+    @Suppress("DEPRECATION")
     val exists: Boolean
         get() = toJavaFile()?.exists()
             ?: context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)?.use {
@@ -165,6 +168,10 @@ class MediaFile(_context: Context, val uri: Uri) {
         }
     }
 
+    /**
+     * Please note that this method does not move file if you input `newName` as `Download/filename.mp4`.
+     * If you want to move media files, please use [moveTo] instead.
+     */
     @Suppress("DEPRECATION")
     fun renameTo(newName: String): Boolean {
         val file = toJavaFile()
@@ -184,7 +191,7 @@ class MediaFile(_context: Context, val uri: Uri) {
         get() = getColumnInfoInt(MediaStore.MediaColumns.IS_PENDING) == 1
         @RequiresApi(Build.VERSION_CODES.Q)
         set(value) {
-            val contentValues = ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, if (value) 1 else 0) }
+            val contentValues = ContentValues(1).apply { put(MediaStore.MediaColumns.IS_PENDING, value.toInt()) }
             try {
                 context.contentResolver.update(uri, contentValues, null, null)
             } catch (e: SecurityException) {
@@ -237,6 +244,12 @@ class MediaFile(_context: Context, val uri: Uri) {
         } catch (e: FileNotFoundException) {
             null
         }
+    }
+
+    @TargetApi(Build.VERSION_CODES.Q)
+    fun moveTo(relativePath: String): Boolean {
+        val contentValues = ContentValues(1).apply { put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath) }
+        return context.contentResolver.update(uri, contentValues, null, null) > 0
     }
 
     @WorkerThread
@@ -447,4 +460,6 @@ class MediaFile(_context: Context, val uri: Uri) {
     override fun equals(other: Any?) = other === this || other is MediaFile && other.uri == uri
 
     override fun hashCode() = uri.hashCode()
+
+    override fun toString() = uri.toString()
 }

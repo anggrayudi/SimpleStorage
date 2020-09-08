@@ -171,6 +171,39 @@ fun DocumentFile.isRootUriPermissionGranted(context: Context): Boolean {
     return isExternalStorageDocument && DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)
 }
 
+fun DocumentFile.avoidDuplicateFileNameFor(filename: String): String {
+    return if (findFile(filename)?.isFile == true) {
+        val baseName = filename.substringBeforeLast('.')
+        val ext = filename.substringAfterLast('.')
+        val prefix = "$baseName ("
+        val lastFile = listFiles().filter {
+            it.isFile && it.name.orEmpty().let { name ->
+                name.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(name)
+                        || DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION.matches(name))
+            }
+        }.maxOfOrNull { it.name.orEmpty() }
+        var count = lastFile.orEmpty().substringAfterLast('(').substringBefore(')').toIntOrNull() ?: 0
+        "$baseName (${++count}).$ext"
+    } else {
+        filename
+    }
+}
+
+fun DocumentFile.avoidDuplicateFolderNameFor(folderName: String): String {
+    return if (findFile(folderName)?.isDirectory == true) {
+        val prefix = "$folderName ("
+        val lastFolder = listFiles().filter {
+            it.isDirectory && it.name.orEmpty().let { name ->
+                name.startsWith(prefix) && DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION.matches(name)
+            }
+        }.maxOfOrNull { it.name.orEmpty() }
+        var count = lastFolder.orEmpty().substringAfterLast('(').substringBefore(')').toIntOrNull() ?: 0
+        "$folderName (${++count})"
+    } else {
+        folderName
+    }
+}
+
 /**
  * Useful for creating temporary files. The extension is `*.bin`
  */

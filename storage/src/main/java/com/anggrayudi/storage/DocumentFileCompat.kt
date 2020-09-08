@@ -34,6 +34,10 @@ object DocumentFileCompat {
 
     const val MEDIA_FOLDER_AUTHORITY = "com.android.providers.media.documents"
 
+    val FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION = Regex("(.*?) \\(\\d+\\)\\.[a-zA-Z0-9]+")
+
+    val FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION = Regex("(.*?) \\(\\d+\\)")
+
     fun isRootUri(uri: Uri): Boolean {
         val path = uri.path ?: return false
         return uri.authority == FOLDER_PICKER_AUTHORITY && path.indexOf(':') == path.length - 1
