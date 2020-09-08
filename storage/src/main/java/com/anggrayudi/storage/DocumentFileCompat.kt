@@ -53,7 +53,7 @@ object DocumentFileCompat {
     }
 
     /**
-     * @param storageId If in SD card, it should be integers like `6881-2249`. Otherwise, if in external storage it will be [PRIMARY]
+     * @param storageId If in SD card, it should be integers like `6881-2249`. Otherwise, if in external storage it will be [PRIMARY].
      * @param filePath If in Downloads folder of SD card, it will be `Downloads/MyMovie.mp4`.
      *                 If in external storage it will be `Downloads/MyMovie.mp4` as well.
      */
@@ -275,7 +275,7 @@ object DocumentFileCompat {
         val resolvedPath = StringBuilder()
         file.split("/".toRegex())
             .dropLastWhile { it.isEmpty() }
-            .map { it.trim { c -> c <= ' ' } }
+            .map { it.trim { c -> c <= ' ' || c == '/' } }
             .filter { it.isNotEmpty() }
             .forEach { directory -> resolvedPath.append(directory).append("/") }
         return resolvedPath.toString().substringBeforeLast('/')

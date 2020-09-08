@@ -249,7 +249,12 @@ class MediaFile(_context: Context, val uri: Uri) {
     @TargetApi(Build.VERSION_CODES.Q)
     fun moveTo(relativePath: String): Boolean {
         val contentValues = ContentValues(1).apply { put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath) }
-        return context.contentResolver.update(uri, contentValues, null, null) > 0
+        return try {
+            context.contentResolver.update(uri, contentValues, null, null) > 0
+        } catch (e: SecurityException) {
+            handleSecurityException(e)
+            false
+        }
     }
 
     @WorkerThread

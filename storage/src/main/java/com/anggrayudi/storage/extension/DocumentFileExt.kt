@@ -233,7 +233,74 @@ fun DocumentFile.createBinaryFile(
     }
 }
 
-// TODO: 20/08/20 Create searchFile(recursive: Boolean = false, mimeType, containsName/Regex)
+/**
+ * @param recursive walk into sub folders
+ */
+fun DocumentFile.search(
+    recursive: Boolean = false,
+    searchMode: FileSearchMode = FileSearchMode.ALL,
+    mimeType: String = DocumentFileCompat.MIME_TYPE_UNKNOWN,
+    name: String = "",
+    regex: Regex? = null
+): List<DocumentFile> {
+    return when {
+        !isDirectory -> emptyList()
+        recursive -> walkFileTree(searchMode, mimeType, name, regex)
+        else -> {
+            var sequence = listFiles().asSequence().filter { it.canRead() }
+            if (name.isNotEmpty()) {
+                sequence = sequence.filter { it.name == name }
+            }
+            if (regex != null) {
+                sequence = sequence.filter { regex.matches(it.name.orEmpty()) }
+            }
+            if (mimeType != DocumentFileCompat.MIME_TYPE_UNKNOWN) {
+                sequence = sequence.filter { it.type == mimeType }
+            }
+            @Suppress("NON_EXHAUSTIVE_WHEN")
+            when (searchMode) {
+                FileSearchMode.FILE_ONLY -> sequence = sequence.filter { it.isFile }
+                FileSearchMode.FOLDER_ONLY -> sequence = sequence.filter { it.isDirectory }
+            }
+            sequence.toList()
+        }
+    }
+}
+
+private fun DocumentFile.walkFileTree(
+    searchMode: FileSearchMode,
+    mimeType: String,
+    nameFilter: String,
+    regex: Regex?
+): List<DocumentFile> {
+    val fileTree = mutableListOf<DocumentFile>()
+    for (file in listFiles()) {
+        if (!canRead()) continue
+
+        if (file.isFile) {
+            if (searchMode == FileSearchMode.FOLDER_ONLY) {
+                continue
+            }
+            val filename = file.name.orEmpty()
+            if ((nameFilter.isEmpty() || filename == nameFilter)
+                && (regex == null || regex.matches(filename))
+                && (mimeType == DocumentFileCompat.MIME_TYPE_UNKNOWN || file.type == mimeType)
+            ) {
+                fileTree.add(file)
+            }
+        } else {
+            val folderName = file.name.orEmpty()
+            if (searchMode != FileSearchMode.FILE_ONLY
+                && (nameFilter.isEmpty() || folderName == nameFilter)
+                && (regex == null || regex.matches(folderName))
+            ) {
+                fileTree.add(file)
+            }
+            fileTree.addAll(file.walkFileTree(searchMode, mimeType, nameFilter, regex))
+        }
+    }
+    return fileTree
+}
 
 /**
  * @param append if `false` and the file already exists, it will recreate the file.
@@ -270,6 +337,8 @@ fun DocumentFile.openFileIntent(context: Context, authority: String) = Intent(In
     .setData(if (isJavaFile) FileProvider.getUriForFile(context, authority, File(uri.path!!)) else uri)
     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+// TODO: 08/09/20 moveTo and copyTo for folder and subfolders
 
 @WorkerThread
 fun DocumentFile.copyTo(context: Context, targetFolder: DocumentFile, callback: FileCopyCallback? = null) {
