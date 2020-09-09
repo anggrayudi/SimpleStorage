@@ -1,5 +1,6 @@
 # SimpleStorage
 ![Maven Central](https://img.shields.io/maven-central/v/com.anggrayudi/storage.svg)
+[![Build Status](https://github.com/anggrayudi/SimpleStorage/workflows/Android%20CI/badge.svg)](https://github.com/anggrayudi/SimpleStorage/actions?query=workflow%3A%22Android+CI%22)
 
 The more higher API level, the more Google restricted file access on Android storage.
 Although Storage Access Framework (SAF) is designed to secure user's storage from malicious apps,
