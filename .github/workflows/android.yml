@@ -32,7 +32,7 @@ jobs:
         run: ./.github/scripts/copy_env_variables.sh
 
       - name: Build with Gradle
-        run: ./gradlew build check
+        run: ./gradlew build test check
 
       - name: Upload snapshot archives
         run: ./.github/scripts/deploy_snapshot.sh
