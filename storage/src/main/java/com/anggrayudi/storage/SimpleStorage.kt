@@ -229,7 +229,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         private const val REQUEST_CODE_STORAGE_ACCESS = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeStorageAccess"
         private const val REQUEST_CODE_FOLDER_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFolderPicker"
 
-        @Suppress("DEPRECATION")
+        @Suppress("DEPRECATION"
         val externalStoragePath: String
             get() = Environment.getExternalStorageDirectory().absolutePath
 
