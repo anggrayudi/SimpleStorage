@@ -11,7 +11,5 @@ elif [ "${GITHUB_REF##*/}" != "master" ]; then
 else
   echo "Deploying snapshot..."
   ./gradlew :storage:uploadArchives --no-daemon --no-parallel --stacktrace
-  echo "Snapshot deployed!"
-  ./gradlew closeAndReleaseRepository --stacktrace
   echo "Snapshot released!"
 fi

@@ -119,7 +119,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
     }
 
-    fun openFilePicker(requestCode: Int, filterMimeType: String = "*/*") {
+    fun openFilePicker(requestCode: Int, filterMimeType: String = DocumentFileCompat.MIME_TYPE_UNKNOWN) {
         requestCodeFilePicker = requestCode
         if (hasStorageReadPermission(wrapper.context)) {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
