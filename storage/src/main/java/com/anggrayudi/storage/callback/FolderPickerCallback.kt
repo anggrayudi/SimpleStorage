@@ -18,7 +18,7 @@ interface FolderPickerCallback {
      * Called when storage permissions are granted, but [DocumentFileCompat.isStorageUriPermissionGranted] returns `false`
      *
      * @param folder selected folder that has no read and write permission
-     * @param storageType `null` if `folder`'s authority is not [DocumentFileCompat.FOLDER_PICKER_AUTHORITY]
+     * @param storageType `null` if `folder`'s authority is not [DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY]
      */
     fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType?)
 

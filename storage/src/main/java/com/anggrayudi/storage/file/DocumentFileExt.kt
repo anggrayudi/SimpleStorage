@@ -33,7 +33,7 @@ val DocumentFile.storageId: String
     get() = DocumentFileCompat.getStorageId(uri)
 
 val DocumentFile.isExternalStorageDocument: Boolean
-    get() = uri.authority == DocumentFileCompat.FOLDER_PICKER_AUTHORITY
+    get() = uri.authority == DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY
 
 val DocumentFile.isDownloadsDocument: Boolean
     get() = uri.authority == DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY

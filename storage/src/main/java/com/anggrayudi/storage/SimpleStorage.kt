@@ -137,7 +137,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 return
             }
             val uri = data?.data ?: return
-            if (uri.authority != DocumentFileCompat.FOLDER_PICKER_AUTHORITY) {
+            if (uri.authority != DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY) {
                 storageAccessCallback?.onRootPathNotSelected(externalStoragePath, StorageType.EXTERNAL)
                 return
             }
@@ -178,7 +178,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 else -> StorageType.SD_CARD
             }
             if (folder != null && (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageType == StorageType.EXTERNAL
-                        || uri.authority != DocumentFileCompat.FOLDER_PICKER_AUTHORITY && folder.isModifiable
+                        || uri.authority != DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY && folder.isModifiable
                         || DocumentFileCompat.isStorageUriPermissionGranted(wrapper.context, storageId))
             ) {
                 folderPickerCallback?.onFolderSelected(requestCode, folder)
