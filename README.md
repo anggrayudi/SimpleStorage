@@ -13,6 +13,21 @@ Adding Simple Storage into your project is simple:
 implementation "com.anggrayudi:storage:0.1.0"
 ```
 
+Snapshots can be found [here](https://oss.sonatype.org/#nexus-search;quick~com.anggrayudi).
+To use SNAPSHOT version, you need to add this URL to the root Gradle:
+
+```groovy
+allprojects {
+    repositories {
+        google()
+        jcenter()
+        mavenCentral()
+        // add this line
+        maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
+    }
+}
+```
+
 ## Request Storage Access
 
 Although user has granted read and write permissions during runtime, your app may still does not

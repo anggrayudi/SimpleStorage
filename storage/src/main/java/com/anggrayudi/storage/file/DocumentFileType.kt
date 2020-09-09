@@ -4,8 +4,8 @@ package com.anggrayudi.storage.file
  * Created on 08/09/20
  * @author Anggrayudi H
  */
-enum class FileSearchMode {
+enum class DocumentFileType {
     ALL,
-    FILE_ONLY,
-    FOLDER_ONLY
+    FILE,
+    FOLDER
 }

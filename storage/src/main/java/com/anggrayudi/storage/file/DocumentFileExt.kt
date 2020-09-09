@@ -237,20 +237,29 @@ fun DocumentFile.createBinaryFile(
     }
 }
 
+fun DocumentFile.findFiles(names: Array<String>, documentType: DocumentFileType = DocumentFileType.ALL): List<DocumentFile> {
+    val files = listFiles().filter { it.name in names }
+    return when (documentType) {
+        DocumentFileType.FILE -> files.filter { it.isFile }
+        DocumentFileType.FOLDER -> files.filter { it.isDirectory }
+        else -> files
+    }
+}
+
 /**
  * @param recursive walk into sub folders
  */
 @WorkerThread
 fun DocumentFile.search(
     recursive: Boolean = false,
-    searchMode: FileSearchMode = FileSearchMode.ALL,
+    documentType: DocumentFileType = DocumentFileType.ALL,
     mimeType: String = DocumentFileCompat.MIME_TYPE_UNKNOWN,
     name: String = "",
     regex: Regex? = null
 ): List<DocumentFile> {
     return when {
         !isDirectory -> emptyList()
-        recursive -> walkFileTree(searchMode, mimeType, name, regex)
+        recursive -> walkFileTree(documentType, mimeType, name, regex)
         else -> {
             var sequence = listFiles().asSequence().filter { it.canRead() }
             if (name.isNotEmpty()) {
@@ -263,9 +272,9 @@ fun DocumentFile.search(
                 sequence = sequence.filter { it.type == mimeType }
             }
             @Suppress("NON_EXHAUSTIVE_WHEN")
-            when (searchMode) {
-                FileSearchMode.FILE_ONLY -> sequence = sequence.filter { it.isFile }
-                FileSearchMode.FOLDER_ONLY -> sequence = sequence.filter { it.isDirectory }
+            when (documentType) {
+                DocumentFileType.FILE -> sequence = sequence.filter { it.isFile }
+                DocumentFileType.FOLDER -> sequence = sequence.filter { it.isDirectory }
             }
             sequence.toList()
         }
@@ -273,7 +282,7 @@ fun DocumentFile.search(
 }
 
 private fun DocumentFile.walkFileTree(
-    searchMode: FileSearchMode,
+    documentType: DocumentFileType,
     mimeType: String,
     nameFilter: String,
     regex: Regex?
@@ -283,7 +292,7 @@ private fun DocumentFile.walkFileTree(
         if (!canRead()) continue
 
         if (file.isFile) {
-            if (searchMode == FileSearchMode.FOLDER_ONLY) {
+            if (documentType == DocumentFileType.FOLDER) {
                 continue
             }
             val filename = file.name.orEmpty()
@@ -294,14 +303,13 @@ private fun DocumentFile.walkFileTree(
                 fileTree.add(file)
             }
         } else {
-            val folderName = file.name.orEmpty()
-            if (searchMode != FileSearchMode.FILE_ONLY
-                && (nameFilter.isEmpty() || folderName == nameFilter)
-                && (regex == null || regex.matches(folderName))
-            ) {
-                fileTree.add(file)
+            if (documentType != DocumentFileType.FILE) {
+                val folderName = file.name.orEmpty()
+                if ((nameFilter.isEmpty() || folderName == nameFilter) && (regex == null || regex.matches(folderName))) {
+                    fileTree.add(file)
+                }
             }
-            fileTree.addAll(file.walkFileTree(searchMode, mimeType, nameFilter, regex))
+            fileTree.addAll(file.walkFileTree(documentType, mimeType, nameFilter, regex))
         }
     }
     return fileTree
