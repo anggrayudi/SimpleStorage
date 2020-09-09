@@ -34,5 +34,5 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build check
 
-      - name: Install Archives
-        run: ./gradlew :storage:installArchives --no-daemon --no-parallel --stacktrace
+      - name: Upload snapshot archives
+        run: ./.github/scripts/deploy_snapshot.sh
