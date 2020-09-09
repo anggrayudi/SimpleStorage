@@ -22,7 +22,7 @@ jobs:
         with:
           java-version: 1.8
 
-      - shell: bash
+      - name: Copy environment variables
         env:
           OSS_SONATYPE_NEXUS_PASSWORD: ${{ secrets.OSS_SONATYPE_NEXUS_PASSWORD }}
           OSS_SONATYPE_NEXUS_USERNAME: ${{ secrets.OSS_SONATYPE_NEXUS_USERNAME }}
