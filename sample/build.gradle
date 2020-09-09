@@ -37,6 +37,8 @@ android {
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation project(":storage")
+//    implementation 'com.anggrayudi:storage:0.1.0'
+//    implementation 'com.anggrayudi:storage:0.1.0-SNAPSHOT'
     implementation deps.kotlin.stdlib
     implementation deps.core_ktx
     implementation deps.appcompat
