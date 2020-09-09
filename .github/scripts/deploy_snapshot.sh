@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Append suffix -SNAPSHOT
-sed -ie "s/STORAGE_VERSION.*$/&-SNAPSHOT/g" gradle.properties
-
 SLUG="anggrayudi/SimpleStorage"
 
 set -e

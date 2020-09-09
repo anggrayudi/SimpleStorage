@@ -1,3 +1,5 @@
+# Append suffix -SNAPSHOT
+sed -ie "s/STORAGE_VERSION.*$/&-SNAPSHOT/g" gradle.properties
 # Copy secret key ring for file signature
 echo "$SECRET_KEY_RING_FILE_BASE_64" | base64 --decode >"$HOME/"secring.gpg
 echo -e "\nsigning.secretKeyRingFile=$HOME/secring.gpg" >>gradle.properties
