@@ -9,8 +9,8 @@ import android.os.Environment
 import android.provider.BaseColumns
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
-import com.anggrayudi.storage.PublicDirectory
-import com.anggrayudi.storage.extension.avoidDuplicateFileNameFor
+import com.anggrayudi.storage.file.PublicDirectory
+import com.anggrayudi.storage.file.avoidDuplicateFileNameFor
 import java.io.File
 import java.io.IOException
 
@@ -37,7 +37,7 @@ object MediaStoreCompat {
         return createMedia(context, MediaType.AUDIO, relativeParentDirectory?.folderName, file)
     }
 
-    fun createVideo(context: Context, file: FileDescription, relativeParentDirectory: ImageMediaDirectory? = null): MediaFile? {
+    fun createVideo(context: Context, file: FileDescription, relativeParentDirectory: VideoMediaDirectory? = null): MediaFile? {
         return createMedia(context, MediaType.VIDEO, relativeParentDirectory?.folderName, file)
     }
 

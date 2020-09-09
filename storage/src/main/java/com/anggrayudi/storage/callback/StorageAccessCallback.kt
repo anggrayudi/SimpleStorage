@@ -1,7 +1,7 @@
 package com.anggrayudi.storage.callback
 
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.StorageType
+import com.anggrayudi.storage.file.StorageType
 
 /**
  * @author Anggrayudi Hardiannico A. (anggrayudi.hardiannico@dana.id)

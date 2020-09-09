@@ -1,4 +1,4 @@
-package com.anggrayudi.storage
+package com.anggrayudi.storage.file
 
 /**
  * Created by Nicko on 09/09/2015.

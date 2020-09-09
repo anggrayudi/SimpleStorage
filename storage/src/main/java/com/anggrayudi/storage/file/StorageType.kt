@@ -1,4 +1,6 @@
-package com.anggrayudi.storage
+package com.anggrayudi.storage.file
+
+import com.anggrayudi.storage.SimpleStorage
 
 /**
  * Created on 17/08/20

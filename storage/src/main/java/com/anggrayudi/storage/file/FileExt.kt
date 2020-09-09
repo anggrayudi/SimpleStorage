@@ -1,6 +1,5 @@
-package com.anggrayudi.storage.extension
+package com.anggrayudi.storage.file
 
-import com.anggrayudi.storage.DocumentFileCompat
 import java.io.File
 
 /**

@@ -7,10 +7,10 @@ but this makes us even more difficult in accessing files. Let's take an example 
 
 Simple Storage ease you in accessing and managing files across API levels.
 
-Adding Simple Storage into your project is easy:
+Adding Simple Storage into your project is simple:
 
 ```groovy
-implementation "com.anggrayudi:storage:0.0.1"
+implementation "com.anggrayudi:storage:0.1.0"
 ```
 
 ## Request Storage Access
@@ -28,7 +28,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
         setupSimpleStorage()
+        btnRequestStorageAccess.setOnClickListener {
+            storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS)
+        }
     }
 
     private fun setupSimpleStorage() {
@@ -81,7 +85,8 @@ class MainActivity : AppCompatActivity() {
 ## Read Files
 
 In Simple Storage, `DocumentFile` is used to access files when your app has been granted full storage access,
-included URI permissions for read and write. Whereas `MediaFile` is used to access media files from `MediaStore`.
+included URI permissions for read and write. Whereas `MediaFile` is used to access media files from `MediaStore`
+without URI permissions to the storage.
 
 You can read file with helper functions in `DocumentFileCompat` and `MediaStoreCompat`:
 
@@ -143,3 +148,19 @@ For media files, you can have similar capabilities to `DocumentFile`, i.e.:
 * `MediaFile.moveTo()`
 * `MediaFile.openInputStream()`
 * `MediaFile.openOutputStream()`, etc.
+
+## License
+
+    Copyright © 2020 Anggrayudi Hardiannicko A.
+ 
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+ 
+        http://www.apache.org/licenses/LICENSE-2.0
+ 
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.

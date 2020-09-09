@@ -1,18 +1,21 @@
-package com.anggrayudi.storage.extension
+package com.anggrayudi.storage.file
 
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Environment
 import android.provider.DocumentsContract
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.core.content.FileProvider
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.*
+import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.callback.FileCallback
 import com.anggrayudi.storage.callback.FileCopyCallback
 import com.anggrayudi.storage.callback.FileMoveCallback
+import com.anggrayudi.storage.extension.closeStream
+import com.anggrayudi.storage.extension.startCoroutineTimer
 import kotlinx.coroutines.Job
 import java.io.*
 
@@ -207,6 +210,7 @@ fun DocumentFile.avoidDuplicateFolderNameFor(folderName: String): String {
 /**
  * Useful for creating temporary files. The extension is `*.bin`
  */
+@WorkerThread
 fun DocumentFile.createBinaryFile(
     name: String,
     appendBinFileExtension: Boolean = true,
@@ -236,6 +240,7 @@ fun DocumentFile.createBinaryFile(
 /**
  * @param recursive walk into sub folders
  */
+@WorkerThread
 fun DocumentFile.search(
     recursive: Boolean = false,
     searchMode: FileSearchMode = FileSearchMode.ALL,
@@ -342,7 +347,11 @@ fun DocumentFile.openFileIntent(context: Context, authority: String) = Intent(In
 
 @WorkerThread
 fun DocumentFile.copyTo(context: Context, targetFolder: DocumentFile, callback: FileCopyCallback? = null) {
-    copyTo(context, targetFolder.storageId, targetFolder.filePath, callback)
+    if (targetFolder.isDownloadsDocument) {
+        copyTo(context, DocumentFileCompat.PRIMARY, Environment.DIRECTORY_DOWNLOADS, callback)
+    } else {
+        copyTo(context, targetFolder.storageId, targetFolder.filePath, callback)
+    }
 }
 
 @WorkerThread
@@ -361,8 +370,6 @@ fun DocumentFile.copyTo(context: Context, targetStorageId: String, targetFolderP
         callback?.onFailed(ErrorCode.SOURCE_FILE_NOT_FOUND)
         return
     }
-
-    // TODO: 06/09/20 What if users want to move to Download directory backed by com.android.providers.downloads.documents
 
     try {
         if (callback?.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetStorageId), length()) == false) {
@@ -496,7 +503,11 @@ private fun DocumentFile.copyFileStream(
 
 @WorkerThread
 fun DocumentFile.moveTo(context: Context, targetFolder: DocumentFile, callback: FileMoveCallback? = null) {
-    moveTo(context, targetFolder.storageId, targetFolder.filePath, callback)
+    if (targetFolder.isDownloadsDocument) {
+        moveTo(context, DocumentFileCompat.PRIMARY, Environment.DIRECTORY_DOWNLOADS, callback)
+    } else {
+        moveTo(context, targetFolder.storageId, targetFolder.filePath, callback)
+    }
 }
 
 @WorkerThread

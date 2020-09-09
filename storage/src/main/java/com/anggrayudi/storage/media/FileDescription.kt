@@ -1,6 +1,6 @@
 package com.anggrayudi.storage.media
 
-import com.anggrayudi.storage.DocumentFileCompat
+import com.anggrayudi.storage.file.DocumentFileCompat
 
 /**
  * Created on 05/09/20

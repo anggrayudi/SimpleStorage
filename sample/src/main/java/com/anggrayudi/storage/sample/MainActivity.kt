@@ -11,15 +11,9 @@ import androidx.documentfile.provider.DocumentFile
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.customview.customView
 import com.afollestad.materialdialogs.customview.getCustomView
-import com.anggrayudi.storage.ErrorCode
-import com.anggrayudi.storage.FileSize
 import com.anggrayudi.storage.SimpleStorage
-import com.anggrayudi.storage.StorageType
 import com.anggrayudi.storage.callback.*
-import com.anggrayudi.storage.extension.copyTo
-import com.anggrayudi.storage.extension.fullPath
-import com.anggrayudi.storage.extension.moveTo
-import com.anggrayudi.storage.extension.storageId
+import com.anggrayudi.storage.file.*
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken

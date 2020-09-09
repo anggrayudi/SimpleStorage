@@ -19,7 +19,9 @@ import androidx.fragment.app.FragmentActivity
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
-import com.anggrayudi.storage.extension.isModifiable
+import com.anggrayudi.storage.file.DocumentFileCompat
+import com.anggrayudi.storage.file.StorageType
+import com.anggrayudi.storage.file.isModifiable
 
 /**
  * @author Anggrayudi Hardiannico A. (anggrayudi.hardiannico@dana.id)

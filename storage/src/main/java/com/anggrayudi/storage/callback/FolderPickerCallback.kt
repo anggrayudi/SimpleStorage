@@ -1,8 +1,8 @@
 package com.anggrayudi.storage.callback
 
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.DocumentFileCompat
-import com.anggrayudi.storage.StorageType
+import com.anggrayudi.storage.file.DocumentFileCompat
+import com.anggrayudi.storage.file.StorageType
 
 /**
  * Created on 17/08/20

@@ -1,4 +1,4 @@
-package com.anggrayudi.storage
+package com.anggrayudi.storage.file
 
 import android.content.ContentResolver
 import android.content.Context
@@ -10,6 +10,7 @@ import android.system.ErrnoException
 import android.system.Os
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
+import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.extension.getAppDirectory
 import java.io.File
 import java.io.IOException

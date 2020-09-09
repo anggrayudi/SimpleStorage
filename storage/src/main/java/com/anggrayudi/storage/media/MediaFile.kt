@@ -13,14 +13,14 @@ import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.core.content.FileProvider
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.DocumentFileCompat
-import com.anggrayudi.storage.ErrorCode
-import com.anggrayudi.storage.FileSize
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.callback.FileCallback
 import com.anggrayudi.storage.callback.FileCopyCallback
 import com.anggrayudi.storage.callback.FileMoveCallback
-import com.anggrayudi.storage.extension.*
+import com.anggrayudi.storage.extension.closeStream
+import com.anggrayudi.storage.extension.startCoroutineTimer
+import com.anggrayudi.storage.extension.toInt
+import com.anggrayudi.storage.file.*
 import kotlinx.coroutines.Job
 import java.io.*
 
@@ -312,7 +312,6 @@ class MediaFile(_context: Context, val uri: Uri) {
             return
         }
 
-        // TODO: 06/09/20 What if users want to move to Download directory backed by com.android.providers.downloads.documents
         val reportInterval = callback?.onStartCopying(this) ?: 0
         val watchProgress = reportInterval > 0
         try {

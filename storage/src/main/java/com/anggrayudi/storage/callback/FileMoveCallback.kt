@@ -28,7 +28,7 @@ interface FileMoveCallback : FileCallback {
     }
 
     /**
-     * Only called if the returned [.onStartMoving] ()} greater than `0`
+     * Only called if the returned [onStartMoving] greater than `0`
      *
      * @param progress   in percent
      * @param writeSpeed in bytes

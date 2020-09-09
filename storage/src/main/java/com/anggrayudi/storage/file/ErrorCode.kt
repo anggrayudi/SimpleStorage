@@ -1,11 +1,10 @@
-package com.anggrayudi.storage
+package com.anggrayudi.storage.file
 
 /**
  * Created on 16/08/20
  * @author Anggrayudi H
  */
 enum class ErrorCode {
-
     STORAGE_PERMISSION_DENIED,
     CANNOT_CREATE_FILE_IN_TARGET,
     TARGET_FILE_EXISTS,

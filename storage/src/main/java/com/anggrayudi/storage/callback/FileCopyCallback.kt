@@ -28,7 +28,7 @@ interface FileCopyCallback : FileCallback {
     }
 
     /**
-     * Only called if the returned [.onStartCopying] greater than `0`
+     * Only called if the returned [onStartCopying] greater than `0`
      *
      * @param progress   in percent
      * @param writeSpeed in bytes
