@@ -1,15 +1,16 @@
 #!/bin/bash
 
+# Append suffix -SNAPSHOT
+sed -ie "s/STORAGE_VERSION.*$/&-SNAPSHOT/g" gradle.properties
+
 SLUG="anggrayudi/SimpleStorage"
-BRANCH="master"
-CURRENT_BRANCH=$(${GITHUB_REF##*/})
 
 set -e
 
 if [ "$GITHUB_REPOSITORY" != "$SLUG" ]; then
   echo "Skipping deployment: wrong repository. Expected '$SLUG' but was '$GITHUB_REPOSITORY'."
-elif [ "$CURRENT_BRANCH" != "$BRANCH" ]; then
-  echo "Skipping deployment: wrong branch. Expected '$BRANCH' but was '$CURRENT_BRANCH'."
+elif [ "${GITHUB_REF##*/}" != "master" ]; then
+  echo "Skipping deployment: wrong branch. Expected 'master' but was '${GITHUB_REF##*/}'."
 else
   echo "Deploying snapshot..."
   ./gradlew :storage:uploadArchives --no-daemon --no-parallel --stacktrace
