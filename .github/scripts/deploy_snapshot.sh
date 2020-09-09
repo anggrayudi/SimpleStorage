@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SLUG="anggrayudi/MaterialPreference"
+SLUG="anggrayudi/SimpleStorage"
 BRANCH="master"
 CURRENT_BRANCH=$(${GITHUB_REF##*/})
 
