@@ -9,6 +9,10 @@ import java.io.File
  * @author Anggrayudi H
  */
 
+/**
+ * ID of this storage. For external storage, it will return [DocumentFileCompat.PRIMARY],
+ * otherwise it is a SD Card and will return integers like `6881-2249`.
+ */
 val File.storageId: String
     get() = if (path.startsWith(SimpleStorage.externalStoragePath)) {
         DocumentFileCompat.PRIMARY

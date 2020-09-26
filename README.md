@@ -12,7 +12,7 @@ Simple Storage ease you in accessing and managing files across API levels.
 Adding Simple Storage into your project is simple:
 
 ```groovy
-implementation "com.anggrayudi:storage:0.2.0"
+implementation "com.anggrayudi:storage:0.1.0"
 ```
 
 Snapshots can be found [here](https://oss.sonatype.org/#nexus-search;quick~com.anggrayudi).

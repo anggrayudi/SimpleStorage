@@ -84,19 +84,15 @@ object DocumentFileCompat {
      *
      * To continue using [File], you need to request full storage access via [SimpleStorage.requestFullStorageAccess]
      *
-     * This function allows you to read and write files in external storage, regardless of API levels. Suppose that you input a [File] with
-     * path `/storage/emulated/0/Music` on Android 10. This function will convert the [File] to [DocumentFile] with URI
-     * `content://com.android.externalstorage.documents/tree/primary:/document/primary:Music`
+     * This function allows you to read and write files in external storage, regardless of API levels.
      */
     fun fromFile(context: Context, file: File): DocumentFile? {
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && file.storageId == PRIMARY
             || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager(file)
         ) {
             DocumentFile.fromFile(file)
         } else {
-            val filePath = file.path.replaceFirst(SimpleStorage.externalStoragePath, "")
-                .removeProhibitedCharsFromFilename()
-                .trim { it == '/' }
+            val filePath = file.filePath.removeProhibitedCharsFromFilename().trim { it == '/' }
             exploreFile(context, file.storageId, filePath)
         }
     }
@@ -186,7 +182,7 @@ object DocumentFileCompat {
                 storageIds.add(PRIMARY)
             } else {
                 // Path -> /storage/131D-261A/Android/data/com.anggrayudi.storage.sample/files
-                val sdCardId = it.replaceFirst("/storage/", "").substringBefore('/')
+                val sdCardId = it.substringAfter("/storage/").substringBefore('/')
                 storageIds.add(sdCardId)
             }
         }
