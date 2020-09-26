@@ -2,6 +2,7 @@ package com.anggrayudi.storage.sample
 
 import android.Manifest
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -64,6 +65,13 @@ class MainActivity : AppCompatActivity() {
             storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS)
         }
 
+        btnRequestFullStorageAccess.run {
+            isEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                setOnClickListener { storage.requestFullStorageAccess() }
+                true
+            } else false
+        }
+
         btnSelectFolder.setOnClickListener {
             storage.openFolderPicker(REQUEST_CODE_PICK_FOLDER)
         }
@@ -98,7 +106,8 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onRootPathPermissionGranted(root: DocumentFile) {
-                Toast.makeText(baseContext, "Storage access has been granted for ${root.storageId}", Toast.LENGTH_SHORT).show()
+                val grantedPath = if (root.storageId == DocumentFileCompat.PRIMARY) root.fullPath else root.storageId
+                Toast.makeText(baseContext, "Storage access has been granted for $grantedPath", Toast.LENGTH_SHORT).show()
             }
         }
     }

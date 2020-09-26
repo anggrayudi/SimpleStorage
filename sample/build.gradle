@@ -50,6 +50,7 @@ dependencies {
 
     //test
     testImplementation deps.junit
+    testImplementation deps.mockito.kotlin
     androidTestImplementation deps.atsl.ext_junit
     androidTestImplementation deps.espresso
 }

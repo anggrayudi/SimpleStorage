@@ -3,7 +3,6 @@ package com.anggrayudi.storage
 import android.content.Context
 import android.content.Intent
 import androidx.fragment.app.FragmentActivity
-import com.anggrayudi.storage.extension.startActivityForResultSafely
 
 /**
  * Created on 18/08/20
@@ -15,8 +14,8 @@ internal class ActivityWrapper(private val _activity: FragmentActivity) : Compon
     override val context: Context
         get() = _activity
 
-    override fun startActivityForResult(requestCode: Int, intent: Intent) {
-        _activity.startActivityForResultSafely(requestCode, intent)
+    override fun startActivityForResult(intent: Intent, requestCode: Int) {
+        _activity.startActivityForResult(intent, requestCode)
     }
 
     override val activity: FragmentActivity

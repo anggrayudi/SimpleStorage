@@ -56,20 +56,22 @@ val DocumentFile.rootId: String
 val DocumentFile.storageType: StorageType?
     get() = if (isExternalStorageDocument) {
         if (inPrimaryStorage) StorageType.EXTERNAL else StorageType.SD_CARD
-    } else null
+    } else if (inSdCardStorage) StorageType.SD_CARD else null
 
 /**
  * `true` if this file located in primary storage, i.e. external storage.
  * All files created by [DocumentFile.fromFile] are always treated from external storage.
  */
 val DocumentFile.inPrimaryStorage: Boolean
-    get() = isExternalStorageDocument && storageId == DocumentFileCompat.PRIMARY || isJavaFile
+    get() = isExternalStorageDocument && storageId == DocumentFileCompat.PRIMARY
+            || isJavaFile && uri.path.orEmpty().startsWith(SimpleStorage.externalStoragePath)
 
 /**
  * `true` if this file located in SD Card
  */
 val DocumentFile.inSdCardStorage: Boolean
-    get() = isExternalStorageDocument && storageId != DocumentFileCompat.PRIMARY && !isJavaFile
+    get() = isExternalStorageDocument && storageId != DocumentFileCompat.PRIMARY
+            || isJavaFile && uri.path.orEmpty().startsWith("/storage/$storageId")
 
 /**
  * `true` if this file was created with [File]
@@ -100,11 +102,10 @@ fun DocumentFile.toJavaFile(): File? {
     return when {
         isJavaFile -> File(uri.path!!)
         inPrimaryStorage -> File("${SimpleStorage.externalStoragePath}/$filePath")
+        storageId.isNotEmpty() -> File("/storage/$storageId/$filePath")
         else -> null
     }
 }
-
-fun File.toDocumentFile(context: Context) = DocumentFileCompat.fromFile(context, this)
 
 /**
  * @return File path without storage ID, otherwise return empty `String` if this is the root path or if this [DocumentFile] is picked
@@ -112,37 +113,40 @@ fun File.toDocumentFile(context: Context) = DocumentFileCompat.fromFile(context,
  */
 val DocumentFile.filePath: String
     get() = when {
-        isJavaFile -> uri.path.orEmpty().replaceFirst(SimpleStorage.externalStoragePath, "").run {
-            if (startsWith("/")) replaceFirst("/", "") else this
-        }
-        !isExternalStorageDocument -> ""
-        else -> uri.path.orEmpty().substringAfterLast("/document/$storageId:", "")
+        isJavaFile -> File(uri.path!!).filePath
+        isExternalStorageDocument -> uri.path.orEmpty().substringAfterLast("/document/$storageId:", "")
+        else -> ""
     }
 
 /**
  * Root path of this file.
  * * For file picked from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT], it will return empty `String`
  * * For file stored in external or primary storage, it will return [SimpleStorage.externalStoragePath].
- * * For file stored in SD Card, it will return integers like `6881-2249:`
+ * * For file stored in SD Card, it will return something like `/storage/6881-2249`
  */
 val DocumentFile.rootPath: String
     get() = when {
+        isJavaFile -> File(uri.path!!).rootPath
         !isExternalStorageDocument -> ""
-        inSdCardStorage -> "$storageId:"
+        inSdCardStorage -> "/storage/$storageId"
         else -> SimpleStorage.externalStoragePath
     }
 
 /**
- * * For file in SD Card: `6881-2249:Music/song.mp3`
- * * For file in external storage: `/storage/emulated/0/Music/song.mp3`
- * @see DocumentFileCompat.fromFullPath
+ * * For file in SD Card => `/storage/6881-2249/Music/song.mp3`
+ * * For file in external storage => `/storage/emulated/0/Music/song.mp3`
+ *
+ * If you want to remember file locations in database or preference, please use this function.
+ * When you reopen the file, just call [DocumentFileCompat.fromFullPath]
+ *
+ * @see File.getPath
  */
 val DocumentFile.fullPath: String
     get() = when {
-        !isExternalStorageDocument -> ""
         isJavaFile -> uri.path.orEmpty()
+        !isExternalStorageDocument -> ""
         inPrimaryStorage -> "${SimpleStorage.externalStoragePath}/$filePath"
-        else -> "$storageId:$filePath"
+        else -> "/storage/$storageId/$filePath"
     }
 
 /**
@@ -150,19 +154,22 @@ val DocumentFile.fullPath: String
  * It cannot be applied if current [DocumentFile] is a directory.
  */
 fun DocumentFile.recreateFile(): DocumentFile? {
-    return if (!isExternalStorageDocument || isDirectory) {
-        null
-    } else {
+    return if (isFile && (isJavaFile || isExternalStorageDocument)) {
         val filename = name.orEmpty()
         val mimeType = type ?: DocumentFileCompat.MIME_TYPE_UNKNOWN
         val parentFile = parentFile
-        delete()
-        parentFile?.createFile(mimeType, filename)
-    }
+        if (parentFile?.canWrite() == true) {
+            delete()
+            parentFile.createFile(mimeType, filename)
+        } else null
+    } else null
 }
 
-fun DocumentFile.getRootDocumentFile(context: Context) =
-    if (isExternalStorageDocument) DocumentFileCompat.getRootDocumentFile(context, storageId) else null
+fun DocumentFile.getRootDocumentFile(context: Context) = when {
+    isExternalStorageDocument -> DocumentFileCompat.getRootDocumentFile(context, storageId)
+    isJavaFile -> File(File(uri.path!!).rootPath).let { if (canRead()) DocumentFile.fromFile(it) else null }
+    else -> null
+}
 
 /**
  * @return `true` if this file has read and write access, or if this file has URI permission for read and write access.
@@ -217,7 +224,7 @@ fun DocumentFile.createBinaryFile(
     mimeType: String = DocumentFileCompat.MIME_TYPE_BINARY_FILE
 ): DocumentFile? {
     return when {
-        !isExternalStorageDocument || isFile -> null
+        !isDirectory || !canWrite() -> null
         Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> {
             val filename = if (appendBinFileExtension) {
                 if (name.endsWith(".bin")) name else "$name.bin"
@@ -536,6 +543,17 @@ fun DocumentFile.moveTo(context: Context, targetStorageId: String, targetFolderP
         val sourceFile = File("$externalStoragePath/$sourcePath")
         val targetFile = File("$externalStoragePath/$targetFolderPath", name.orEmpty())
         targetFile.parentFile?.mkdirs()
+        if (sourceFile.renameTo(targetFile)) {
+            callback?.onCompleted(DocumentFile.fromFile(targetFile))
+            return
+        }
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager() && storageId == targetStorageId) {
+        val sourceFile = toJavaFile()!!
+        val targetFolder = File(DocumentFileCompat.getRootFile(targetStorageId)!!.path + "/$targetFolderPath")
+        val targetFile = File(targetFolder, name.orEmpty())
+        targetFolder.mkdirs()
         if (sourceFile.renameTo(targetFile)) {
             callback?.onCompleted(DocumentFile.fromFile(targetFile))
             return

@@ -35,7 +35,7 @@ class MediaFile(_context: Context, val uri: Uri) {
     interface AccessCallback {
 
         /**
-         * When this method called, you can ask user's concent to modify other app's files.
+         * When this function called, you can ask user's concent to modify other app's files.
          * @see RecoverableSecurityException
          * @see [android.app.Activity.startIntentSenderForResult]
          */
@@ -169,7 +169,7 @@ class MediaFile(_context: Context, val uri: Uri) {
     }
 
     /**
-     * Please note that this method does not move file if you input `newName` as `Download/filename.mp4`.
+     * Please note that this function does not move file if you input `newName` as `Download/filename.mp4`.
      * If you want to move media files, please use [moveTo] instead.
      */
     @Suppress("DEPRECATION")

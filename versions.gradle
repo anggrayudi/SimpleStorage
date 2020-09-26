@@ -15,7 +15,7 @@ versions.dexter = "6.2.1"
 versions.documentfile = "1.0.1"
 versions.espresso = "3.3.0"
 versions.junit = "4.13"
-versions.kotlin = "1.4.0"
+versions.kotlin = "1.4.10"
 versions.material_dialogs = "2.8.1"
 versions.material_progressbar = "1.6.1"
 versions.mockito = "2.25.0"
@@ -29,8 +29,8 @@ ext.versions = versions
 
 def build_versions = [:]
 build_versions.min_sdk = 21
-build_versions.compile_sdk = 29
-build_versions.target_sdk = 29
+build_versions.compile_sdk = 30
+build_versions.target_sdk = 30
 build_versions.build_tools = "30.0.2"
 ext.build_versions = build_versions
 

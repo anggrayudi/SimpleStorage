@@ -44,6 +44,7 @@ dependencies {
     api deps.dexter
     api deps.coroutines.core
     api deps.coroutines.android
+    implementation deps.timber
 
     testImplementation deps.junit
     testImplementation deps.mockito.kotlin

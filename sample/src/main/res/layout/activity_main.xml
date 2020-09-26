@@ -3,8 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:ignore="HardcodedText"
-    tools:context=".MainActivity">
+    tools:context=".MainActivity"
+    tools:ignore="HardcodedText">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -26,6 +26,12 @@
             android:text="Request Storage Access" />
 
         <Button
+            android:id="@+id/btnRequestFullStorageAccess"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Request Full Storage Access (API 30)" />
+
+        <Button
             android:id="@+id/btnSelectFolder"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -37,7 +43,7 @@
             android:layout_height="wrap_content"
             android:text="Select File" />
 
-        <include layout="@layout/view_divider"/>
+        <include layout="@layout/view_divider" />
 
         <TextView
             style="@style/TextAppearance.AppCompat.Title.Inverse"
@@ -76,7 +82,7 @@
             android:layout_marginTop="18dp"
             android:text="Copy" />
 
-        <include layout="@layout/view_divider"/>
+        <include layout="@layout/view_divider" />
 
         <TextView
             style="@style/TextAppearance.AppCompat.Title.Inverse"
