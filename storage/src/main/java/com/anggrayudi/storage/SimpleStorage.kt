@@ -204,6 +204,13 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                     DocumentFileCompat.PRIMARY -> StorageType.EXTERNAL
                     else -> StorageType.SD_CARD
                 }
+                if (folder != null && Build.VERSION.SDK_INT < Build.VERSION_CODES.N
+                    && storageType == StorageType.SD_CARD
+                    && DocumentFileCompat.isRootUri(uri)
+                    && !DocumentFileCompat.isStorageUriPermissionGranted(wrapper.context, storageId)
+                ) {
+                    saveUriPermission(uri)
+                }
                 if (folder != null && (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageType == StorageType.EXTERNAL
                             || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && saveUriPermission(uri)
                             || uri.authority != DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY && folder.isModifiable
