@@ -106,8 +106,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onRootPathPermissionGranted(root: DocumentFile) {
-                val grantedPath = if (root.storageId == DocumentFileCompat.PRIMARY) root.fullPath else root.storageId
-                Toast.makeText(baseContext, "Storage access has been granted for $grantedPath", Toast.LENGTH_SHORT).show()
+                Toast.makeText(baseContext, "Storage access has been granted for ${root.fullPath}", Toast.LENGTH_SHORT).show()
             }
         }
     }

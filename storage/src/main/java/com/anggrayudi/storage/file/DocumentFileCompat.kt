@@ -74,10 +74,14 @@ object DocumentFileCompat {
     /**
      * `fileFullPath` for example:
      * * For file in external storage => `/storage/emulated/0/Downloads/MyMovie.mp4`.
-     * * For file in SD card => `/storage/9016-4EF8/Downloads/MyMovie.mp4`
+     * * For file in SD card => `/storage/9016-4EF8/Downloads/MyMovie.mp4` or you can input `9016-4EF8:Downloads/MyMovie.mp4`
      * @see DocumentFile.fullPath
      */
-    fun fromFullPath(context: Context, fileFullPath: String) = fromFile(context, File(fileFullPath))
+    fun fromFullPath(context: Context, fileFullPath: String) = if (fileFullPath.startsWith('/')) {
+        fromFile(context, File(fileFullPath))
+    } else {
+        fromPath(context, fileFullPath.substringBefore(':'), fileFullPath.substringAfter(':'))
+    }
 
     /**
      * Since Android 10, only app directory that is accessible by [File], e.g. `/storage/emulated/0/Android/data/com.anggrayudi.storage.sample/files`

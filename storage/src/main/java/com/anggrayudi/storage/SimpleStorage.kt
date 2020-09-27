@@ -16,7 +16,7 @@ import android.provider.DocumentsContract
 import android.provider.Settings
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
-import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
@@ -311,7 +311,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
          * For read and write permissions
          */
         fun hasStoragePermission(context: Context): Boolean {
-            return ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            return checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
                     && hasStorageReadPermission(context)
         }
 
@@ -319,7 +319,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
          * For read permission only
          */
         fun hasStorageReadPermission(context: Context): Boolean {
-            return ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            return checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
 
         /**
