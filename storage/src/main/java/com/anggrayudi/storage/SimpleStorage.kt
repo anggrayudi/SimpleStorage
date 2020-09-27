@@ -102,6 +102,10 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      * @param initialRootPath It will open [StorageType.EXTERNAL] instead for API 23 and lower, and when no SD Card inserted.
      */
     fun requestStorageAccess(requestCode: Int, initialRootPath: StorageType = StorageType.EXTERNAL) {
+        if (!hasStoragePermission(wrapper.context)) {
+            storageAccessCallback?.onStoragePermissionDenied()
+            return
+        }
         if (initialRootPath == StorageType.EXTERNAL && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !isSdCardPresent) {
             val root = DocumentFileCompat.getRootDocumentFile(wrapper.context, DocumentFileCompat.PRIMARY) ?: return
             saveUriPermission(root.uri)
