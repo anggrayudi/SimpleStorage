@@ -9,11 +9,13 @@ import com.anggrayudi.storage.file.StorageType
  */
 interface StorageAccessCallback {
 
-    fun onCancelledByUser()
+    fun onCancelledByUser(requestCode: Int) {
+        // default implementation
+    }
 
-    fun onRootPathNotSelected(rootPath: String, rootStorageType: StorageType)
+    fun onRootPathNotSelected(requestCode: Int, rootPath: String, rootStorageType: StorageType)
 
-    fun onStoragePermissionDenied()
+    fun onStoragePermissionDenied(requestCode: Int)
 
-    fun onRootPathPermissionGranted(root: DocumentFile)
+    fun onRootPathPermissionGranted(requestCode: Int, root: DocumentFile)
 }

@@ -8,7 +8,9 @@ import androidx.documentfile.provider.DocumentFile
  */
 interface FilePickerCallback {
 
-    fun onCancelledByUser(requestCode: Int)
+    fun onCancelledByUser(requestCode: Int) {
+        // default implementation
+    }
 
     /**
      * Called when you have no read permission to current path

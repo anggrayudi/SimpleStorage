@@ -10,7 +10,9 @@ import com.anggrayudi.storage.file.StorageType
  */
 interface FolderPickerCallback {
 
-    fun onCancelledByUser(requestCode: Int)
+    fun onCancelledByUser(requestCode: Int) {
+        // default implementation
+    }
 
     fun onStoragePermissionDenied(requestCode: Int)
 

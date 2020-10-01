@@ -87,25 +87,24 @@ class MainActivity : AppCompatActivity() {
     private fun setupSimpleStorage() {
         storage = SimpleStorage(this)
         storage.storageAccessCallback = object : StorageAccessCallback {
-            override fun onRootPathNotSelected(rootPath: String, rootStorageType: StorageType) {
+            override fun onRootPathNotSelected(requestCode: Int, rootPath: String, rootStorageType: StorageType) {
                 MaterialDialog(this@MainActivity)
                     .message(text = "Please select $rootPath")
                     .negativeButton(android.R.string.cancel)
                     .positiveButton {
                         storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, rootStorageType)
-                    }
-                    .show()
+                    }.show()
             }
 
-            override fun onCancelledByUser() {
+            override fun onCancelledByUser(requestCode: Int) {
                 Toast.makeText(baseContext, "Cancelled by user", Toast.LENGTH_SHORT).show()
             }
 
-            override fun onStoragePermissionDenied() {
+            override fun onStoragePermissionDenied(requestCode: Int) {
                 requestStoragePermission()
             }
 
-            override fun onRootPathPermissionGranted(root: DocumentFile) {
+            override fun onRootPathPermissionGranted(requestCode: Int, root: DocumentFile) {
                 Toast.makeText(baseContext, "Storage access has been granted for ${root.fullPath}", Toast.LENGTH_SHORT).show()
             }
         }
@@ -148,8 +147,7 @@ class MainActivity : AppCompatActivity() {
                     .negativeButton(android.R.string.cancel)
                     .positiveButton {
                         storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, storageType)
-                    }
-                    .show()
+                    }.show()
             }
 
             override fun onFolderSelected(requestCode: Int, folder: DocumentFile) {

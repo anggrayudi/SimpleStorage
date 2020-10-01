@@ -37,9 +37,13 @@ import kotlin.concurrent.thread
  */
 class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
-    constructor(activity: FragmentActivity) : this(ActivityWrapper(activity))
+    constructor(activity: FragmentActivity, savedState: Bundle? = null) : this(ActivityWrapper(activity)) {
+        savedState?.let { onRestoreInstanceState(it) }
+    }
 
-    constructor(fragment: Fragment) : this(FragmentWrapper(fragment))
+    constructor(fragment: Fragment, savedState: Bundle? = null) : this(FragmentWrapper(fragment)) {
+        savedState?.let { onRestoreInstanceState(it) }
+    }
 
     var storageAccessCallback: StorageAccessCallback? = null
 
@@ -50,6 +54,9 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     private var requestCodeStorageAccess = 0
     private var requestCodeFolderPicker = 0
     private var requestCodeFilePicker = 0
+
+    val context: Context
+        get() = wrapper.context
 
     /**
      * It returns an intent to be dispatched via [Activity.startActivityForResult]
@@ -103,13 +110,13 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      */
     fun requestStorageAccess(requestCode: Int, initialRootPath: StorageType = StorageType.EXTERNAL) {
         if (!hasStoragePermission(wrapper.context)) {
-            storageAccessCallback?.onStoragePermissionDenied()
+            storageAccessCallback?.onStoragePermissionDenied(requestCode)
             return
         }
         if (initialRootPath == StorageType.EXTERNAL && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !isSdCardPresent) {
             val root = DocumentFileCompat.getRootDocumentFile(wrapper.context, DocumentFileCompat.PRIMARY) ?: return
             saveUriPermission(root.uri)
-            storageAccessCallback?.onRootPathPermissionGranted(root)
+            storageAccessCallback?.onRootPathPermissionGranted(requestCode, root)
             return
         }
 
@@ -163,29 +170,29 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         when (requestCode) {
             requestCodeStorageAccess -> {
                 if (resultCode != Activity.RESULT_OK) {
-                    storageAccessCallback?.onCancelledByUser()
+                    storageAccessCallback?.onCancelledByUser(requestCode)
                     return
                 }
                 val uri = data?.data ?: return
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R && uri.authority != DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY) {
-                    storageAccessCallback?.onRootPathNotSelected(externalStoragePath, StorageType.EXTERNAL)
+                    storageAccessCallback?.onRootPathNotSelected(requestCode, externalStoragePath, StorageType.EXTERNAL)
                     return
                 }
                 val storageId = DocumentFileCompat.getStorageId(uri)
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageId == DocumentFileCompat.PRIMARY) {
                     saveUriPermission(uri)
-                    storageAccessCallback?.onRootPathPermissionGranted(DocumentFile.fromTreeUri(wrapper.context, uri) ?: return)
+                    storageAccessCallback?.onRootPathPermissionGranted(requestCode, DocumentFile.fromTreeUri(wrapper.context, uri) ?: return)
                     return
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R || DocumentFileCompat.isRootUri(uri)) {
                     if (saveUriPermission(uri)) {
-                        storageAccessCallback?.onRootPathPermissionGranted(DocumentFile.fromTreeUri(wrapper.context, uri) ?: return)
+                        storageAccessCallback?.onRootPathPermissionGranted(requestCode, DocumentFile.fromTreeUri(wrapper.context, uri) ?: return)
                     } else {
-                        storageAccessCallback?.onStoragePermissionDenied()
+                        storageAccessCallback?.onStoragePermissionDenied(requestCode)
                     }
                 } else {
                     if (storageId == DocumentFileCompat.PRIMARY) {
-                        storageAccessCallback?.onRootPathNotSelected(externalStoragePath, StorageType.EXTERNAL)
+                        storageAccessCallback?.onRootPathNotSelected(requestCode, externalStoragePath, StorageType.EXTERNAL)
                     } else {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                             val sm = wrapper.context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
@@ -194,7 +201,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                                 return
                             }
                         }
-                        storageAccessCallback?.onRootPathNotSelected("/storage/$storageId", StorageType.SD_CARD)
+                        storageAccessCallback?.onRootPathNotSelected(requestCode, "/storage/$storageId", StorageType.SD_CARD)
                     }
                 }
             }
