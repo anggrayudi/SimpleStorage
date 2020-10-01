@@ -8,6 +8,8 @@ but this makes us even more difficult in accessing files. Let's take an example 
 [`java.io.File` has been deprecated in Android 10](https://commonsware.com/blog/2019/06/07/death-external-storage-end-saga.html).
 
 Simple Storage ease you in accessing and managing files across API levels.
+If you want to know more about the background of this library, please read this article:
+[Easy Storage Access Framework in Android with SimpleStorage](https://medium.com/@hardiannicko/easy-storage-access-framework-in-android-with-simplestorage-ec0a566f472c)
 
 Adding Simple Storage into your project is simple:
 

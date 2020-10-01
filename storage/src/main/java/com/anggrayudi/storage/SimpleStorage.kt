@@ -158,6 +158,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
     }
 
+    @Suppress("DEPRECATION")
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         when (requestCode) {
             requestCodeStorageAccess -> {
@@ -186,6 +187,13 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                     if (storageId == DocumentFileCompat.PRIMARY) {
                         storageAccessCallback?.onRootPathNotSelected(externalStoragePath, StorageType.EXTERNAL)
                     } else {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                            val sm = wrapper.context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
+                            sm.storageVolumes.firstOrNull { it.isRemovable }?.createAccessIntent(null)?.let {
+                                wrapper.startActivityForResult(it, requestCode)
+                                return
+                            }
+                        }
                         storageAccessCallback?.onRootPathNotSelected("/storage/$storageId", StorageType.SD_CARD)
                     }
                 }
@@ -208,17 +216,21 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                     DocumentFileCompat.PRIMARY -> StorageType.EXTERNAL
                     else -> StorageType.SD_CARD
                 }
-                if (folder != null && Build.VERSION.SDK_INT < Build.VERSION_CODES.N
+                if (folder == null) {
+                    folderPickerCallback?.onStorageAccessDenied(requestCode, null, storageType)
+                    return
+                }
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N
                     && storageType == StorageType.SD_CARD
                     && DocumentFileCompat.isRootUri(uri)
                     && !DocumentFileCompat.isStorageUriPermissionGranted(wrapper.context, storageId)
                 ) {
                     saveUriPermission(uri)
                 }
-                if (folder != null && (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageType == StorageType.EXTERNAL
-                            || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && saveUriPermission(uri)
-                            || uri.authority != DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY && folder.isModifiable
-                            || DocumentFileCompat.isStorageUriPermissionGranted(wrapper.context, storageId))
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageType == StorageType.EXTERNAL
+                    || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && saveUriPermission(uri)
+                    || uri.authority != DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY && folder.isModifiable
+                    || DocumentFileCompat.isStorageUriPermissionGranted(wrapper.context, storageId)
                 ) {
                     folderPickerCallback?.onFolderSelected(requestCode, folder)
                 } else {
