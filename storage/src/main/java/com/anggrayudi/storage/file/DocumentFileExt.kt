@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
+import android.webkit.MimeTypeMap
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.core.content.FileProvider
@@ -16,6 +17,7 @@ import com.anggrayudi.storage.callback.FileCopyCallback
 import com.anggrayudi.storage.callback.FileMoveCallback
 import com.anggrayudi.storage.extension.closeStream
 import com.anggrayudi.storage.extension.startCoroutineTimer
+import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import kotlinx.coroutines.Job
 import java.io.*
 
@@ -101,8 +103,8 @@ val DocumentFile.extension: String
 fun DocumentFile.toJavaFile(): File? {
     return when {
         isJavaFile -> File(uri.path!!)
-        inPrimaryStorage -> File("${SimpleStorage.externalStoragePath}/$filePath")
-        storageId.isNotEmpty() -> File("/storage/$storageId/$filePath")
+        inPrimaryStorage -> File("${SimpleStorage.externalStoragePath}/$directPath")
+        storageId.isNotEmpty() -> File("/storage/$storageId/$directPath")
         else -> null
     }
 }
@@ -111,9 +113,9 @@ fun DocumentFile.toJavaFile(): File? {
  * @return File path without storage ID, otherwise return empty `String` if this is the root path or if this [DocumentFile] is picked
  * from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT]
  */
-val DocumentFile.filePath: String
+val DocumentFile.directPath: String
     get() = when {
-        isJavaFile -> File(uri.path!!).filePath
+        isJavaFile -> File(uri.path!!).directPath
         isExternalStorageDocument -> uri.path.orEmpty().substringAfterLast("/document/$storageId:", "")
         else -> ""
     }
@@ -139,15 +141,22 @@ val DocumentFile.rootPath: String
  * If you want to remember file locations in database or preference, please use this function.
  * When you reopen the file, just call [DocumentFileCompat.fromFullPath]
  *
- * @see File.getPath
+ * @see File.getAbsolutePath
+ * @see simplePath
  */
-val DocumentFile.fullPath: String
+val DocumentFile.absolutePath: String
     get() = when {
         isJavaFile -> uri.path.orEmpty()
         !isExternalStorageDocument -> ""
-        inPrimaryStorage -> "${SimpleStorage.externalStoragePath}/$filePath"
-        else -> "/storage/$storageId/$filePath"
+        inPrimaryStorage -> "${SimpleStorage.externalStoragePath}/$directPath"
+        else -> "/storage/$storageId/$directPath"
     }
+
+/**
+ * @see absolutePath
+ */
+val DocumentFile.simplePath: String
+    get() = "$storageId:$directPath"
 
 /**
  * Delete this file and create new empty file using previous `filename` and `mimeType`.
@@ -160,26 +169,28 @@ fun DocumentFile.recreateFile(): DocumentFile? {
         val parentFile = parentFile
         if (parentFile?.canWrite() == true) {
             delete()
-            parentFile.createFile(mimeType, filename)
+            parentFile.makeFile(mimeType, filename)
         } else null
     } else null
 }
 
-fun DocumentFile.getRootDocumentFile(context: Context) = when {
-    isExternalStorageDocument -> DocumentFileCompat.getRootDocumentFile(context, storageId)
-    isJavaFile -> File(File(uri.path!!).rootPath).let { if (canRead()) DocumentFile.fromFile(it) else null }
+fun DocumentFile.getRootDocumentFile(context: Context, requiresWriteAccess: Boolean = false) = when {
+    isExternalStorageDocument -> DocumentFileCompat.getRootDocumentFile(context, storageId, requiresWriteAccess)
+    isJavaFile -> File(uri.path!!).getRootFile(requiresWriteAccess)?.let { DocumentFile.fromFile(it) }
     else -> null
 }
 
 /**
- * @return `true` if this file has read and write access, or if this file has URI permission for read and write access.
+ * @return `true` if this file exists and writeable. [DocumentFile.canWrite] may return false if you have no URI permission for read & write access.
  */
-val DocumentFile.isModifiable: Boolean
+val DocumentFile.canModify: Boolean
     get() = canRead() && canWrite()
 
 fun DocumentFile.isRootUriPermissionGranted(context: Context): Boolean {
     return isExternalStorageDocument && DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)
 }
+
+fun DocumentFile.doesExist(filename: String) = findFile(filename)?.exists() == true
 
 fun DocumentFile.avoidDuplicateFileNameFor(filename: String): String {
     return if (findFile(filename)?.isFile == true) {
@@ -218,33 +229,38 @@ fun DocumentFile.avoidDuplicateFolderNameFor(folderName: String): String {
  * Useful for creating temporary files. The extension is `*.bin`
  */
 @WorkerThread
-fun DocumentFile.createBinaryFile(
+fun DocumentFile.createBinaryFile(name: String) = makeFile(name, DocumentFileCompat.MIME_TYPE_BINARY_FILE)
+
+/**
+ * Similar to [DocumentFile.createFile], but adds compatibility on API 28 and lower.
+ * Creating files in API 28- with `createFile("my video.mp4", "video/mp4")` will create `my video.mp4`,
+ * whereas API 29+ will create `my video.mp4.mp4`. This function helps you to fix this kind of bug.
+ */
+@WorkerThread
+fun DocumentFile.makeFile(
     name: String,
-    appendBinFileExtension: Boolean = true,
-    mimeType: String = DocumentFileCompat.MIME_TYPE_BINARY_FILE
+    mimeType: String = DocumentFileCompat.MIME_TYPE_UNKNOWN
 ): DocumentFile? {
-    return when {
-        !isDirectory || !canWrite() -> null
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> {
-            val filename = if (appendBinFileExtension) {
-                if (name.endsWith(".bin")) name else "$name.bin"
-            } else {
-                name
-            }
-            createFile(mimeType, filename)
-        }
-        else -> {
-            val filename = name.removeSuffix(".bin")
-            createFile(mimeType, filename)?.apply {
-                if (!appendBinFileExtension) {
-                    renameTo(name)
-                }
-            }
-        }
+    if (!isDirectory || !canWrite()) {
+        return null
+    }
+
+    val extension = if (mimeType == DocumentFileCompat.MIME_TYPE_UNKNOWN) {
+        ""
+    } else {
+        MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType).orEmpty()
+    }
+    val baseFileName = name.removeForbiddenCharsFromFilename().removeSuffix(".$extension")
+
+    return if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P || isJavaFile) {
+        createFile(mimeType, baseFileName)
+    } else {
+        val fullFileName = if (extension.isEmpty()) baseFileName else "$baseFileName.$extension"
+        createFile(mimeType, fullFileName)
     }
 }
 
-fun DocumentFile.findFiles(names: Array<String>, documentType: DocumentFileType = DocumentFileType.ALL): List<DocumentFile> {
+fun DocumentFile.findFiles(names: Array<String>, documentType: DocumentFileType = DocumentFileType.ANY): List<DocumentFile> {
     val files = listFiles().filter { it.name in names }
     return when (documentType) {
         DocumentFileType.FILE -> files.filter { it.isFile }
@@ -253,13 +269,20 @@ fun DocumentFile.findFiles(names: Array<String>, documentType: DocumentFileType 
     }
 }
 
+fun DocumentFile.findFolder(name: String): DocumentFile? = listFiles().find { it.name == name && it.isDirectory }
+
+/**
+ * Expect the file is a file literally, not a folder.
+ */
+fun DocumentFile.findFileLiterally(name: String): DocumentFile? = listFiles().find { it.name == name && it.isFile }
+
 /**
  * @param recursive walk into sub folders
  */
 @WorkerThread
 fun DocumentFile.search(
     recursive: Boolean = false,
-    documentType: DocumentFileType = DocumentFileType.ALL,
+    documentType: DocumentFileType = DocumentFileType.ANY,
     mimeType: String = DocumentFileCompat.MIME_TYPE_UNKNOWN,
     name: String = "",
     regex: Regex? = null
@@ -361,22 +384,54 @@ fun DocumentFile.openFileIntent(context: Context, authority: String) = Intent(In
 // TODO: 08/09/20 moveTo and copyTo for folder and subfolders
 
 @WorkerThread
-fun DocumentFile.copyTo(context: Context, targetFolder: DocumentFile, callback: FileCopyCallback? = null) {
-    if (targetFolder.isDownloadsDocument) {
-        copyTo(context, DocumentFileCompat.PRIMARY, Environment.DIRECTORY_DOWNLOADS, callback)
-    } else {
-        copyTo(context, targetFolder.storageId, targetFolder.filePath, callback)
+fun DocumentFile?.copyTo(
+    context: Context,
+    targetFolderFullPath: String,
+    newFilenameInTargetPath: String? = null,
+    callback: FileCopyCallback? = null
+) {
+    copyTo(context, File(targetFolderFullPath), newFilenameInTargetPath, callback)
+}
+
+@WorkerThread
+fun DocumentFile?.copyTo(context: Context, targetFolder: File, newFilenameInTargetPath: String? = null, callback: FileCopyCallback? = null) {
+    copyTo(context, targetFolder.storageId, targetFolder.directPath, newFilenameInTargetPath, callback)
+}
+
+@WorkerThread
+fun DocumentFile?.copyTo(context: Context, targetFolder: DocumentFile?, newFilenameInTargetPath: String? = null, callback: FileCopyCallback? = null) {
+    when {
+        targetFolder == null -> callback?.onFailed(ErrorCode.TARGET_FOLDER_NOT_FOUND)
+        targetFolder.isDownloadsDocument -> copyTo(
+            context,
+            DocumentFileCompat.PRIMARY,
+            Environment.DIRECTORY_DOWNLOADS,
+            newFilenameInTargetPath,
+            callback
+        )
+        else -> copyTo(context, targetFolder.storageId, targetFolder.directPath, newFilenameInTargetPath, callback)
     }
 }
 
 @WorkerThread
-fun DocumentFile.copyTo(context: Context, targetStorageId: String, targetFolderPath: String, callback: FileCopyCallback? = null) {
+fun DocumentFile?.copyTo(
+    context: Context,
+    targetStorageId: String,
+    targetFolderDirectPath: String,
+    newFilenameInTargetPath: String? = null,
+    callback: FileCopyCallback? = null
+) {
     if (targetStorageId.isEmpty()) {
         callback?.onFailed(ErrorCode.TARGET_FOLDER_NOT_FOUND)
         return
     }
 
-    if (targetStorageId == storageId && targetFolderPath == parentFile?.filePath) {
+    if (this == null || !isFile) {
+        callback?.onFailed(ErrorCode.SOURCE_FILE_NOT_FOUND)
+        return
+    }
+
+    if (targetStorageId == storageId && targetFolderDirectPath == parentFile?.directPath) {
         callback?.onFailed(ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER)
         return
     }
@@ -397,9 +452,10 @@ fun DocumentFile.copyTo(context: Context, targetStorageId: String, targetFolderP
     }
 
     val reportInterval = callback?.onStartCopying(this) ?: 0
+    if (reportInterval < 0) return
     val watchProgress = reportInterval > 0
     try {
-        val targetFile = createTargetFile(context, targetStorageId, targetFolderPath, callback) ?: return
+        val targetFile = createTargetFile(context, targetStorageId, targetFolderDirectPath, newFilenameInTargetPath, callback) ?: return
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
             copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, callback)
         }
@@ -440,23 +496,30 @@ private inline fun createFileStreams(
 private fun DocumentFile.createTargetFile(
     context: Context,
     targetStorageId: String,
-    targetFolderPath: String,
+    targetFolderDirectPath: String,
+    newFilenameInTargetPath: String?,
     callback: FileCallback?
 ): DocumentFile? {
     try {
-        val targetFolder = DocumentFileCompat.mkdirs(context, targetStorageId, targetFolderPath)
+        val targetFolder = DocumentFileCompat.mkdirs(context, targetStorageId, targetFolderDirectPath)
         if (targetFolder == null) {
             callback?.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
             return null
         }
 
         var targetFile = targetFolder.findFile(name.orEmpty())
-        if (targetFile?.isFile == true) {
+        if (targetFile?.exists() == true) {
             callback?.onFailed(ErrorCode.TARGET_FILE_EXISTS)
             return null
         }
 
-        targetFile = targetFolder.createFile(type ?: DocumentFileCompat.MIME_TYPE_UNKNOWN, name.orEmpty())
+        val mimeType = if (newFilenameInTargetPath != null && extension != newFilenameInTargetPath.substringAfterLast('.')) {
+            MimeTypeMap.getSingleton().getMimeTypeFromExtension(newFilenameInTargetPath.substringAfterLast('.'))
+        } else {
+            type
+        }
+
+        targetFile = targetFolder.makeFile(mimeType ?: DocumentFileCompat.MIME_TYPE_UNKNOWN, newFilenameInTargetPath ?: name.orEmpty())
         if (targetFile == null) {
             callback?.onFailed(ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
         } else {
@@ -517,23 +580,58 @@ private fun DocumentFile.copyFileStream(
 }
 
 @WorkerThread
-fun DocumentFile.moveTo(context: Context, targetFolder: DocumentFile, callback: FileMoveCallback? = null) {
-    if (targetFolder.isDownloadsDocument) {
-        moveTo(context, DocumentFileCompat.PRIMARY, Environment.DIRECTORY_DOWNLOADS, callback)
-    } else {
-        moveTo(context, targetFolder.storageId, targetFolder.filePath, callback)
-    }
+fun DocumentFile?.moveTo(
+    context: Context,
+    targetFolderFullPath: String,
+    newFilenameInTargetPath: String? = null,
+    callback: FileMoveCallback? = null
+) {
+    moveTo(context, File(targetFolderFullPath), newFilenameInTargetPath, callback)
 }
 
 @WorkerThread
-fun DocumentFile.moveTo(context: Context, targetStorageId: String, targetFolderPath: String, callback: FileMoveCallback? = null) {
-    if (targetStorageId == storageId && targetFolderPath == parentFile?.filePath) {
-        callback?.onFailed(ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER)
+fun DocumentFile?.moveTo(context: Context, targetFolder: File, newFilenameInTargetPath: String? = null, callback: FileMoveCallback? = null) {
+    moveTo(context, targetFolder.storageId, targetFolder.directPath, newFilenameInTargetPath, callback)
+}
+
+@WorkerThread
+fun DocumentFile?.moveTo(context: Context, targetFolder: DocumentFile?, newFilenameInTargetPath: String? = null, callback: FileMoveCallback? = null) {
+    when {
+        targetFolder == null -> callback?.onFailed(ErrorCode.TARGET_FOLDER_NOT_FOUND)
+        targetFolder.isDownloadsDocument -> moveTo(
+            context,
+            DocumentFileCompat.PRIMARY,
+            Environment.DIRECTORY_DOWNLOADS,
+            newFilenameInTargetPath,
+            callback
+        )
+        else -> moveTo(context, targetFolder.storageId, targetFolder.directPath, newFilenameInTargetPath, callback)
+    }
+}
+
+/**
+ * @param newFilenameInTargetPath change filename in target path
+ */
+@WorkerThread
+fun DocumentFile?.moveTo(
+    context: Context,
+    targetStorageId: String,
+    targetFolderDirectPath: String,
+    newFilenameInTargetPath: String? = null,
+    callback: FileMoveCallback? = null
+) {
+    if (targetStorageId.isEmpty()) {
+        callback?.onFailed(ErrorCode.TARGET_FOLDER_NOT_FOUND)
         return
     }
 
-    if (!isFile) {
+    if (this == null || !isFile) {
         callback?.onFailed(ErrorCode.SOURCE_FILE_NOT_FOUND)
+        return
+    }
+
+    if (targetStorageId == storageId && targetFolderDirectPath == parentFile?.directPath) {
+        callback?.onFailed(ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER)
         return
     }
 
@@ -541,7 +639,7 @@ fun DocumentFile.moveTo(context: Context, targetStorageId: String, targetFolderP
         val sourcePath = uri.path!!.substringAfterLast("/document/$storageId:", "")
         val externalStoragePath = SimpleStorage.externalStoragePath
         val sourceFile = File("$externalStoragePath/$sourcePath")
-        val targetFile = File("$externalStoragePath/$targetFolderPath", name.orEmpty())
+        val targetFile = File("$externalStoragePath/$targetFolderDirectPath", newFilenameInTargetPath ?: name.orEmpty())
         targetFile.parentFile?.mkdirs()
         if (sourceFile.renameTo(targetFile)) {
             callback?.onCompleted(DocumentFile.fromFile(targetFile))
@@ -551,8 +649,8 @@ fun DocumentFile.moveTo(context: Context, targetStorageId: String, targetFolderP
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager() && storageId == targetStorageId) {
         val sourceFile = toJavaFile()!!
-        val targetFolder = File(DocumentFileCompat.getRootFile(targetStorageId)!!.path + "/$targetFolderPath")
-        val targetFile = File(targetFolder, name.orEmpty())
+        val targetFolder = File(DocumentFileCompat.getRootFile(targetStorageId)!!.path + "/$targetFolderDirectPath")
+        val targetFile = File(targetFolder, newFilenameInTargetPath ?: name.orEmpty())
         targetFolder.mkdirs()
         if (sourceFile.renameTo(targetFile)) {
             callback?.onCompleted(DocumentFile.fromFile(targetFile))
@@ -562,11 +660,20 @@ fun DocumentFile.moveTo(context: Context, targetStorageId: String, targetFolderP
 
     try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && storageId == targetStorageId) {
-            val targetDocumentUri = DocumentFileCompat.fromPath(context, targetStorageId, targetFolderPath)?.uri ?: return
-            val movedFileUri = DocumentsContract.moveDocument(context.contentResolver, uri, parentFile!!.uri, targetDocumentUri)
+            val targetFolder = DocumentFileCompat.fromSimplePath(context, targetStorageId, targetFolderDirectPath)
+            if (targetFolder == null) {
+                callback?.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
+                return
+            }
+            if (newFilenameInTargetPath != null && targetFolder.doesExist(newFilenameInTargetPath)) {
+                callback?.onFailed(ErrorCode.TARGET_FILE_EXISTS)
+                return
+            }
+            val movedFileUri = DocumentsContract.moveDocument(context.contentResolver, uri, parentFile!!.uri, targetFolder.uri)
             if (movedFileUri != null) {
                 val newFile = DocumentFile.fromTreeUri(context, movedFileUri)
                 if (newFile != null && newFile.isFile) {
+                    if (newFilenameInTargetPath != null) newFile.renameTo(newFilenameInTargetPath)
                     callback?.onCompleted(newFile)
                 } else {
                     callback?.onFailed(ErrorCode.TARGET_FILE_NOT_FOUND)
@@ -585,10 +692,11 @@ fun DocumentFile.moveTo(context: Context, targetStorageId: String, targetFolderP
     }
 
     val reportInterval = callback?.onStartMoving(this) ?: 0
+    if (reportInterval < 0) return
     val watchProgress = reportInterval > 0
 
     try {
-        val targetFile = createTargetFile(context, targetStorageId, targetFolderPath, callback) ?: return
+        val targetFile = createTargetFile(context, targetStorageId, targetFolderDirectPath, newFilenameInTargetPath, callback) ?: return
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
             copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, callback)
         }

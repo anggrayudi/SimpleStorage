@@ -1,6 +1,6 @@
 package com.anggrayudi.storage.extension
 
-import org.junit.Assert.assertEquals
+import org.junit.Assert.*
 import org.junit.Test
 import kotlin.math.roundToInt
 
@@ -43,5 +43,23 @@ class TextExtKtTest {
     @Test
     fun splitAt() {
         println("asosdisf/doc/safsfsfaf/doc/8hhyjbh".splitToPairAt("/", 2))
+    }
+
+    @Test
+    fun replaceCompletely() {
+        assertEquals("/storage/ABC//Movie/", "/storage/ABC////Movie/".replace("//", "/"))
+        assertEquals("/storage/ABC/Movie/", "/storage/ABC///Movie/".replaceCompletely("//", "/"))
+        assertEquals("/storage/ABC/Movie/", "/storage////ABC///Movie//".replaceCompletely("//", "/"))
+        assertEquals("BB", "aaaaaaaaBaaaaaaBa".replaceCompletely("a", ""))
+    }
+
+    @Test
+    fun hasParent() {
+        assertTrue("/path/Music//Pop".hasParent("/path/Music"))
+        assertTrue("/path/Music/Pop/".hasParent("/path/Music"))
+
+        assertFalse("/path/Music".hasParent("/path/Music/Pop"))
+        assertFalse("/path/Music".hasParent("/path/MusicMetal"))
+        assertFalse("/path/Music".hasParent("/path/MusiC"))
     }
 }

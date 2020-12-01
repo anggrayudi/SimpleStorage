@@ -9,14 +9,16 @@ import android.os.Environment
 import android.os.StatFs
 import android.system.ErrnoException
 import android.system.Os
-import androidx.annotation.RequiresApi
+import androidx.annotation.WorkerThread
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.extension.getAppDirectory
+import com.anggrayudi.storage.extension.hasParent
+import com.anggrayudi.storage.extension.replaceCompletely
+import com.anggrayudi.storage.extension.trimFileSeparator
 import java.io.File
 import java.io.IOException
-import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 
 /**
@@ -59,29 +61,75 @@ object DocumentFileCompat {
     }
 
     /**
+     * @param fullPath For SD card can be full path `storage/6881-2249/Music` or simple path `6881-2249:Music`.
+     *             For primary storage can be `/storage/emulated/0/Music` or simple path `primary:Music`.
+     */
+    fun getStorageId(fullPath: String): String {
+        return if (fullPath.startsWith('/')) {
+            if (fullPath.startsWith(SimpleStorage.externalStoragePath)) {
+                PRIMARY
+            } else {
+                fullPath.substringAfter("/storage/", "").substringBefore('/')
+            }
+        } else {
+            fullPath.substringBefore(':', "").substringAfterLast('/')
+        }
+    }
+
+    /**
+     * @param fullPath For SD card can be full path `storage/6881-2249/Music` or simple path `6881-2249:Music`.
+     *             For primary storage can be `/storage/emulated/0/Music` or simple path `primary:Music`.
+     * @return Given `storage/6881-2249/Music/My Love.mp3`, then return `Music/My Love.mp3`.
+     *          May return empty `String` if it is a root path of the storage.
+     */
+    // TODO: 12/12/20 Cari terminologi lain yg bagus untuk direct path
+    fun getDirectPath(fullPath: String): String {
+        val directPath = if (fullPath.startsWith('/')) {
+            val externalStoragePath = SimpleStorage.externalStoragePath
+            if (fullPath.startsWith(externalStoragePath)) {
+                fullPath.substringAfter(externalStoragePath)
+            } else {
+                fullPath.substringAfter("/storage/", "").substringAfter('/', "")
+            }
+        } else {
+            fullPath.substringAfter(':', "")
+        }
+        return directPath.trimFileSeparator().removeForbiddenCharsFromFilename()
+    }
+
+    /**
      * @param storageId If in SD card, it should be integers like `6881-2249`. Otherwise, if in external storage it will be [PRIMARY].
-     * @param filePath If in Downloads folder of SD card, it will be `Downloads/MyMovie.mp4`.
+     * @param directPath If in Downloads folder of SD card, it will be `Downloads/MyMovie.mp4`.
      *                 If in external storage it will be `Downloads/MyMovie.mp4` as well.
      */
-    fun fromPath(context: Context, storageId: String = PRIMARY, filePath: String): DocumentFile? {
-        return if (filePath.isEmpty()) {
+    fun fromSimplePath(
+        context: Context,
+        storageId: String = PRIMARY,
+        directPath: String = "",
+        documentType: DocumentFileType = DocumentFileType.ANY
+    ): DocumentFile? {
+        return if (directPath.isEmpty()) {
             getRootDocumentFile(context, storageId)
         } else {
-            exploreFile(context, storageId, filePath)
+            exploreFile(context, storageId, directPath, documentType)
         }
     }
 
     /**
      * `fileFullPath` for example:
      * * For file in external storage => `/storage/emulated/0/Downloads/MyMovie.mp4`.
-     * * For file in SD card => `/storage/9016-4EF8/Downloads/MyMovie.mp4` or you can input `9016-4EF8:Downloads/MyMovie.mp4`
-     * @see DocumentFile.fullPath
+     * * For file in SD card => `/storage/9016-4EF8/Downloads/MyMovie.mp4` or you can input simple path like this `9016-4EF8:Downloads/MyMovie.mp4`.
+     *                          You can input `9016-4EF8:` or `/storage/9016-4EF8` for SD card's root path.
+     * @see DocumentFile.absolutePath
      */
-    fun fromFullPath(context: Context, fileFullPath: String) = if (fileFullPath.startsWith('/')) {
-        fromFile(context, File(fileFullPath))
-    } else {
-        fromPath(context, fileFullPath.substringBefore(':'), fileFullPath.substringAfter(':'))
-    }
+    fun fromFullPath(context: Context, fullPath: String, documentType: DocumentFileType = DocumentFileType.ANY) =
+        if (fullPath.startsWith('/')) {
+            // absolute path
+            fromFile(context, File(fullPath), documentType)
+        } else {
+            // simple path
+            fromSimplePath(context, fullPath.substringBefore(':'), fullPath.substringAfter(':'), documentType)
+        }
 
     /**
      * Since Android 10, only app directory that is accessible by [File], e.g. `/storage/emulated/0/Android/data/com.anggrayudi.storage.sample/files`
@@ -90,14 +138,15 @@ object DocumentFileCompat {
      *
      * This function allows you to read and write files in external storage, regardless of API levels.
      */
-    fun fromFile(context: Context, file: File): DocumentFile? {
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && file.storageId == PRIMARY
-            || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager(file)
-        ) {
-            DocumentFile.fromFile(file)
+    fun fromFile(context: Context, file: File, documentType: DocumentFileType = DocumentFileType.ANY): DocumentFile? {
+        return if (file.canRead()) {
+            if (documentType == DocumentFileType.FILE && !file.isFile || documentType == DocumentFileType.FOLDER && !file.isDirectory)
+                null
+            else
+                DocumentFile.fromFile(file)
         } else {
-            val filePath = file.filePath.removeProhibitedCharsFromFilename().trim { it == '/' }
-            exploreFile(context, file.storageId, filePath)
+            val directPath = file.directPath.removeForbiddenCharsFromFilename().trimFileSeparator()
+            exploreFile(context, file.storageId, directPath, documentType)
         }
     }
 
@@ -105,21 +154,22 @@ object DocumentFileCompat {
      * Returns `null` if folder does not exist or you have no permission on this directory
      */
     @Suppress("DEPRECATION")
-    fun fromPublicFolder(context: Context, type: PublicDirectory): DocumentFile? {
-        return try {
+    fun fromPublicFolder(context: Context, type: PublicDirectory, requiresWriteAccess: Boolean = false): DocumentFile? {
+        val publicDirectory = Environment.getExternalStoragePublicDirectory(type.folderName)
+        val folder = try {
             when {
-                Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> {
-                    DocumentFile.fromFile(Environment.getExternalStoragePublicDirectory(type.folderName))
-                }
+                publicDirectory.canRead() -> DocumentFile.fromFile(publicDirectory)
+
                 type == PublicDirectory.DOWNLOADS -> {
                     val downloadFolder = DocumentFile.fromTreeUri(context, Uri.parse("content://$DOWNLOADS_FOLDER_AUTHORITY/tree/downloads"))
-                    if (downloadFolder?.canWrite() == true) downloadFolder else fromPath(context, filePath = type.folderName)
+                    if (downloadFolder?.canRead() == true) downloadFolder else fromSimplePath(context, directPath = type.folderName)
                 }
-                else -> fromPath(context, filePath = type.folderName)
+                else -> fromSimplePath(context, directPath = type.folderName)
             }
         } catch (e: SecurityException) {
             null
         }
+        return folder?.takeIf { it.canRead() && (requiresWriteAccess && folder.canWrite() || !requiresWriteAccess) }
     }
 
     /**
@@ -130,17 +180,52 @@ object DocumentFileCompat {
      * @see Environment.isExternalStorageManager
      * @see getRootFile
      */
-    fun getRootDocumentFile(context: Context, storageId: String): DocumentFile? {
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            try {
+    fun getRootDocumentFile(context: Context, storageId: String, requiresWriteAccess: Boolean = false): DocumentFile? {
+        return getRootFile(storageId, requiresWriteAccess)?.let { DocumentFile.fromFile(it) }
+            ?: try {
                 DocumentFile.fromTreeUri(context, createDocumentUri(storageId))
             } catch (e: SecurityException) {
                 null
             }
-        } else {
-            getRootFile(storageId)?.let { DocumentFile.fromFile(it) }
-        }
     }
+
+    /**
+     * In API 29+, `/storage/emulated/0` may not be granted for URI permission,
+     * but all directories under `/storage/emulated/0/Music` are granted and accessible.
+     *
+     * For example, given `/storage/emulated/0/Music/Metal`, then return `/storage/emulated/0/Music`
+     *
+     * @return `null` if accessible root path is not found in [ContentResolver.getPersistedUriPermissions], or the folder does not exist.
+     */
+    fun getAccessibleRootDocumentFile(context: Context, fullPath: String, requiresWriteAccess: Boolean = false): DocumentFile? {
+        if (fullPath.startsWith('/')) {
+            val rootFile = File(fullPath).getRootFile(requiresWriteAccess)
+            if (rootFile != null) {
+                return DocumentFile.fromFile(rootFile)
+            }
+        }
+        val storageId = getStorageId(fullPath)
+        if (storageId.isNotEmpty()) {
+            val cleanDirectPath = getDirectPath(fullPath)
+            context.contentResolver.persistedUriPermissions
+                // For instance, content://com.android.externalstorage.documents/tree/primary%3AMusic
+                .filter { it.isReadPermission && it.isWritePermission }
+                .forEach {
+                    val uriPath = it.uri.path // e.g. /tree/primary:Music
+                    if (uriPath != null) {
+                        val currentStorageId = uriPath.substringBefore(':').substringAfterLast('/')
+                        val currentRootFolder = uriPath.substringAfter(':', "")
+                        if (currentStorageId == storageId && (currentRootFolder.isEmpty() || cleanDirectPath.hasParent(currentRootFolder))) {
+                            return DocumentFile.fromTreeUri(context, it.uri)
+                        }
+                    }
+                }
+        }
+        return null
+    }
+
+    fun getAccessibleRootDocumentFile(context: Context, storageId: String, directPath: String = "", requiresWriteAccess: Boolean = false) =
+        getAccessibleRootDocumentFile(context, buildAbsolutePath(storageId, directPath), requiresWriteAccess)
 
     /**
      * To get root file access on API 30+, you need to have full storage access by
@@ -150,47 +235,94 @@ object DocumentFileCompat {
      * @see Environment.isExternalStorageManager
      * @return `null` if you have no full storage access
      */
-    @RequiresApi(Build.VERSION_CODES.R)
     @Suppress("DEPRECATION")
-    fun getRootFile(storageId: String): File? {
+    fun getRootFile(storageId: String, requiresWriteAccess: Boolean = false): File? {
         val rootFile = if (storageId == PRIMARY) {
             Environment.getExternalStorageDirectory()
         } else {
             File("/storage/$storageId")
         }
-        return if (Environment.isExternalStorageManager(rootFile)) rootFile else null
+        return rootFile.takeIf { rootFile.canRead() && (requiresWriteAccess && rootFile.canWrite() || !requiresWriteAccess) }
     }
 
-    fun createDocumentUri(storageId: String, filePath: String = ""): Uri =
-        Uri.parse("content://$EXTERNAL_STORAGE_AUTHORITY/tree/" + Uri.encode("$storageId:$filePath"))
+    fun buildAbsolutePath(storageId: String = PRIMARY, directPath: String): String {
+        val cleanDirectPath = directPath.trimEnd('/').removeForbiddenCharsFromFilename()
+        return if (storageId == PRIMARY) {
+            SimpleStorage.externalStoragePath + "/$cleanDirectPath"
+        } else {
+            "/storage/$storageId/$cleanDirectPath"
+        }
+    }
+
+    fun buildAbsolutePath(simplePath: String): String {
+        val path = simplePath.trimEnd('/')
+        return if (path.startsWith('/')) {
+            path.removeForbiddenCharsFromFilename()
+        } else {
+            buildAbsolutePath(getStorageId(path), getDirectPath(path))
+        }
+    }
+
+    fun buildSimplePath(storageId: String = PRIMARY, directPath: String): String {
+        val cleanDirectPath = directPath.removeForbiddenCharsFromFilename().trimFileSeparator()
+        return "$storageId:$cleanDirectPath"
+    }
+
+    fun buildSimplePath(absolutePath: String): String {
+        return buildSimplePath(getStorageId(absolutePath), getDirectPath(absolutePath))
+    }
+
+    fun createDocumentUri(storageId: String, directPath: String = ""): Uri =
+        Uri.parse("content://$EXTERNAL_STORAGE_AUTHORITY/tree/" + Uri.encode("$storageId:$directPath"))
 
     fun isAccessGranted(context: Context, storageId: String): Boolean {
         return storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
-                || getRootDocumentFile(context, storageId)?.isModifiable ?: false
+                || getRootDocumentFile(context, storageId, true) != null
     }
+
+    fun doesExist(context: Context, fullPath: String) = fromFullPath(context, fullPath)?.exists() == true
+
+    fun delete(context: Context, fullPath: String) = fromFullPath(context, fullPath)?.delete() == true
 
     /**
      * Check if storage has URI permission for read and write access.
+     *
+     * Persisted URIs revoked whenever the related folders deleted. Hence, you need to request URI permission again even though the folder
+     * recreated by user. However, you should not worry about this on API 28 and lower, because URI permission always granted for root path
+     * and rooth path itself can't be deleted.
      */
-    fun isStorageUriPermissionGranted(context: Context, storageId: String, filePath: String = ""): Boolean {
-        val root = createDocumentUri(storageId, filePath)
+    fun isStorageUriPermissionGranted(context: Context, storageId: String, directPath: String = ""): Boolean {
+        val root = createDocumentUri(storageId, directPath)
         return context.contentResolver.persistedUriPermissions.any { it.isReadPermission && it.isWritePermission && it.uri == root }
     }
 
+    /**
+     * Get all storage IDs on this device. The first index is primary storage.
+     * Prior to API 28, retrieving storage ID for SD card only applicable if URI permission is granted for read & write access.
+     */
     fun getStorageIds(context: Context): List<String> {
-        val storageIds = mutableListOf<String>()
         val externalStoragePath = SimpleStorage.externalStoragePath
-        ContextCompat.getExternalFilesDirs(context, null).map { it.path }.forEach {
-            if (it.startsWith(externalStoragePath)) {
+        val storageIds = ContextCompat.getExternalFilesDirs(context, null).map {
+            val path = it.path
+            if (path.startsWith(externalStoragePath)) {
                 // Path -> /storage/emulated/0/Android/data/com.anggrayudi.storage.sample/files
-                storageIds.add(PRIMARY)
+                PRIMARY
             } else {
                 // Path -> /storage/131D-261A/Android/data/com.anggrayudi.storage.sample/files
-                val sdCardId = it.substringAfter("/storage/").substringBefore('/')
-                storageIds.add(sdCardId)
+                path.substringAfter("/storage/").substringBefore('/')
             }
         }
-        return storageIds
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            storageIds
+        } else {
+            val persistedStorageIds = context.contentResolver.persistedUriPermissions
+                .filter { it.isReadPermission && it.isWritePermission }
+                .mapNotNull { it.uri.path?.run { substringBefore(':', "").substringAfterLast('/') } }
+            storageIds.toMutableList().run {
+                addAll(persistedStorageIds)
+                distinct()
+            }
+        }
     }
 
     fun getSdCardIds(context: Context) = getStorageIds(context).filter { it != PRIMARY }
@@ -198,164 +330,273 @@ object DocumentFileCompat {
     /**
      * Create folders. You should do this process in background.
      *
-     * @return `null` if you have no storage permission. Will return to current directory if not success.
+     * @param requiresWriteAccess the folder should have write access, otherwise return `null`
+     * @return `null` if you have no storage permission.
      */
-    fun mkdirs(context: Context, storageId: String = PRIMARY, folderPath: String): DocumentFile? {
-        if (storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            // use java.io.File for faster performance
-            val file = File(SimpleStorage.externalStoragePath + "/" + folderPath.removeProhibitedCharsFromFilename())
-            file.mkdirs()
-            if (file.isDirectory)
-                return DocumentFile.fromFile(file)
-        } else {
-            val rootFile = getRootDocumentFile(context, storageId)
-            if (rootFile?.isJavaFile == true && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                return DocumentFile.fromFile(File("${rootFile.uri.path}/$folderPath").apply { mkdirs() })
+    fun mkdirs(context: Context, fullPath: String, requiresWriteAccess: Boolean = true): DocumentFile? {
+        if (fullPath.startsWith('/')) {
+            val folder = File(fullPath.removeForbiddenCharsFromFilename()).apply { mkdirs() }
+            if (folder.isDirectory && folder.canRead() && (requiresWriteAccess && folder.canWrite() || !requiresWriteAccess)) {
+                // Consider java.io.File for faster performance
+                return DocumentFile.fromFile(folder)
             }
-            var currentDirectory = rootFile ?: return null
-            getDirectorySequence(folderPath.removeProhibitedCharsFromFilename()).forEach {
-                try {
-                    val file = currentDirectory.findFile(it)
-                    if (file == null || file.isFile)
-                        currentDirectory = currentDirectory.createDirectory(it) ?: return null
-                    else if (file.isDirectory)
-                        currentDirectory = file
-                } catch (e: Throwable) {
-                    return null
+        }
+        var currentDirectory = getAccessibleRootDocumentFile(context, fullPath, requiresWriteAccess) ?: return null
+        getDirectorySequence(getDirectPath(fullPath)).forEach {
+            try {
+                val directory = currentDirectory.findFolder(it)
+                if (directory == null)
+                    currentDirectory = currentDirectory.createDirectory(it) ?: return null
+                else if (directory.canRead())
+                    currentDirectory = directory
+            } catch (e: Exception) {
+                return null
+            }
+        }
+        return currentDirectory.takeIf { requiresWriteAccess && it.canWrite() || !requiresWriteAccess }
+    }
+
+    fun mkdirs(context: Context, storageId: String = PRIMARY, directPath: String) = mkdirs(context, buildAbsolutePath(storageId, directPath))
+
+    /**
+     * Optimized performance for creating multiple folders. The result may contains `null` elements for unsuccessful creation.
+     * For instance, if parameter `fullPaths` contains 5 elements and successful `mkdirs()` is 3, then return 3 non-null elements + 2 null elements.
+     *
+     * @param fullPaths either simple path or absolute path. Tips: use [buildAbsolutePath] or [buildSimplePath] to construct full path.
+     * @param requiresWriteAccess the folder should have write access, otherwise return `null`
+     */
+    fun mkdirs(context: Context, fullPaths: List<String>, requiresWriteAccess: Boolean = true): Array<DocumentFile?> {
+        val results = arrayOfNulls<DocumentFile>(fullPaths.size)
+        val cleanedFullPaths = fullPaths.map { buildAbsolutePath(it) }
+        for (path in findUniqueDeepestSubFolders(cleanedFullPaths)) {
+            // use java.io.File for faster performance
+            val folder = File(path).apply { mkdirs() }
+            if (folder.isDirectory && folder.canRead()) {
+                cleanedFullPaths.forEachIndexed { index, s ->
+                    if (path.hasParent(s)) {
+                        results[index] = DocumentFile.fromFile(File(getDirectorySequence(s).joinToString(prefix = "/", separator = "/")))
+                    }
+                }
+            } else {
+                var currentDirectory = getAccessibleRootDocumentFile(context, path, requiresWriteAccess) ?: continue
+                getDirectorySequence(getDirectPath(path)).forEach {
+                    try {
+                        val directory = currentDirectory.findFolder(it)
+                        if (directory == null) {
+                            currentDirectory = currentDirectory.createDirectory(it) ?: return@forEach
+                            val fullPath = currentDirectory.absolutePath
+                            cleanedFullPaths.forEachIndexed { index, s ->
+                                if (fullPath == s) {
+                                    results[index] = currentDirectory
+                                }
+                            }
+                        } else if (directory.canRead()) {
+                            currentDirectory = directory
+                            val fullPath = directory.absolutePath
+                            cleanedFullPaths.forEachIndexed { index, s ->
+                                if (fullPath == s) {
+                                    results[index] = directory
+                                }
+                            }
+                        }
+                    } catch (e: Throwable) {
+                        return@forEach
+                    }
                 }
             }
-            return currentDirectory
         }
-        return null
+        results.indices.forEach { index ->
+            results[index] = results[index]?.takeIf { requiresWriteAccess && it.canWrite() || !requiresWriteAccess }
+        }
+        return results
     }
 
     /**
      * @return `null` if you don't have storage permission.
+     * @param directPath file path without root path, e.g. `/storage/emulated/0/Music/Pop` should be written as `Music/Pop`
      */
-    fun createFile(context: Context, storageId: String = PRIMARY, filePath: String, mimeType: String = MIME_TYPE_UNKNOWN): DocumentFile? {
+    fun createFile(context: Context, storageId: String = PRIMARY, directPath: String, mimeType: String = MIME_TYPE_UNKNOWN): DocumentFile? {
         return if (storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            val file = File(SimpleStorage.externalStoragePath + "/" + filePath.removeProhibitedCharsFromFilename())
+            val file = File(buildAbsolutePath(storageId, directPath))
             file.parentFile?.mkdirs()
             if (create(file)) DocumentFile.fromFile(file) else null
         } else try {
-            val directory = mkdirsParentDirectory(context, storageId, filePath)
-            val filename = getFileNameFromPath(filePath).removeProhibitedCharsFromFilename()
-            if (filename.isEmpty()) null else directory?.createFile(mimeType, filename)
-        } catch (e: Throwable) {
+            val directory = mkdirsParentDirectory(context, storageId, directPath)
+            val filename = getFileNameFromPath(directPath).removeForbiddenCharsFromFilename()
+            if (filename.isEmpty()) null else directory?.makeFile(mimeType, filename)
+        } catch (e: Exception) {
             null
         }
     }
 
-    private fun getParentPath(filePath: String): String? = getDirectorySequence(filePath).let { it.getOrNull(it.size - 2) }
+    private fun getParentPath(path: String): String? = getDirectorySequence(path).let { it.getOrNull(it.size - 2) }
 
-    private fun mkdirsParentDirectory(context: Context, storageId: String, filePath: String): DocumentFile? {
-        val parentPath = getParentPath(filePath)
+    private fun mkdirsParentDirectory(context: Context, storageId: String, directPath: String): DocumentFile? {
+        val parentPath = getParentPath(directPath)
         return if (parentPath != null) {
             mkdirs(context, storageId, parentPath)
         } else {
-            getRootDocumentFile(context, storageId)
+            getRootDocumentFile(context, storageId, true)
         }
     }
 
-    private fun getFileNameFromPath(filePath: String) = filePath.substringAfterLast('/')
+    private fun getFileNameFromPath(path: String) = path.trimEnd('/').substringAfterLast('/')
 
-    fun recreate(context: Context, storageId: String = PRIMARY, filePath: String, mimeType: String = MIME_TYPE_UNKNOWN): DocumentFile? {
-        return if (storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            val file = File(filePath.removeProhibitedCharsFromFilename())
-            file.delete()
-            file.parentFile?.mkdirs()
-            if (create(file)) DocumentFile.fromFile(file) else null
-        } else {
-            val directory = mkdirsParentDirectory(context, storageId, filePath)
-            val filename = getFileNameFromPath(filePath).removeProhibitedCharsFromFilename()
-            if (filename.isEmpty()) {
-                return null
-            }
-            val existingFile = directory?.findFile(filename)
-            if (existingFile?.isFile == true) {
-                existingFile.delete()
-            }
-            directory?.createFile(mimeType, filename)
+    fun recreate(context: Context, storageId: String = PRIMARY, directPath: String, mimeType: String = MIME_TYPE_UNKNOWN): DocumentFile? {
+        val file = File(buildAbsolutePath(storageId, directPath))
+        file.delete()
+        file.parentFile?.mkdirs()
+        if (create(file)) {
+            return DocumentFile.fromFile(file)
+        }
+
+        val directory = mkdirsParentDirectory(context, storageId, directPath)
+        val filename = file.name
+        if (filename.isNullOrEmpty()) {
+            return null
+        }
+        return directory?.run {
+            findFile(filename)?.delete()
+            makeFile(mimeType, filename)
         }
     }
 
     private fun create(file: File): Boolean {
         return try {
-            file.createNewFile() || file.isFile && file.length() == 0L
+            file.isFile && file.length() == 0L || file.createNewFile()
         } catch (e: IOException) {
             false
         }
     }
 
-    private fun String.removeProhibitedCharsFromFilename(): String = replace(":", "_")
+    internal fun String.removeForbiddenCharsFromFilename(): String = replace(":", "_").replaceCompletely("//", "/")
 
-    private fun exploreFile(context: Context, storageId: String, filePath: String): DocumentFile? {
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+    private fun exploreFile(context: Context, storageId: String, directPath: String, documentType: DocumentFileType): DocumentFile? {
+        val rawFile = File(buildAbsolutePath(storageId, directPath))
+        if (rawFile.canRead()) {
+            return if (documentType == DocumentFileType.ANY || documentType == DocumentFileType.FILE && rawFile.isFile
+                || documentType == DocumentFileType.FOLDER && rawFile.isDirectory
+            ) {
+                DocumentFile.fromFile(rawFile)
+            } else {
+                null
+            }
+        }
+        val file = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             var current = getRootDocumentFile(context, storageId) ?: return null
-            getDirectorySequence(filePath).forEach {
+            getDirectorySequence(directPath).forEach {
                 current = current.findFile(it) ?: return null
             }
             current
         } else {
-            val rootFile = getRootDocumentFile(context, storageId)
-            if (rootFile?.isJavaFile == true) {
-                return DocumentFile.fromFile(File("${rootFile.uri.path}/$filePath"))
-            }
-            val directorySequence = getDirectorySequence(filePath).toMutableList()
-            val parentTree = mutableListOf<String>()
-            var grantedFolder: DocumentFile? = null
-            // Find granted folder tree.
+            val directorySequence = getDirectorySequence(directPath).toMutableList()
+            val parentTree = ArrayList<String>(directorySequence.size)
+            var grantedFile: DocumentFile? = null
+            // Find granted file tree.
             // For example, /storage/emulated/0/Music may not granted, but /storage/emulated/0/Music/Pop is granted by user.
             while (directorySequence.isNotEmpty()) {
                 parentTree.add(directorySequence.removeFirst())
                 val folderTree = parentTree.joinToString(separator = "/")
                 try {
-                    grantedFolder = DocumentFile.fromTreeUri(context, createDocumentUri(storageId, folderTree))
-                    if (grantedFolder?.isDirectory == true) break
+                    grantedFile = DocumentFile.fromTreeUri(context, createDocumentUri(storageId, folderTree))
+                    if (grantedFile?.canRead() == true) break
                 } catch (e: SecurityException) {
                     // ignore
                 }
             }
-            when {
-                grantedFolder == null || !grantedFolder.exists() -> null
-                directorySequence.isEmpty() -> grantedFolder
-                else -> {
-                    val fileTree = directorySequence.joinToString(prefix = "/", separator = "/")
-                    DocumentFile.fromTreeUri(context, Uri.parse(grantedFolder.uri.toString() + Uri.encode(fileTree)))
-                }
+            if (grantedFile == null || directorySequence.isEmpty()) {
+                grantedFile
+            } else {
+                val fileTree = directorySequence.joinToString(prefix = "/", separator = "/")
+                DocumentFile.fromTreeUri(context, Uri.parse(grantedFile.uri.toString() + Uri.encode(fileTree)))
             }
+        }
+        return file?.takeIf {
+            it.canRead() && (documentType == DocumentFileType.ANY
+                    || documentType == DocumentFileType.FILE && it.isFile || documentType == DocumentFileType.FOLDER && it.isDirectory)
         }
     }
 
     /**
      * For example, `Downloads/Video/Sports/` will become array `["Downloads", "Video", "Sports"]`
      */
-    private fun getDirectorySequence(file: String): List<String> {
-        val cleanedPath = cleanStoragePath(file)
-        if (cleanedPath.isNotEmpty()) {
-            return if (cleanedPath.contains("/")) {
-                cleanedPath.split("/".toRegex()).dropLastWhile { it.isEmpty() }
-            } else {
-                listOf(cleanedPath)
-            }
+    private fun getDirectorySequence(path: String) = path.split('/')
+        .filterNot { it.isBlank() }
+
+    private fun recreateAppDirectory(context: Context) = context.getAppDirectory().apply { File(this).mkdirs() }
+
+    /**
+     * Given the following `folderFullPaths`:
+     * * `/storage/9016-4EF8/Downloads`
+     * * `/storage/9016-4EF8/Downloads/Archive`
+     * * `/storage/9016-4EF8/Video`
+     * * `/storage/9016-4EF8/Music`
+     * * `/storage/9016-4EF8/Music/Favorites/Pop`
+     * * `/storage/emulated/0/Music`
+     * * `primary:Alarm/Morning`
+     * * `primary:Alarm`
+     *
+     * Then return:
+     * * `/storage/9016-4EF8/Downloads/Archive`
+     * * `/storage/9016-4EF8/Music/Favorites/Pop`
+     * * `/storage/9016-4EF8/Video`
+     * * `/storage/emulated/0/Music`
+     * * `/storage/emulated/0/Alarm/Morning`
+     */
+    fun findUniqueDeepestSubFolders(folderFullPaths: Collection<String>): List<String> {
+        val paths = folderFullPaths.map { buildAbsolutePath(it) }.distinct()
+        val results = ArrayList(paths)
+        paths.forEach { path ->
+            paths.find { it != path && path.hasParent(it) }?.let { results.remove(it) }
         }
-        return emptyList()
+        return results
     }
 
     /**
-     * It will remove double slash (`/`) when found
+     * Given the following `folderFullPaths`:
+     * * `/storage/9016-4EF8/Downloads`
+     * * `/storage/9016-4EF8/Downloads/Archive`
+     * * `/storage/9016-4EF8/Video`
+     * * `/storage/9016-4EF8/Music`
+     * * `/storage/9016-4EF8/Music/Favorites/Pop`
+     * * `/storage/emulated/0/Music`
+     * * `primary:Alarm/Morning`
+     * * `primary:Alarm`
+     *
+     * Then return:
+     * * `/storage/9016-4EF8/Downloads`
+     * * `/storage/9016-4EF8/Music`
+     * * `/storage/9016-4EF8/Video`
+     * * `/storage/emulated/0/Music`
+     * * `/storage/emulated/0/Alarm`
      */
-    private fun cleanStoragePath(file: String): String {
-        val resolvedPath = StringBuilder()
-        file.split("/".toRegex())
-            .dropLastWhile { it.isEmpty() }
-            .map { it.trim { c -> c <= ' ' || c == '/' } }
-            .filter { it.isNotEmpty() }
-            .forEach { directory -> resolvedPath.append(directory).append("/") }
-        return resolvedPath.toString().substringBeforeLast('/')
+    fun findUniqueParents(folderFullPaths: Collection<String>): List<String> {
+        val paths = folderFullPaths.map { buildAbsolutePath(it) }.distinct()
+        val results = ArrayList<String>(paths.size)
+        paths.forEach { path ->
+            if (!paths.any { it != path && path.hasParent(it) }) {
+                results.add(path)
+            }
+        }
+        return results
     }
 
-    private fun recreateAppDirectory(context: Context) = context.getAppDirectory().apply { File(this).mkdirs() }
+    @WorkerThread
+    fun findInaccessibleStorageLocations(context: Context, fullPaths: List<String>): List<String> {
+        return if (SimpleStorage.hasStoragePermission(context)) {
+            val uniqueParents = findUniqueParents(fullPaths)
+            val inaccessibleStorageLocations = ArrayList<String>(uniqueParents.size)
+            // if folder not found, try create it and check whether is successful
+            mkdirs(context, uniqueParents).forEachIndexed { index, folder ->
+                if (folder == null) {
+                    inaccessibleStorageLocations.add(uniqueParents[index])
+                }
+            }
+            inaccessibleStorageLocations
+        } else {
+            fullPaths.map { buildAbsolutePath(it) }
+        }
+    }
 
     /** Get available space in bytes. */
     @Suppress("DEPRECATION")
@@ -456,14 +697,14 @@ object DocumentFileCompat {
             privateAppDirectory.mkdirs()
             DocumentFile.fromFile(privateAppDirectory)
         } else {
-            getRootDocumentFile(context, storageId)
+            getAccessibleRootDocumentFile(context, getStorageIds(context).find { it == storageId } ?: return null)
         }
     }
 
     fun getFileNameFromUrl(url: String): String {
         return try {
             URLDecoder.decode(url, "UTF-8").substringAfterLast('/')
-        } catch (e: UnsupportedEncodingException) {
+        } catch (e: Exception) {
             url
         }
     }

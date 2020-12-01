@@ -9,6 +9,7 @@ import android.os.Environment
 import android.provider.BaseColumns
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
+import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.PublicDirectory
 import com.anggrayudi.storage.file.avoidDuplicateFileNameFor
 import java.io.File
@@ -119,9 +120,9 @@ object MediaStoreCompat {
      */
     @RequiresApi(Build.VERSION_CODES.Q)
     fun fromRelativePath(context: Context, relativePath: String): List<MediaFile> {
-        val cleanRelativePath = relativePath.trim { it == '/' }
+        val cleanRelativePath = relativePath.trimFileSeparator()
         val mediaType = mediaTypeFromRelativePath(cleanRelativePath) ?: return emptyList()
-        val relativePathWithSlashSuffix = if (relativePath.endsWith('/')) relativePath else "$relativePath/"
+        val relativePathWithSlashSuffix = relativePath.trimEnd('/') + '/'
         val selection = "${MediaStore.MediaColumns.RELATIVE_PATH} IN(?, ?)"
         val selectionArgs = arrayOf(relativePathWithSlashSuffix, cleanRelativePath)
         return context.contentResolver.query(mediaType.readUri, arrayOf(BaseColumns._ID), selection, selectionArgs, null)?.use {
@@ -134,9 +135,9 @@ object MediaStoreCompat {
      */
     @RequiresApi(Build.VERSION_CODES.Q)
     fun fromRelativePath(context: Context, relativePath: String, name: String): MediaFile? {
-        val cleanRelativePath = relativePath.trim { it == '/' }
+        val cleanRelativePath = relativePath.trimFileSeparator()
         val mediaType = mediaTypeFromRelativePath(cleanRelativePath) ?: return null
-        val relativePathWithSlashSuffix = if (relativePath.endsWith('/')) relativePath else "$relativePath/"
+        val relativePathWithSlashSuffix = relativePath.trimEnd('/') + '/'
         val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} IN(?, ?)"
         val selectionArgs = arrayOf(name, relativePathWithSlashSuffix, cleanRelativePath)
         return context.contentResolver.query(mediaType.readUri, arrayOf(BaseColumns._ID), selection, selectionArgs, null)?.use {

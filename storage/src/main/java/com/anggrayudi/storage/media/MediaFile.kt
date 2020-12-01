@@ -20,6 +20,7 @@ import com.anggrayudi.storage.callback.FileMoveCallback
 import com.anggrayudi.storage.extension.closeStream
 import com.anggrayudi.storage.extension.startCoroutineTimer
 import com.anggrayudi.storage.extension.toInt
+import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.*
 import kotlinx.coroutines.Job
 import java.io.*
@@ -129,14 +130,15 @@ class MediaFile(_context: Context, val uri: Uri) {
             val file = toJavaFile()
             return when {
                 file != null -> {
-                    file.path.substringBeforeLast('/').replaceFirst(SimpleStorage.externalStoragePath, "").trim { it == '/' } + "/"
+                    file.path.substringBeforeLast('/').replaceFirst(SimpleStorage.externalStoragePath, "").trimFileSeparator() + "/"
                 }
                 Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> {
                     try {
                         context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)?.use { cursor ->
                             if (cursor.moveToFirst()) {
-                                val realFolderPath = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DATA)).substringBeforeLast('/')
-                                realFolderPath.replaceFirst(SimpleStorage.externalStoragePath, "").trim { it == '/' } + "/"
+                                val realFolderAbsolutePath =
+                                    cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DATA)).substringBeforeLast('/')
+                                realFolderAbsolutePath.replaceFirst(SimpleStorage.externalStoragePath, "").trimFileSeparator() + "/"
                             } else ""
                         }.orEmpty()
                     } catch (e: Exception) {
@@ -159,7 +161,7 @@ class MediaFile(_context: Context, val uri: Uri) {
         val file = toJavaFile()
         return if (file != null) {
             context.contentResolver.delete(uri, null, null)
-            file.delete()
+            file.delete() || !file.exists()
         } else try {
             context.contentResolver.delete(uri, null, null) > 0
         } catch (e: SecurityException) {
@@ -258,10 +260,10 @@ class MediaFile(_context: Context, val uri: Uri) {
     }
 
     @WorkerThread
-    fun moveTo(targetFolder: DocumentFile, callback: FileMoveCallback? = null) {
+    fun moveTo(targetFolder: DocumentFile, newFilenameInTargetPath: String? = null, callback: FileMoveCallback? = null) {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sourceFile.moveTo(context, targetFolder, callback)
+            sourceFile.moveTo(context, targetFolder, newFilenameInTargetPath, callback)
             return
         }
 
@@ -295,10 +297,10 @@ class MediaFile(_context: Context, val uri: Uri) {
     }
 
     @WorkerThread
-    fun copyTo(targetFolder: DocumentFile, callback: FileCopyCallback? = null) {
+    fun copyTo(targetFolder: DocumentFile, newFilenameInTargetPath: String? = null, callback: FileCopyCallback? = null) {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sourceFile.copyTo(context, targetFolder, callback)
+            sourceFile.copyTo(context, targetFolder, newFilenameInTargetPath, callback)
             return
         }
 
@@ -332,19 +334,19 @@ class MediaFile(_context: Context, val uri: Uri) {
 
     private fun createTargetFile(targetDirectory: DocumentFile, callback: FileCallback?): DocumentFile? {
         try {
-            val targetFolder = DocumentFileCompat.mkdirs(context, targetDirectory.storageId, targetDirectory.filePath)
+            val targetFolder = DocumentFileCompat.mkdirs(context, targetDirectory.storageId, targetDirectory.directPath)
             if (targetFolder == null) {
                 callback?.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
                 return null
             }
 
             var targetFile = targetFolder.findFile(name.orEmpty())
-            if (targetFile?.isFile == true) {
+            if (targetFile?.exists() == true) {
                 callback?.onFailed(ErrorCode.TARGET_FILE_EXISTS)
                 return null
             }
 
-            targetFile = targetFolder.createFile(type ?: DocumentFileCompat.MIME_TYPE_UNKNOWN, name.orEmpty())
+            targetFile = targetFolder.makeFile(type ?: DocumentFileCompat.MIME_TYPE_UNKNOWN, name.orEmpty())
             if (targetFile == null) {
                 callback?.onFailed(ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
             } else {

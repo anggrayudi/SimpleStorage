@@ -14,7 +14,7 @@ If you want to know more about the background of this library, please read this 
 Adding Simple Storage into your project is simple:
 
 ```groovy
-implementation "com.anggrayudi:storage:0.2.0"
+implementation "com.anggrayudi:storage:0.3.0"
 ```
 
 Snapshots can be found [here](https://oss.sonatype.org/#nexus-search;quick~com.anggrayudi).
@@ -63,8 +63,7 @@ class MainActivity : AppCompatActivity() {
                     .negativeButton(android.R.string.cancel)
                     .positiveButton {
                         storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, rootStorageType)
-                    }
-                    .show()
+                    }.show()
             }
 
             override fun onCancelledByUser() {
@@ -118,9 +117,9 @@ You can read file with helper functions in `DocumentFileCompat` and `MediaStoreC
 
 #### Example
 ```kotlin
-val fileFromExternalStorage = DocumentFileCompat.fromPath(context, filePath = "Downloads/MyMovie.mp4")
+val fileFromExternalStorage = DocumentFileCompat.fromPath(context, directPath = "Downloads/MyMovie.mp4")
 
-val fileFromSdCard = DocumentFileCompat.fromPath(context, storageId = "9016-4EF8", filePath = "Downloads/MyMovie.mp4")
+val fileFromSdCard = DocumentFileCompat.fromPath(context, storageId = "9016-4EF8", directPath = "Downloads/MyMovie.mp4")
 ```
 
 ### `MediaStoreCompat`
@@ -148,7 +147,7 @@ Since `java.io.File` has been deprecated in Android 10, thus you have to use `Do
 Simple Storage adds Kotlin extension functions to `DocumentFile`, so you can manage files like this:
 * `DocumentFile.storageId`
 * `DocumentFile.storageType`
-* `DocumentFile.filePath`
+* `DocumentFile.directPath`
 * `DocumentFile.copyTo()`
 * `DocumentFile.moveTo()`
 * `DocumentFile.search()`

@@ -47,9 +47,17 @@ dependencies {
     implementation deps.timber
 
     testImplementation deps.junit
+    testImplementation deps.mockito.core
+    testImplementation deps.mockito.all
+    testImplementation deps.mockito.inline
     testImplementation deps.mockito.kotlin
+    testImplementation deps.robolectric
+    testImplementation deps.powermock.api
+    testImplementation deps.powermock.junit4
+
     androidTestImplementation deps.atsl.ext_junit
     androidTestImplementation deps.espresso
+    androidTestImplementation deps.mockito.android
 }
 
 ext {

@@ -21,11 +21,10 @@ interface FileMoveCallback : FileCallback {
 
     /**
      * @param file can be [DocumentFile] or [MediaFile]
-     * @return Time interval to watch copy progress in milliseconds, otherwise `0` if you don't want to watch at all.
+     * @return Time interval to watch file copy progress in milliseconds, otherwise `0` if you don't want to watch at all.
+     * Setting negative value will cancel the action.
      */
-    fun onStartMoving(file: Any): Long {
-        return 0
-    }
+    fun onStartMoving(file: Any): Long = 0
 
     /**
      * Only called if the returned [onStartMoving] greater than `0`
