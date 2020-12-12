@@ -14,10 +14,14 @@ internal class FragmentWrapper(private val fragment: Fragment) : ComponentWrappe
     override val context: Context
         get() = fragment.requireContext()
 
+    override val activity: FragmentActivity
+        get() = fragment.requireActivity()
+
     override fun startActivityForResult(intent: Intent, requestCode: Int) {
         fragment.startActivityForResult(intent, requestCode)
     }
 
-    override val activity: FragmentActivity
-        get() = fragment.requireActivity()
+    override fun checkPermissions(permissions: Array<String>, requestCode: Int) {
+        fragment.requestPermissions(permissions, requestCode)
+    }
 }
