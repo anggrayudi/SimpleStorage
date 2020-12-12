@@ -32,6 +32,10 @@ allprojects {
 }
 ```
 
+### Java Compatibility
+
+Simple Storage is built in Kotlin. Follow this [documentation](JAVA_COMPATIBILITY.md) to use it in your Java project.
+
 ## Request Storage Access
 
 Although user has granted read and write permissions during runtime, your app may still does not
