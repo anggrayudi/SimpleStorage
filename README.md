@@ -114,8 +114,8 @@ You can read file with helper functions in `DocumentFileCompat` and `MediaStoreC
 
 ### `DocumentFileCompat`
 
-* `DocumentFileCompat.fromPath()`
 * `DocumentFileCompat.fromFullPath()`
+* `DocumentFileCompat.fromSimplePath()`
 * `DocumentFileCompat.fromFile()`
 * `DocumentFileCompat.fromPublicFolder()`
 

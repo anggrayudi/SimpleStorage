@@ -82,7 +82,6 @@ object DocumentFileCompat {
      * @return Given `storage/6881-2249/Music/My Love.mp3`, then return `Music/My Love.mp3`.
      *          May return empty `String` if it is a root path of the storage.
      */
-    // TODO: 12/12/20 Find better terminology for direct path
     @JvmStatic
     fun getBasePath(fullPath: String): String {
         val basePath = if (fullPath.startsWith('/')) {

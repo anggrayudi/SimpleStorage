@@ -96,13 +96,12 @@ val file = DocumentFileCompat.fromSimplePath(context, "AAAA-BBBB", "Music/My Lov
 #### In Java
 
 ```java
-DocumentFile file = DocumentFileCompat.INSTANCE.fromSimplePath(context, "AAAA-BBBB", "Music/My Love.mp3", DocumentFileType.ANY);
+DocumentFile file = DocumentFileCompat.INSTANCE.fromSimplePath(context, "AAAA-BBBB", "Music/My Love.mp3");
 ```
 
 In Java, you need to append `INSTANCE` after the utility class name.
 Anyway, if the function is annotated with `@JvmStatic`, you don't need to append `INSTANCE`.
 Just go to the source code to check whether it has the annotation.
-
 
 ## Request Storage Access
 
