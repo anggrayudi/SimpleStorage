@@ -102,3 +102,79 @@ DocumentFile file = DocumentFileCompat.INSTANCE.fromSimplePath(context, "AAAA-BB
 In Java, you need to append `INSTANCE` after the utility class name.
 Anyway, if the function is annotated with `@JvmStatic`, you don't need to append `INSTANCE`.
 Just go to the source code to check whether it has the annotation.
+
+
+## Request Storage Access
+
+Although user has granted read and write permissions during runtime, your app may still does not
+have full access to the storage, thus you cannot search, move and copy files. To enable full disk access,
+you need to open SAF and let user grant URI permissions for read and write access. This library provides you
+an helper class named `SimpleStorage` to ease the request process:
+
+```java
+public class MainActivity extends AppCompatActivity {
+
+    private static final int REQUEST_CODE_STORAGE_ACCESS = 8;
+
+    private SimpleStorage storage;
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        setupSimpleStorage(savedInstanceState);
+        findViewById(R.id.btnRequestStorageAccess).setOnClickListener(v ->
+                storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, StorageType.EXTERNAL));
+    }
+
+    private void setupSimpleStorage(Bundle savedInstanceState) {
+        storage = new SimpleStorage(this, savedInstanceState);
+        storage.setStorageAccessCallback(new StorageAccessCallback() {
+            @Override
+            public void onRootPathNotSelected(int requestCode, @NotNull String rootPath, @NotNull StorageType rootStorageType) {
+                /*
+                Show dialog to tell user that the root path of storage is not selected.
+                When user tap OK button, request storage access again.
+                 */
+            }
+
+            @Override
+            public void onStoragePermissionDenied(int requestCode) {
+                /*
+                Request runtime permissions for Manifest.permission.WRITE_EXTERNAL_STORAGE
+                and Manifest.permission.READ_EXTERNAL_STORAGE
+                */
+            }
+
+            @Override
+            public void onRootPathPermissionGranted(int requestCode, @NotNull DocumentFile root) {
+                Toast.makeText(getBaseContext(), "Storage access has been granted for ${root.storageId}", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onCancelledByUser(int requestCode) {
+                Toast.makeText(getBaseContext(), "Cancelled by user", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        storage.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        storage.onSaveInstanceState(outState);
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        storage.onRestoreInstanceState(savedInstanceState);
+    }
+}
+```

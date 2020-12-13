@@ -21,23 +21,31 @@ import java.io.IOException
  */
 object MediaStoreCompat {
 
+    @JvmStatic
     val volumeName: String
         @SuppressLint("InlinedApi")
         get() = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) MediaStore.VOLUME_EXTERNAL else MediaStore.VOLUME_EXTERNAL_PRIMARY
 
+    @JvmStatic
     @RequiresApi(Build.VERSION_CODES.Q)
     fun createDownload(context: Context, file: FileDescription): MediaFile? {
         return createMedia(context, MediaType.DOWNLOADS, Environment.DIRECTORY_DOWNLOADS, file)
     }
 
+    @JvmOverloads
+    @JvmStatic
     fun createImage(context: Context, file: FileDescription, relativeParentDirectory: ImageMediaDirectory? = null): MediaFile? {
         return createMedia(context, MediaType.IMAGE, relativeParentDirectory?.folderName, file)
     }
 
+    @JvmOverloads
+    @JvmStatic
     fun createAudio(context: Context, file: FileDescription, relativeParentDirectory: AudioMediaDirectory? = null): MediaFile? {
         return createMedia(context, MediaType.AUDIO, relativeParentDirectory?.folderName, file)
     }
 
+    @JvmOverloads
+    @JvmStatic
     fun createVideo(context: Context, file: FileDescription, relativeParentDirectory: VideoMediaDirectory? = null): MediaFile? {
         return createMedia(context, MediaType.VIDEO, relativeParentDirectory?.folderName, file)
     }
@@ -87,10 +95,12 @@ object MediaStoreCompat {
         }
     }
 
+    @JvmStatic
     fun fromMediaId(context: Context, mediaType: MediaType, id: String): MediaFile {
         return MediaFile(context, mediaType.writeUri.buildUpon().appendPath(id).build())
     }
 
+    @JvmStatic
     fun fromFileName(context: Context, mediaType: MediaType, name: String): MediaFile? {
         val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
         context.contentResolver.query(mediaType.readUri, arrayOf(BaseColumns._ID), selection, arrayOf(name), null)?.use {
@@ -112,12 +122,14 @@ object MediaStoreCompat {
     /**
      * @see MediaStore.MediaColumns.RELATIVE_PATH
      */
+    @JvmStatic
     @RequiresApi(Build.VERSION_CODES.Q)
     fun fromRelativePath(context: Context, publicDirectory: PublicDirectory) = fromRelativePath(context, publicDirectory.folderName)
 
     /**
      * @see MediaStore.MediaColumns.RELATIVE_PATH
      */
+    @JvmStatic
     @RequiresApi(Build.VERSION_CODES.Q)
     fun fromRelativePath(context: Context, relativePath: String): List<MediaFile> {
         val cleanRelativePath = relativePath.trimFileSeparator()
@@ -133,6 +145,7 @@ object MediaStoreCompat {
     /**
      * @see MediaStore.MediaColumns.RELATIVE_PATH
      */
+    @JvmStatic
     @RequiresApi(Build.VERSION_CODES.Q)
     fun fromRelativePath(context: Context, relativePath: String, name: String): MediaFile? {
         val cleanRelativePath = relativePath.trimFileSeparator()
@@ -145,6 +158,7 @@ object MediaStoreCompat {
         }
     }
 
+    @JvmStatic
     fun fromFileNameContains(context: Context, mediaType: MediaType, containsName: String): List<MediaFile> {
         val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} LIKE '%$containsName%'"
         return context.contentResolver.query(mediaType.readUri, arrayOf(BaseColumns._ID), selection, null, null)?.use {
@@ -152,6 +166,7 @@ object MediaStoreCompat {
         }.orEmpty()
     }
 
+    @JvmStatic
     fun fromMimeType(context: Context, mediaType: MediaType, mimeType: String): List<MediaFile> {
         val selection = "${MediaStore.MediaColumns.MIME_TYPE} = ?"
         return context.contentResolver.query(mediaType.readUri, arrayOf(BaseColumns._ID), selection, arrayOf(mimeType), null)?.use {
@@ -159,6 +174,7 @@ object MediaStoreCompat {
         }.orEmpty()
     }
 
+    @JvmStatic
     fun fromMediaType(context: Context, mediaType: MediaType): List<MediaFile> {
         return context.contentResolver.query(mediaType.readUri, arrayOf(BaseColumns._ID), null, null, null)?.use {
             fromCursorToMediaFiles(context, mediaType, it)

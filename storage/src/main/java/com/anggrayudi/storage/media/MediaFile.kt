@@ -334,7 +334,8 @@ class MediaFile(_context: Context, val uri: Uri) {
 
     private fun createTargetFile(targetDirectory: DocumentFile, callback: FileCallback?): DocumentFile? {
         try {
-            val targetFolder = DocumentFileCompat.mkdirs(context, targetDirectory.storageId, targetDirectory.directPath)
+            val targetFolder =
+                DocumentFileCompat.mkdirs(context, DocumentFileCompat.buildAbsolutePath(targetDirectory.storageId, targetDirectory.directPath))
             if (targetFolder == null) {
                 callback?.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
                 return null

@@ -40,6 +40,7 @@ object DocumentFileCompat {
 
     val FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION = Regex("(.*?) \\(\\d+\\)")
 
+    @JvmStatic
     fun isRootUri(uri: Uri): Boolean {
         val path = uri.path ?: return false
         return uri.authority == EXTERNAL_STORAGE_AUTHORITY && path.indexOf(':') == path.length - 1
@@ -48,6 +49,7 @@ object DocumentFileCompat {
     /**
      * If given [Uri] with path `/tree/primary:Downloads/MyVideo.mp4`, then return `primary`.
      */
+    @JvmStatic
     fun getStorageId(uri: Uri): String {
         val path = uri.path.orEmpty()
         return if (uri.scheme == ContentResolver.SCHEME_FILE) {
@@ -61,6 +63,7 @@ object DocumentFileCompat {
      * @param fullPath For SD card can be full path `storage/6881-2249/Music` or simple path `6881-2249:Music`.
      *             For primary storage can be `/storage/emulated/0/Music` or simple path `primary:Music`.
      */
+    @JvmStatic
     fun getStorageId(fullPath: String): String {
         return if (fullPath.startsWith('/')) {
             if (fullPath.startsWith(SimpleStorage.externalStoragePath)) {
@@ -80,6 +83,7 @@ object DocumentFileCompat {
      *          May return empty `String` if it is a root path of the storage.
      */
     // TODO: 12/12/20 Find better terminology for direct path
+    @JvmStatic
     fun getDirectPath(fullPath: String): String {
         val directPath = if (fullPath.startsWith('/')) {
             val externalStoragePath = SimpleStorage.externalStoragePath
@@ -99,6 +103,8 @@ object DocumentFileCompat {
      * @param directPath If in Downloads folder of SD card, it will be `Downloads/MyMovie.mp4`.
      *                 If in external storage it will be `Downloads/MyMovie.mp4` as well.
      */
+    @JvmOverloads
+    @JvmStatic
     fun fromSimplePath(
         context: Context,
         storageId: String = PRIMARY,
@@ -120,6 +126,8 @@ object DocumentFileCompat {
      *                          You can input `9016-4EF8:` or `/storage/9016-4EF8` for SD card's root path.
      * @see DocumentFile.absolutePath
      */
+    @JvmOverloads
+    @JvmStatic
     fun fromFullPath(
         context: Context,
         fullPath: String,
@@ -145,6 +153,8 @@ object DocumentFileCompat {
      * @param considerRawFile `true` if you want to consider faster performance with [File]
      * @return `TreeDocumentFile` if `considerRawFile` is false, or if the given [File] can be read with URI permission only, otherwise return `RawDocumentFile`
      */
+    @JvmOverloads
+    @JvmStatic
     fun fromFile(
         context: Context,
         file: File,
@@ -165,6 +175,8 @@ object DocumentFileCompat {
     /**
      * Returns `null` if folder does not exist or you have no permission on this directory
      */
+    @JvmOverloads
+    @JvmStatic
     @Suppress("DEPRECATION")
     fun fromPublicFolder(
         context: Context,
@@ -194,6 +206,8 @@ object DocumentFileCompat {
      * @see Environment.isExternalStorageManager
      * @see getRootRawFile
      */
+    @JvmOverloads
+    @JvmStatic
     fun getRootDocumentFile(
         context: Context,
         storageId: String,
@@ -214,8 +228,11 @@ object DocumentFileCompat {
      *
      * For example, given `/storage/emulated/0/Music/Metal`, then return `/storage/emulated/0/Music`
      *
+     * @param fullPath construct it using [buildAbsolutePath] or [buildSimplePath]
      * @return `null` if accessible root path is not found in [ContentResolver.getPersistedUriPermissions], or the folder does not exist.
      */
+    @JvmOverloads
+    @JvmStatic
     fun getAccessibleRootDocumentFile(
         context: Context,
         fullPath: String,
@@ -248,14 +265,6 @@ object DocumentFileCompat {
         return null
     }
 
-    fun getAccessibleRootDocumentFile(
-        context: Context,
-        storageId: String,
-        directPath: String = "",
-        requiresWriteAccess: Boolean = false,
-        considerRawFile: Boolean = true
-    ) = getAccessibleRootDocumentFile(context, buildAbsolutePath(storageId, directPath), requiresWriteAccess, considerRawFile)
-
     /**
      * To get root file access on API 30+, you need to have full storage access by
      * granting [Manifest.permission.MANAGE_EXTERNAL_STORAGE] in runtime.
@@ -264,6 +273,8 @@ object DocumentFileCompat {
      * @see Environment.isExternalStorageManager
      * @return `null` if you have no full storage access
      */
+    @JvmOverloads
+    @JvmStatic
     @Suppress("DEPRECATION")
     fun getRootRawFile(storageId: String, requiresWriteAccess: Boolean = false): File? {
         val rootFile = if (storageId == PRIMARY) {
@@ -274,6 +285,7 @@ object DocumentFileCompat {
         return rootFile.takeIf { rootFile.canRead() && (requiresWriteAccess && rootFile.canWrite() || !requiresWriteAccess) }
     }
 
+    @JvmStatic
     fun buildAbsolutePath(storageId: String = PRIMARY, directPath: String): String {
         val cleanDirectPath = directPath.trimEnd('/').removeForbiddenCharsFromFilename()
         return if (storageId == PRIMARY) {
@@ -283,6 +295,7 @@ object DocumentFileCompat {
         }
     }
 
+    @JvmStatic
     fun buildAbsolutePath(simplePath: String): String {
         val path = simplePath.trimEnd('/')
         return if (path.startsWith('/')) {
@@ -292,25 +305,32 @@ object DocumentFileCompat {
         }
     }
 
+    @JvmStatic
     fun buildSimplePath(storageId: String = PRIMARY, directPath: String): String {
         val cleanDirectPath = directPath.removeForbiddenCharsFromFilename().trimFileSeparator()
         return "$storageId:$cleanDirectPath"
     }
 
+    @JvmStatic
     fun buildSimplePath(absolutePath: String): String {
         return buildSimplePath(getStorageId(absolutePath), getDirectPath(absolutePath))
     }
 
+    @JvmOverloads
+    @JvmStatic
     fun createDocumentUri(storageId: String, directPath: String = ""): Uri =
         Uri.parse("content://$EXTERNAL_STORAGE_AUTHORITY/tree/" + Uri.encode("$storageId:$directPath"))
 
+    @JvmStatic
     fun isAccessGranted(context: Context, storageId: String): Boolean {
         return storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
                 || getRootDocumentFile(context, storageId, true) != null
     }
 
+    @JvmStatic
     fun doesExist(context: Context, fullPath: String) = fromFullPath(context, fullPath)?.exists() == true
 
+    @JvmStatic
     fun delete(context: Context, fullPath: String) = fromFullPath(context, fullPath)?.delete() == true
 
     /**
@@ -320,6 +340,8 @@ object DocumentFileCompat {
      * recreated by user. However, you should not worry about this on API 28 and lower, because URI permission always granted for root path
      * and rooth path itself can't be deleted.
      */
+    @JvmOverloads
+    @JvmStatic
     fun isStorageUriPermissionGranted(context: Context, storageId: String, directPath: String = ""): Boolean {
         val root = createDocumentUri(storageId, directPath)
         return context.contentResolver.persistedUriPermissions.any { it.isReadPermission && it.isWritePermission && it.uri == root }
@@ -329,6 +351,7 @@ object DocumentFileCompat {
      * Get all storage IDs on this device. The first index is primary storage.
      * Prior to API 28, retrieving storage ID for SD card only applicable if URI permission is granted for read & write access.
      */
+    @JvmStatic
     fun getStorageIds(context: Context): List<String> {
         val externalStoragePath = SimpleStorage.externalStoragePath
         val storageIds = ContextCompat.getExternalFilesDirs(context, null).map {
@@ -354,14 +377,18 @@ object DocumentFileCompat {
         }
     }
 
+    @JvmStatic
     fun getSdCardIds(context: Context) = getStorageIds(context).filter { it != PRIMARY }
 
     /**
      * Create folders. You should do this process in background.
      *
+     * @param fullPath construct it using [buildAbsolutePath] or [buildSimplePath]
      * @param requiresWriteAccess the folder should have write access, otherwise return `null`
      * @return `null` if you have no storage permission.
      */
+    @JvmOverloads
+    @JvmStatic
     fun mkdirs(context: Context, fullPath: String, requiresWriteAccess: Boolean = true, considerRawFile: Boolean = true): DocumentFile? {
         if (considerRawFile && fullPath.startsWith('/')) {
             val folder = File(fullPath.removeForbiddenCharsFromFilename()).apply { mkdirs() }
@@ -385,9 +412,6 @@ object DocumentFileCompat {
         return currentDirectory.takeIf { requiresWriteAccess && it.canWrite() || !requiresWriteAccess }
     }
 
-    fun mkdirs(context: Context, storageId: String = PRIMARY, directPath: String, considerRawFile: Boolean = true) =
-        mkdirs(context, buildAbsolutePath(storageId, directPath), considerRawFile)
-
     /**
      * Optimized performance for creating multiple folders. The result may contains `null` elements for unsuccessful creation.
      * For instance, if parameter `fullPaths` contains 5 elements and successful `mkdirs()` is 3, then return 3 non-null elements + 2 null elements.
@@ -395,6 +419,8 @@ object DocumentFileCompat {
      * @param fullPaths either simple path or absolute path. Tips: use [buildAbsolutePath] or [buildSimplePath] to construct full path.
      * @param requiresWriteAccess the folder should have write access, otherwise return `null`
      */
+    @JvmOverloads
+    @JvmStatic
     fun mkdirs(
         context: Context,
         fullPaths: List<String>,
@@ -450,6 +476,8 @@ object DocumentFileCompat {
      * @return `null` if you don't have storage permission.
      * @param directPath file path without root path, e.g. `/storage/emulated/0/Music/Pop` should be written as `Music/Pop`
      */
+    @JvmOverloads
+    @JvmStatic
     fun createFile(
         context: Context,
         storageId: String = PRIMARY,
@@ -475,7 +503,7 @@ object DocumentFileCompat {
     private fun mkdirsParentDirectory(context: Context, storageId: String, directPath: String, considerRawFile: Boolean): DocumentFile? {
         val parentPath = getParentPath(directPath)
         return if (parentPath != null) {
-            mkdirs(context, storageId, parentPath, considerRawFile)
+            mkdirs(context, buildAbsolutePath(storageId, parentPath), considerRawFile)
         } else {
             getRootDocumentFile(context, storageId, true, considerRawFile)
         }
@@ -483,6 +511,8 @@ object DocumentFileCompat {
 
     private fun getFileNameFromPath(path: String) = path.trimEnd('/').substringAfterLast('/')
 
+    @JvmOverloads
+    @JvmStatic
     fun recreate(
         context: Context,
         storageId: String = PRIMARY,
@@ -597,6 +627,7 @@ object DocumentFileCompat {
      * * `/storage/emulated/0/Music`
      * * `/storage/emulated/0/Alarm/Morning`
      */
+    @JvmStatic
     fun findUniqueDeepestSubFolders(folderFullPaths: Collection<String>): List<String> {
         val paths = folderFullPaths.map { buildAbsolutePath(it) }.distinct()
         val results = ArrayList(paths)
@@ -624,6 +655,7 @@ object DocumentFileCompat {
      * * `/storage/emulated/0/Music`
      * * `/storage/emulated/0/Alarm`
      */
+    @JvmStatic
     fun findUniqueParents(folderFullPaths: Collection<String>): List<String> {
         val paths = folderFullPaths.map { buildAbsolutePath(it) }.distinct()
         val results = ArrayList<String>(paths.size)
@@ -635,6 +667,7 @@ object DocumentFileCompat {
         return results
     }
 
+    @JvmStatic
     @WorkerThread
     fun findInaccessibleStorageLocations(context: Context, fullPaths: List<String>): List<String> {
         return if (SimpleStorage.hasStoragePermission(context)) {
@@ -653,6 +686,7 @@ object DocumentFileCompat {
     }
 
     /** Get available space in bytes. */
+    @JvmStatic
     @Suppress("DEPRECATION")
     fun getFreeSpace(context: Context, storageId: String): Long {
         try {
@@ -684,6 +718,7 @@ object DocumentFileCompat {
     }
 
     /** Get available space in bytes. */
+    @JvmStatic
     @Suppress("DEPRECATION")
     fun getUsedSpace(context: Context, storageId: String): Long {
         try {
@@ -714,6 +749,7 @@ object DocumentFileCompat {
         return 0
     }
 
+    @JvmStatic
     @Suppress("DEPRECATION")
     fun getStorageCapacity(context: Context, storageId: String): Long {
         try {
@@ -755,6 +791,7 @@ object DocumentFileCompat {
         }
     }
 
+    @JvmStatic
     fun getFileNameFromUrl(url: String): String {
         return try {
             URLDecoder.decode(url, "UTF-8").substringAfterLast('/')

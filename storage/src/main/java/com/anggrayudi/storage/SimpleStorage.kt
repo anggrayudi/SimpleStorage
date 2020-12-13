@@ -285,13 +285,16 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         private const val REQUEST_CODE_FOLDER_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFolderPicker"
         private const val REQUEST_CODE_FILE_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFilePicker"
 
+        @JvmStatic
         @Suppress("DEPRECATION")
         val externalStoragePath: String
             get() = Environment.getExternalStorageDirectory().absolutePath
 
+        @JvmStatic
         val isSdCardPresent: Boolean
             get() = Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED
 
+        @JvmStatic
         val defaultExternalStorageIntent: Intent
             get() = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
                 if (Build.VERSION.SDK_INT >= 26) {
@@ -302,6 +305,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         /**
          * For read and write permissions
          */
+        @JvmStatic
         fun hasStoragePermission(context: Context): Boolean {
             return checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
                     && hasStorageReadPermission(context)
@@ -310,6 +314,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         /**
          * For read permission only
          */
+        @JvmStatic
         fun hasStorageReadPermission(context: Context): Boolean {
             return checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
@@ -317,6 +322,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         /**
          * Full storage access means you have access to [direct file path](https://developer.android.com/training/data-storage/shared/media#direct-file-paths)
          */
+        @JvmStatic
         @SuppressLint("NewApi")
         fun hasFullStorageAccess(context: Context, file: File? = null) = when {
             Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> file != null && file.absolutePath.startsWith(externalStoragePath)
@@ -334,6 +340,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
          *
          * Read [Count Your SAF Uri Persisted Permissions!](https://commonsware.com/blog/2020/06/13/count-your-saf-uri-permission-grants.html)
          */
+        @JvmStatic
         fun cleanupRedundantUriPermissions(resolver: ContentResolver) {
             thread { // <= comment this line to run the unit test
                 // e.g. content://com.android.externalstorage.documents/tree/primary%3AMusic

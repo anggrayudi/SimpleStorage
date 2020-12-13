@@ -514,7 +514,7 @@ private fun DocumentFile.createTargetFile(
     callback: FileCallback?
 ): DocumentFile? {
     try {
-        val targetFolder = DocumentFileCompat.mkdirs(context, targetStorageId, targetFolderDirectPath)
+        val targetFolder = DocumentFileCompat.mkdirs(context, DocumentFileCompat.buildAbsolutePath(targetStorageId, targetFolderDirectPath))
         if (targetFolder == null) {
             callback?.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
             return null
