@@ -9,6 +9,7 @@ import com.anggrayudi.storage.file.StorageType
  */
 interface StorageAccessCallback {
 
+    @JvmDefault
     fun onCancelledByUser(requestCode: Int) {
         // default implementation
     }

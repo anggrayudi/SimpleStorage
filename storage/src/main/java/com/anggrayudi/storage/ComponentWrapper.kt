@@ -15,4 +15,6 @@ internal interface ComponentWrapper {
     val activity: FragmentActivity
 
     fun startActivityForResult(intent: Intent, requestCode: Int)
+
+    fun checkPermissions(permissions: Array<String>, requestCode: Int)
 }

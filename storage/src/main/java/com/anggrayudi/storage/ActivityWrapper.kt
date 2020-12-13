@@ -2,6 +2,7 @@ package com.anggrayudi.storage
 
 import android.content.Context
 import android.content.Intent
+import androidx.core.app.ActivityCompat
 import androidx.fragment.app.FragmentActivity
 
 /**
@@ -14,10 +15,14 @@ internal class ActivityWrapper(private val _activity: FragmentActivity) : Compon
     override val context: Context
         get() = _activity
 
+    override val activity: FragmentActivity
+        get() = _activity
+
     override fun startActivityForResult(intent: Intent, requestCode: Int) {
         _activity.startActivityForResult(intent, requestCode)
     }
 
-    override val activity: FragmentActivity
-        get() = _activity
+    override fun checkPermissions(permissions: Array<String>, requestCode: Int) {
+        ActivityCompat.requestPermissions(_activity, permissions, requestCode)
+    }
 }

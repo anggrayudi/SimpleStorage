@@ -1,7 +1,6 @@
 package com.anggrayudi.storage
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ContentResolver
 import android.content.Context
@@ -17,18 +16,17 @@ import android.provider.Settings
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat.checkSelfPermission
-import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
-import com.anggrayudi.storage.extension.getAppDirectory
+import com.anggrayudi.storage.extension.fromSingleUri
+import com.anggrayudi.storage.extension.fromTreeUri
 import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.StorageType
-import com.anggrayudi.storage.file.isModifiable
+import com.anggrayudi.storage.file.canModify
 import timber.log.Timber
-import java.io.File
 import kotlin.concurrent.thread
 
 /**
@@ -114,7 +112,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             return
         }
         if (initialRootPath == StorageType.EXTERNAL && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !isSdCardPresent) {
-            val root = DocumentFileCompat.getRootDocumentFile(wrapper.context, DocumentFileCompat.PRIMARY) ?: return
+            val root = DocumentFileCompat.getRootDocumentFile(wrapper.context, DocumentFileCompat.PRIMARY, true) ?: return
             saveUriPermission(root.uri)
             storageAccessCallback?.onRootPathPermissionGranted(requestCode, root)
             return
@@ -181,12 +179,12 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 val storageId = DocumentFileCompat.getStorageId(uri)
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageId == DocumentFileCompat.PRIMARY) {
                     saveUriPermission(uri)
-                    storageAccessCallback?.onRootPathPermissionGranted(requestCode, DocumentFile.fromTreeUri(wrapper.context, uri) ?: return)
+                    storageAccessCallback?.onRootPathPermissionGranted(requestCode, wrapper.context.fromTreeUri(uri) ?: return)
                     return
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R || DocumentFileCompat.isRootUri(uri)) {
                     if (saveUriPermission(uri)) {
-                        storageAccessCallback?.onRootPathPermissionGranted(requestCode, DocumentFile.fromTreeUri(wrapper.context, uri) ?: return)
+                        storageAccessCallback?.onRootPathPermissionGranted(requestCode, wrapper.context.fromTreeUri(uri) ?: return)
                     } else {
                         storageAccessCallback?.onStoragePermissionDenied(requestCode)
                     }
@@ -212,11 +210,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                     return
                 }
                 val uri = data?.data ?: return
-                val folder = try {
-                    DocumentFile.fromTreeUri(wrapper.context, uri)
-                } catch (e: SecurityException) {
-                    null
-                }
+                val folder = wrapper.context.fromTreeUri(uri)
                 val storageId = DocumentFileCompat.getStorageId(uri)
                 val storageType = when (storageId) {
                     "" -> null
@@ -236,7 +230,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 }
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageType == StorageType.EXTERNAL
                     || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && saveUriPermission(uri)
-                    || uri.authority != DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY && folder.isModifiable
+                    || uri.authority != DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY && folder.canModify
                     || DocumentFileCompat.isStorageUriPermissionGranted(wrapper.context, storageId)
                 ) {
                     folderPickerCallback?.onFolderSelected(requestCode, folder)
@@ -250,12 +244,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                     filePickerCallback?.onCancelledByUser(requestCode)
                     return
                 }
-                val uri = data?.data ?: return
-                val file = try {
-                    DocumentFile.fromSingleUri(wrapper.context, uri)
-                } catch (e: SecurityException) {
-                    null
-                }
+                val file = wrapper.context.fromSingleUri(data?.data ?: return)
                 if (file == null || !file.canRead()) {
                     filePickerCallback?.onStoragePermissionDenied(requestCode, file)
                 } else {
@@ -268,11 +257,13 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     fun onSaveInstanceState(outState: Bundle) {
         outState.putInt(REQUEST_CODE_STORAGE_ACCESS, requestCodeStorageAccess)
         outState.putInt(REQUEST_CODE_FOLDER_PICKER, requestCodeFolderPicker)
+        outState.putInt(REQUEST_CODE_FILE_PICKER, requestCodeFilePicker)
     }
 
     fun onRestoreInstanceState(savedInstanceState: Bundle) {
         requestCodeStorageAccess = savedInstanceState.getInt(REQUEST_CODE_STORAGE_ACCESS)
         requestCodeFolderPicker = savedInstanceState.getInt(REQUEST_CODE_FOLDER_PICKER)
+        requestCodeFilePicker = savedInstanceState.getInt(REQUEST_CODE_FILE_PICKER)
     }
 
     private fun saveUriPermission(root: Uri) = try {
@@ -285,51 +276,22 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         false
     }
 
-    /**
-     * Max persistable URI per app is 128, so cleanup redundant URI permissions. Given the following URIs:
-     * 1) `content://com.android.externalstorage.documents/tree/primary%3AMovies`
-     * 2) `content://com.android.externalstorage.documents/tree/primary%3AMovies%2FHorror`
-     *
-     * Then remove the second URI, because it has been covered by the first URI.
-     *
-     * Read [Count Your SAF Uri Persisted Permissions!](https://commonsware.com/blog/2020/06/13/count-your-saf-uri-permission-grants.html)
-     */
-    fun cleanupRedundantUriPermissions(resolver: ContentResolver) {
-        thread {
-            val persistedUris = resolver.persistedUriPermissions.filter { it.isReadPermission && it.isWritePermission }.map { it.uri.toString() }
-            val writeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            val subFolderUris = findSubFolders(persistedUris)
-            subFolderUris.forEach {
-                resolver.releasePersistableUriPermission(Uri.parse(it), writeFlags)
-                Timber.d("Removed redundant URI permission => $it")
-            }
-        }
-    }
-
-    internal fun findSubFolders(stringUris: List<String>): Set<String> {
-        val subUris = mutableSetOf<String>()
-        stringUris.forEach { parent ->
-            stringUris.forEach { child ->
-                if (child.startsWith(parent) && child.length > parent.length) {
-                    subUris.add(child)
-                }
-            }
-        }
-        return subUris
-    }
-
     companion object {
 
         private const val REQUEST_CODE_STORAGE_ACCESS = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeStorageAccess"
         private const val REQUEST_CODE_FOLDER_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFolderPicker"
+        private const val REQUEST_CODE_FILE_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFilePicker"
 
+        @JvmStatic
         @Suppress("DEPRECATION")
         val externalStoragePath: String
             get() = Environment.getExternalStorageDirectory().absolutePath
 
+        @JvmStatic
         val isSdCardPresent: Boolean
             get() = Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED
 
+        @JvmStatic
         val defaultExternalStorageIntent: Intent
             get() = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
                 if (Build.VERSION.SDK_INT >= 26) {
@@ -340,6 +302,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         /**
          * For read and write permissions
          */
+        @JvmStatic
         fun hasStoragePermission(context: Context): Boolean {
             return checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
                     && hasStorageReadPermission(context)
@@ -348,19 +311,34 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         /**
          * For read permission only
          */
+        @JvmStatic
         fun hasStorageReadPermission(context: Context): Boolean {
             return checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
 
         /**
-         * Full storage access means you have access to [direct file path](https://developer.android.com/training/data-storage/shared/media#direct-file-paths)
+         * Max persistable URI per app is 128, so cleanup redundant URI permissions. Given the following URIs:
+         * 1) `content://com.android.externalstorage.documents/tree/primary%3AMovies`
+         * 2) `content://com.android.externalstorage.documents/tree/primary%3AMovies%2FHorror`
+         *
+         * Then remove the second URI, because it has been covered by the first URI.
+         *
+         * Read [Count Your SAF Uri Persisted Permissions!](https://commonsware.com/blog/2020/06/13/count-your-saf-uri-permission-grants.html)
          */
-        @SuppressLint("NewApi")
-        fun hasFullStorageAccess(context: Context, file: File? = null) = when {
-            Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> file != null && file.absolutePath.startsWith(externalStoragePath)
-            Build.VERSION.SDK_INT == Build.VERSION_CODES.Q -> file != null && file.absolutePath.startsWith(context.getAppDirectory())
-            file != null -> Environment.isExternalStorageManager(file)
-            else -> Environment.isExternalStorageManager()
+        @JvmStatic
+        fun cleanupRedundantUriPermissions(resolver: ContentResolver) {
+            thread { // <= comment this line to run the unit test
+                // e.g. content://com.android.externalstorage.documents/tree/primary%3AMusic
+                val persistedUris = resolver.persistedUriPermissions.filter { it.isReadPermission && it.isWritePermission }.map { it.uri }
+                val writeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                val uniqueUriParents = DocumentFileCompat.findUniqueParents(persistedUris.mapNotNull { it.path })
+                persistedUris.forEach {
+                    if (it.path !in uniqueUriParents) {
+                        resolver.releasePersistableUriPermission(it, writeFlags)
+                        Timber.d("Removed redundant URI permission => $it")
+                    }
+                }
+            }
         }
     }
 }

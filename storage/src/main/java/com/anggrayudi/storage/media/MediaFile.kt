@@ -20,6 +20,7 @@ import com.anggrayudi.storage.callback.FileMoveCallback
 import com.anggrayudi.storage.extension.closeStream
 import com.anggrayudi.storage.extension.startCoroutineTimer
 import com.anggrayudi.storage.extension.toInt
+import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.*
 import kotlinx.coroutines.Job
 import java.io.*
@@ -50,7 +51,7 @@ class MediaFile(_context: Context, val uri: Uri) {
 
     @Suppress("DEPRECATION")
     val name: String?
-        get() = toJavaFile()?.name ?: getColumnInfoString(MediaStore.MediaColumns.DISPLAY_NAME)
+        get() = toRawFile()?.name ?: getColumnInfoString(MediaStore.MediaColumns.DISPLAY_NAME)
 
     val baseName: String
         get() = name.orEmpty().substringBeforeLast('.')
@@ -63,11 +64,11 @@ class MediaFile(_context: Context, val uri: Uri) {
 
     @Suppress("DEPRECATION")
     val length: Long
-        get() = toJavaFile()?.length() ?: getColumnInfoLong(MediaStore.MediaColumns.SIZE)
+        get() = toRawFile()?.length() ?: getColumnInfoLong(MediaStore.MediaColumns.SIZE)
 
     @Suppress("DEPRECATION")
     val exists: Boolean
-        get() = toJavaFile()?.exists()
+        get() = toRawFile()?.exists()
             ?: context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)?.use {
                 true
             } ?: false
@@ -75,7 +76,7 @@ class MediaFile(_context: Context, val uri: Uri) {
     /**
      * `true` if this file was created with [File]. Only works on API 28 and lower.
      */
-    val isJavaFile: Boolean
+    val isRawFile: Boolean
         get() = uri.scheme == ContentResolver.SCHEME_FILE
 
     /**
@@ -84,7 +85,7 @@ class MediaFile(_context: Context, val uri: Uri) {
      * @see toDocumentFile
      */
     @Deprecated("Accessing files with java.io.File only works on app private directory since Android 10.")
-    fun toJavaFile() = if (isJavaFile) File(uri.path!!) else null
+    fun toRawFile() = if (isRawFile) File(uri.path!!) else null
 
     fun toDocumentFile() = realPath.let { if (it.isEmpty()) null else DocumentFileCompat.fromFullPath(context, it) }
 
@@ -92,7 +93,7 @@ class MediaFile(_context: Context, val uri: Uri) {
     val realPath: String
         @SuppressLint("InlinedApi")
         get() {
-            val file = toJavaFile()
+            val file = toRawFile()
             return when {
                 file != null -> file.path
                 Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> {
@@ -126,17 +127,18 @@ class MediaFile(_context: Context, val uri: Uri) {
     val relativePath: String
         @SuppressLint("InlinedApi")
         get() {
-            val file = toJavaFile()
+            val file = toRawFile()
             return when {
                 file != null -> {
-                    file.path.substringBeforeLast('/').replaceFirst(SimpleStorage.externalStoragePath, "").trim { it == '/' } + "/"
+                    file.path.substringBeforeLast('/').replaceFirst(SimpleStorage.externalStoragePath, "").trimFileSeparator() + "/"
                 }
                 Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> {
                     try {
                         context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)?.use { cursor ->
                             if (cursor.moveToFirst()) {
-                                val realFolderPath = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DATA)).substringBeforeLast('/')
-                                realFolderPath.replaceFirst(SimpleStorage.externalStoragePath, "").trim { it == '/' } + "/"
+                                val realFolderAbsolutePath =
+                                    cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DATA)).substringBeforeLast('/')
+                                realFolderAbsolutePath.replaceFirst(SimpleStorage.externalStoragePath, "").trimFileSeparator() + "/"
                             } else ""
                         }.orEmpty()
                     } catch (e: Exception) {
@@ -156,10 +158,10 @@ class MediaFile(_context: Context, val uri: Uri) {
 
     @Suppress("DEPRECATION")
     fun delete(): Boolean {
-        val file = toJavaFile()
+        val file = toRawFile()
         return if (file != null) {
             context.contentResolver.delete(uri, null, null)
-            file.delete()
+            file.delete() || !file.exists()
         } else try {
             context.contentResolver.delete(uri, null, null) > 0
         } catch (e: SecurityException) {
@@ -174,7 +176,7 @@ class MediaFile(_context: Context, val uri: Uri) {
      */
     @Suppress("DEPRECATION")
     fun renameTo(newName: String): Boolean {
-        val file = toJavaFile()
+        val file = toRawFile()
         val contentValues = ContentValues(1).apply { put(MediaStore.MediaColumns.DISPLAY_NAME, newName) }
         return if (file != null) {
             file.renameTo(File(file.parent, newName)) && context.contentResolver.update(uri, contentValues, null, null) > 0
@@ -209,7 +211,7 @@ class MediaFile(_context: Context, val uri: Uri) {
 
     @UiThread
     fun openFileIntent(authority: String) = Intent(Intent.ACTION_VIEW)
-        .setData(if (isJavaFile) FileProvider.getUriForFile(context, authority, File(uri.path!!)) else uri)
+        .setData(if (isRawFile) FileProvider.getUriForFile(context, authority, File(uri.path!!)) else uri)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
@@ -220,7 +222,7 @@ class MediaFile(_context: Context, val uri: Uri) {
     fun openOutputStream(append: Boolean = true): OutputStream? {
         return try {
             @Suppress("DEPRECATION")
-            val file = toJavaFile()
+            val file = toRawFile()
             if (file != null) {
                 FileOutputStream(file, append)
             } else {
@@ -235,7 +237,7 @@ class MediaFile(_context: Context, val uri: Uri) {
     fun openInputStream(): InputStream? {
         return try {
             @Suppress("DEPRECATION")
-            val file = toJavaFile()
+            val file = toRawFile()
             if (file != null) {
                 FileInputStream(file)
             } else {
@@ -258,10 +260,10 @@ class MediaFile(_context: Context, val uri: Uri) {
     }
 
     @WorkerThread
-    fun moveTo(targetFolder: DocumentFile, callback: FileMoveCallback? = null) {
+    fun moveTo(targetFolder: DocumentFile, newFilenameInTargetPath: String? = null, callback: FileMoveCallback? = null) {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sourceFile.moveTo(context, targetFolder, callback)
+            sourceFile.moveTo(context, targetFolder, newFilenameInTargetPath, callback)
             return
         }
 
@@ -295,10 +297,10 @@ class MediaFile(_context: Context, val uri: Uri) {
     }
 
     @WorkerThread
-    fun copyTo(targetFolder: DocumentFile, callback: FileCopyCallback? = null) {
+    fun copyTo(targetFolder: DocumentFile, newFilenameInTargetPath: String? = null, callback: FileCopyCallback? = null) {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sourceFile.copyTo(context, targetFolder, callback)
+            sourceFile.copyTo(context, targetFolder, newFilenameInTargetPath, callback)
             return
         }
 
@@ -332,19 +334,20 @@ class MediaFile(_context: Context, val uri: Uri) {
 
     private fun createTargetFile(targetDirectory: DocumentFile, callback: FileCallback?): DocumentFile? {
         try {
-            val targetFolder = DocumentFileCompat.mkdirs(context, targetDirectory.storageId, targetDirectory.filePath)
+            val targetFolder =
+                DocumentFileCompat.mkdirs(context, DocumentFileCompat.buildAbsolutePath(targetDirectory.storageId, targetDirectory.basePath))
             if (targetFolder == null) {
                 callback?.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
                 return null
             }
 
             var targetFile = targetFolder.findFile(name.orEmpty())
-            if (targetFile?.isFile == true) {
+            if (targetFile?.exists() == true) {
                 callback?.onFailed(ErrorCode.TARGET_FILE_EXISTS)
                 return null
             }
 
-            targetFile = targetFolder.createFile(type ?: DocumentFileCompat.MIME_TYPE_UNKNOWN, name.orEmpty())
+            targetFile = targetFolder.makeFile(type ?: DocumentFileCompat.MIME_TYPE_UNKNOWN, name.orEmpty())
             if (targetFile == null) {
                 callback?.onFailed(ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
             } else {

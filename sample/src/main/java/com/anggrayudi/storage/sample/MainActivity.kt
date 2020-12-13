@@ -17,9 +17,7 @@ import com.anggrayudi.storage.callback.*
 import com.anggrayudi.storage.file.*
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
-import com.karumi.dexter.PermissionToken
-import com.karumi.dexter.listener.PermissionRequest
-import com.karumi.dexter.listener.multi.MultiplePermissionsListener
+import com.karumi.dexter.listener.multi.BaseMultiplePermissionsListener
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.view_file_picked.view.*
 import kotlinx.coroutines.CoroutineScope
@@ -49,14 +47,10 @@ class MainActivity : AppCompatActivity() {
         btnRequestStoragePermission.setOnClickListener {
             Dexter.withContext(this)
                 .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
-                .withListener(object : MultiplePermissionsListener {
+                .withListener(object : BaseMultiplePermissionsListener() {
                     override fun onPermissionsChecked(report: MultiplePermissionsReport) {
                         val grantStatus = if (report.areAllPermissionsGranted()) "granted" else "denied"
                         Toast.makeText(baseContext, "Storage permissions are $grantStatus", Toast.LENGTH_SHORT).show()
-                    }
-
-                    override fun onPermissionRationaleShouldBeShown(permissions: MutableList<PermissionRequest>, token: PermissionToken) {
-                        // no-op
                     }
                 }).check()
         }
@@ -69,7 +63,9 @@ class MainActivity : AppCompatActivity() {
             isEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 setOnClickListener { storage.requestFullStorageAccess() }
                 true
-            } else false
+            } else {
+                false
+            }
         }
 
         btnSelectFolder.setOnClickListener {
@@ -105,7 +101,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onRootPathPermissionGranted(requestCode: Int, root: DocumentFile) {
-                Toast.makeText(baseContext, "Storage access has been granted for ${root.fullPath}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(baseContext, "Storage access has been granted for ${root.absolutePath}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -113,17 +109,13 @@ class MainActivity : AppCompatActivity() {
     private fun requestStoragePermission() {
         Dexter.withContext(this)
             .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
-            .withListener(object : MultiplePermissionsListener {
+            .withListener(object : BaseMultiplePermissionsListener() {
                 override fun onPermissionsChecked(report: MultiplePermissionsReport) {
                     if (report.areAllPermissionsGranted()) {
                         storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS)
                     } else {
                         Toast.makeText(baseContext, "Please grant storage permissions", Toast.LENGTH_SHORT).show()
                     }
-                }
-
-                override fun onPermissionRationaleShouldBeShown(permissions: MutableList<PermissionRequest>, token: PermissionToken) {
-                    // no-op
                 }
             }).check()
     }
@@ -154,13 +146,13 @@ class MainActivity : AppCompatActivity() {
                 when (requestCode) {
                     REQUEST_CODE_PICK_FOLDER_TARGET_FOR_COPY -> layoutCopyToFolder.run {
                         tag = folder
-                        tvFilePath.text = folder.fullPath
+                        tvFilePath.text = folder.absolutePath
                     }
                     REQUEST_CODE_PICK_FOLDER_TARGET_FOR_MOVE -> layoutMoveToFolder.run {
                         tag = folder
-                        tvFilePath.text = folder.fullPath
+                        tvFilePath.text = folder.absolutePath
                     }
-                    else -> Toast.makeText(baseContext, folder.fullPath, Toast.LENGTH_SHORT).show()
+                    else -> Toast.makeText(baseContext, folder.absolutePath, Toast.LENGTH_SHORT).show()
                 }
             }
 
@@ -215,7 +207,7 @@ class MainActivity : AppCompatActivity() {
             val file = layoutCopyFromFile.tag as DocumentFile
             val targetFolder = layoutCopyToFolder.tag as DocumentFile
             ioScope.launch {
-                file.copyTo(it.context, targetFolder, object : FileCopyCallback {
+                file.copyTo(it.context, targetFolder, callback = object : FileCopyCallback {
 
                     var dialog: MaterialDialog? = null
                     var tvStatus: TextView? = null
@@ -292,7 +284,7 @@ class MainActivity : AppCompatActivity() {
             val file = layoutMoveFromFile.tag as DocumentFile
             val targetFolder = layoutMoveToFolder.tag as DocumentFile
             ioScope.launch {
-                file.moveTo(it.context, targetFolder, object : FileMoveCallback {
+                file.moveTo(it.context, targetFolder, callback = object : FileMoveCallback {
 
                     var dialog: MaterialDialog? = null
                     var tvStatus: TextView? = null

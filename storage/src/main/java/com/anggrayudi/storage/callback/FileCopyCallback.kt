@@ -20,12 +20,11 @@ interface FileCopyCallback : FileCallback {
 
     /**
      * @param file can be [DocumentFile] or [MediaFile]
-     * @return Time interval to watch copy progress in milliseconds, otherwise `0` if you don't want to watch at all.
+     * @return Time interval to watch file copy progress in milliseconds, otherwise `0` if you don't want to watch at all.
+     * Setting negative value will cancel the action.
      */
-    fun onStartCopying(file: Any): Long {
-        // default implementation
-        return 0
-    }
+    @JvmDefault
+    fun onStartCopying(file: Any): Long = 0
 
     /**
      * Only called if the returned [onStartCopying] greater than `0`
@@ -33,6 +32,7 @@ interface FileCopyCallback : FileCallback {
      * @param progress   in percent
      * @param writeSpeed in bytes
      */
+    @JvmDefault
     override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int) {
         // default implementation
     }
@@ -41,6 +41,7 @@ interface FileCopyCallback : FileCallback {
      * @param file can be [DocumentFile] or [MediaFile]
      * @return `true` if you want to delete previous file
      */
+    @JvmDefault
     fun onCompleted(file: Any): Boolean {
         // default implementation
         return false

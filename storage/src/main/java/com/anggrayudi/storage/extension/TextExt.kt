@@ -20,3 +20,27 @@ fun String.count(text: String): Int {
     } while (index in 1 until length)
     return count
 }
+
+fun String.trimFileSeparator() = trim('/')
+
+fun String.trimWhiteSpace() = trim { it <= ' ' }
+
+fun String.replaceCompletely(match: String, replaceWith: String) = let {
+    var path = it
+    do {
+        path = path.replace(match, replaceWith)
+    } while (path.isNotEmpty() && path.contains(match))
+    path
+}
+
+fun String.hasParent(parentPath: String): Boolean {
+    val parentTree = parentPath.split('/')
+        .map { it.trimFileSeparator() }
+        .filter { it.isNotEmpty() }
+
+    val subFolderTree = split('/')
+        .map { it.trimFileSeparator() }
+        .filter { it.isNotEmpty() }
+
+    return parentTree.size <= subFolderTree.size && subFolderTree.take(parentTree.size) == parentTree
+}

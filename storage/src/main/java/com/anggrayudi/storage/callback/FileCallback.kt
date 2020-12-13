@@ -16,15 +16,18 @@ interface FileCallback {
      * @param freeSpace of target path
      * @return `true` to continue process
      */
+    @JvmDefault
     fun onCheckFreeSpace(freeSpace: Long, fileSize: Long): Boolean {
         // default implementation
         return true
     }
 
+    @JvmDefault
     fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int) {
         // default implementation
     }
 
+    @JvmDefault
     fun onFailed(errorCode: ErrorCode) {
         // default implementation
     }

@@ -2,7 +2,9 @@ package com.anggrayudi.storage.file
 
 import android.content.Context
 import com.anggrayudi.storage.SimpleStorage
+import com.anggrayudi.storage.extension.trimFileSeparator
 import java.io.File
+import java.io.IOException
 
 /**
  * Created on 07/09/20
@@ -33,6 +35,17 @@ val File.storageType: StorageType?
         else -> null
     }
 
+val File.basePath: String
+    get() {
+        val externalStoragePath = SimpleStorage.externalStoragePath
+        val sdCardStoragePath = "/storage/$storageId"
+        return when {
+            path.startsWith(externalStoragePath) -> path.substringAfter(externalStoragePath, "").trimFileSeparator()
+            path.startsWith(sdCardStoragePath) -> path.substringAfter(sdCardStoragePath, "").trimFileSeparator()
+            else -> ""
+        }
+    }
+
 val File.rootPath: String
     get() {
         val storageId = storageId
@@ -43,22 +56,24 @@ val File.rootPath: String
         }
     }
 
-val File.filePath: String
-    get() {
-        val externalStoragePath = SimpleStorage.externalStoragePath
-        val sdCardStoragePath = "/storage/$storageId"
-        return when {
-            path.startsWith(externalStoragePath) -> path.substringAfter(externalStoragePath, "").trim { it == '/' }
-            path.startsWith(sdCardStoragePath) -> path.substringAfter(sdCardStoragePath, "").trim { it == '/' }
-            else -> ""
-        }
+@JvmOverloads
+fun File.getRootRawFile(requiresWriteAccess: Boolean = false) = rootPath.let {
+    if (it.isEmpty()) null else File(it).run {
+        if (canRead() && (requiresWriteAccess && canWrite() || !requiresWriteAccess)) this else null
     }
+}
 
 val File.isReadOnly: Boolean
     get() = canRead() && !canWrite()
 
-val File.isModifiable: Boolean
+val File.canModify: Boolean
     get() = canRead() && canWrite()
+
+fun File.createNewFileIfPossible(): Boolean = try {
+    isFile || createNewFile()
+} catch (e: IOException) {
+    false
+}
 
 fun File.toDocumentFile(context: Context) = if (canRead()) DocumentFileCompat.fromFile(context, this) else null
 

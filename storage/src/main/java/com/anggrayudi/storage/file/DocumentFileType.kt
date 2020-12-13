@@ -5,7 +5,7 @@ package com.anggrayudi.storage.file
  * @author Anggrayudi H
  */
 enum class DocumentFileType {
-    ALL,
+    ANY,
     FILE,
     FOLDER
 }

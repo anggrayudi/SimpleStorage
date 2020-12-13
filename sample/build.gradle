@@ -6,6 +6,15 @@ android {
     compileSdkVersion build_versions.compile_sdk
     buildToolsVersion build_versions.build_tools
 
+    signingConfigs {
+        debug {
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+            storePassword 'android'
+            storeFile file("${System.properties['user.home']}${File.separator}.android${File.separator}debug.keystore")
+        }
+    }
+
     defaultConfig {
         applicationId "com.anggrayudi.storage.sample"
         minSdkVersion build_versions.min_sdk
@@ -21,6 +30,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
         }
     }
 
@@ -29,16 +39,28 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
-    kotlinOptions {
-        jvmTarget = "1.8"
+    flavorDimensions "libSource"
+    productFlavors {
+        local {
+            dimension "libSource"
+            getIsDefault().set(true)
+        }
+        maven {
+            dimension "libSource"
+            configurations.all {
+                // Check for updates every build
+                resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+            }
+        }
     }
 }
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation project(":storage")
-//    implementation 'com.anggrayudi:storage:0.1.0'
-//    implementation 'com.anggrayudi:storage:0.1.0-SNAPSHOT'
+//    localImplementation project(":storage")
+//    mavenImplementation("com.anggrayudi:storage:$STORAGE_VERSION") { changing = true }
+
     implementation deps.kotlin.stdlib
     implementation deps.core_ktx
     implementation deps.appcompat

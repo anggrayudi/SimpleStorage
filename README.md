@@ -14,7 +14,7 @@ If you want to know more about the background of this library, please read this 
 Adding Simple Storage into your project is simple:
 
 ```groovy
-implementation "com.anggrayudi:storage:0.2.0"
+implementation "com.anggrayudi:storage:0.3.0"
 ```
 
 Snapshots can be found [here](https://oss.sonatype.org/#nexus-search;quick~com.anggrayudi).
@@ -31,6 +31,14 @@ allprojects {
     }
 }
 ```
+
+### Java Compatibility
+
+Simple Storage is built in Kotlin. Follow this [documentation](JAVA_COMPATIBILITY.md) to use it in your Java project.
+
+## Terminology
+
+![Alt text](art/terminology.png?raw=true "Simple Storage Terms")
 
 ## Request Storage Access
 
@@ -63,8 +71,7 @@ class MainActivity : AppCompatActivity() {
                     .negativeButton(android.R.string.cancel)
                     .positiveButton {
                         storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, rootStorageType)
-                    }
-                    .show()
+                    }.show()
             }
 
             override fun onCancelledByUser() {
@@ -111,16 +118,16 @@ You can read file with helper functions in `DocumentFileCompat` and `MediaStoreC
 
 ### `DocumentFileCompat`
 
-* `DocumentFileCompat.fromPath()`
 * `DocumentFileCompat.fromFullPath()`
+* `DocumentFileCompat.fromSimplePath()`
 * `DocumentFileCompat.fromFile()`
 * `DocumentFileCompat.fromPublicFolder()`
 
 #### Example
 ```kotlin
-val fileFromExternalStorage = DocumentFileCompat.fromPath(context, filePath = "Downloads/MyMovie.mp4")
+val fileFromExternalStorage = DocumentFileCompat.fromPath(context, basePath = "Downloads/MyMovie.mp4")
 
-val fileFromSdCard = DocumentFileCompat.fromPath(context, storageId = "9016-4EF8", filePath = "Downloads/MyMovie.mp4")
+val fileFromSdCard = DocumentFileCompat.fromPath(context, storageId = "9016-4EF8", basePath = "Downloads/MyMovie.mp4")
 ```
 
 ### `MediaStoreCompat`
@@ -148,7 +155,7 @@ Since `java.io.File` has been deprecated in Android 10, thus you have to use `Do
 Simple Storage adds Kotlin extension functions to `DocumentFile`, so you can manage files like this:
 * `DocumentFile.storageId`
 * `DocumentFile.storageType`
-* `DocumentFile.filePath`
+* `DocumentFile.basePath`
 * `DocumentFile.copyTo()`
 * `DocumentFile.moveTo()`
 * `DocumentFile.search()`
