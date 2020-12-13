@@ -8,6 +8,7 @@ import androidx.documentfile.provider.DocumentFile
  */
 interface FilePickerCallback {
 
+    @JvmDefault
     fun onCancelledByUser(requestCode: Int) {
         // default implementation
     }

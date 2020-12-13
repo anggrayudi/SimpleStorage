@@ -16,6 +16,7 @@ import com.anggrayudi.storage.callback.FileCallback
 import com.anggrayudi.storage.callback.FileCopyCallback
 import com.anggrayudi.storage.callback.FileMoveCallback
 import com.anggrayudi.storage.extension.closeStream
+import com.anggrayudi.storage.extension.fromTreeUri
 import com.anggrayudi.storage.extension.startCoroutineTimer
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import kotlinx.coroutines.Job
@@ -66,19 +67,19 @@ val DocumentFile.storageType: StorageType?
  */
 val DocumentFile.inPrimaryStorage: Boolean
     get() = isExternalStorageDocument && storageId == DocumentFileCompat.PRIMARY
-            || isJavaFile && uri.path.orEmpty().startsWith(SimpleStorage.externalStoragePath)
+            || isRawFile && uri.path.orEmpty().startsWith(SimpleStorage.externalStoragePath)
 
 /**
  * `true` if this file located in SD Card
  */
 val DocumentFile.inSdCardStorage: Boolean
     get() = isExternalStorageDocument && storageId != DocumentFileCompat.PRIMARY
-            || isJavaFile && uri.path.orEmpty().startsWith("/storage/$storageId")
+            || isRawFile && uri.path.orEmpty().startsWith("/storage/$storageId")
 
 /**
  * `true` if this file was created with [File]
  */
-val DocumentFile.isJavaFile: Boolean
+val DocumentFile.isRawFile: Boolean
     get() = uri.scheme == ContentResolver.SCHEME_FILE
 
 /**
@@ -100,12 +101,24 @@ val DocumentFile.extension: String
  * from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT].
  * @see toDocumentFile
  */
-fun DocumentFile.toJavaFile(): File? {
+fun DocumentFile.toRawFile(): File? {
     return when {
-        isJavaFile -> File(uri.path!!)
+        isRawFile -> File(uri.path!!)
         inPrimaryStorage -> File("${SimpleStorage.externalStoragePath}/$directPath")
         storageId.isNotEmpty() -> File("/storage/$storageId/$directPath")
         else -> null
+    }
+}
+
+fun DocumentFile.toRawDocumentFile(): DocumentFile? {
+    return if (isRawFile) this else DocumentFile.fromFile(toRawFile() ?: return null)
+}
+
+fun DocumentFile.toTreeDocumentFile(context: Context): DocumentFile? {
+    return if (isRawFile) {
+        DocumentFileCompat.fromFile(context, toRawFile() ?: return null, considerRawFile = false)
+    } else {
+        this
     }
 }
 
@@ -115,7 +128,7 @@ fun DocumentFile.toJavaFile(): File? {
  */
 val DocumentFile.directPath: String
     get() = when {
-        isJavaFile -> File(uri.path!!).directPath
+        isRawFile -> File(uri.path!!).directPath
         isExternalStorageDocument -> uri.path.orEmpty().substringAfterLast("/document/$storageId:", "")
         else -> ""
     }
@@ -128,7 +141,7 @@ val DocumentFile.directPath: String
  */
 val DocumentFile.rootPath: String
     get() = when {
-        isJavaFile -> File(uri.path!!).rootPath
+        isRawFile -> File(uri.path!!).rootPath
         !isExternalStorageDocument -> ""
         inSdCardStorage -> "/storage/$storageId"
         else -> SimpleStorage.externalStoragePath
@@ -146,7 +159,7 @@ val DocumentFile.rootPath: String
  */
 val DocumentFile.absolutePath: String
     get() = when {
-        isJavaFile -> uri.path.orEmpty()
+        isRawFile -> uri.path.orEmpty()
         !isExternalStorageDocument -> ""
         inPrimaryStorage -> "${SimpleStorage.externalStoragePath}/$directPath"
         else -> "/storage/$storageId/$directPath"
@@ -163,7 +176,7 @@ val DocumentFile.simplePath: String
  * It cannot be applied if current [DocumentFile] is a directory.
  */
 fun DocumentFile.recreateFile(): DocumentFile? {
-    return if (isFile && (isJavaFile || isExternalStorageDocument)) {
+    return if (isFile && (isRawFile || isExternalStorageDocument)) {
         val filename = name.orEmpty()
         val mimeType = type ?: DocumentFileCompat.MIME_TYPE_UNKNOWN
         val parentFile = parentFile
@@ -176,7 +189,7 @@ fun DocumentFile.recreateFile(): DocumentFile? {
 
 fun DocumentFile.getRootDocumentFile(context: Context, requiresWriteAccess: Boolean = false) = when {
     isExternalStorageDocument -> DocumentFileCompat.getRootDocumentFile(context, storageId, requiresWriteAccess)
-    isJavaFile -> File(uri.path!!).getRootFile(requiresWriteAccess)?.let { DocumentFile.fromFile(it) }
+    isRawFile -> File(uri.path!!).getRootRawFile(requiresWriteAccess)?.let { DocumentFile.fromFile(it) }
     else -> null
 }
 
@@ -252,7 +265,7 @@ fun DocumentFile.makeFile(
     }
     val baseFileName = name.removeForbiddenCharsFromFilename().removeSuffix(".$extension")
 
-    return if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P || isJavaFile) {
+    return if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P || isRawFile) {
         createFile(mimeType, baseFileName)
     } else {
         val fullFileName = if (extension.isEmpty()) baseFileName else "$baseFileName.$extension"
@@ -351,8 +364,8 @@ private fun DocumentFile.walkFileTree(
 @WorkerThread
 fun DocumentFile.openOutputStream(context: Context, append: Boolean = true): OutputStream? {
     return try {
-        if (isJavaFile) {
-            FileOutputStream(toJavaFile(), append)
+        if (isRawFile) {
+            FileOutputStream(toRawFile(), append)
         } else {
             context.contentResolver.openOutputStream(uri, if (append && isExternalStorageDocument) "wa" else "w")
         }
@@ -364,9 +377,9 @@ fun DocumentFile.openOutputStream(context: Context, append: Boolean = true): Out
 @WorkerThread
 fun DocumentFile.openInputStream(context: Context): InputStream? {
     return try {
-        if (isJavaFile) {
+        if (isRawFile) {
             // handle file from external storage
-            FileInputStream(toJavaFile())
+            FileInputStream(toRawFile())
         } else {
             context.contentResolver.openInputStream(uri)
         }
@@ -377,7 +390,7 @@ fun DocumentFile.openInputStream(context: Context): InputStream? {
 
 @UiThread
 fun DocumentFile.openFileIntent(context: Context, authority: String) = Intent(Intent.ACTION_VIEW)
-    .setData(if (isJavaFile) FileProvider.getUriForFile(context, authority, File(uri.path!!)) else uri)
+    .setData(if (isRawFile) FileProvider.getUriForFile(context, authority, File(uri.path!!)) else uri)
     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
@@ -648,8 +661,8 @@ fun DocumentFile?.moveTo(
     }
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager() && storageId == targetStorageId) {
-        val sourceFile = toJavaFile()!!
-        val targetFolder = File(DocumentFileCompat.getRootFile(targetStorageId)!!.path + "/$targetFolderDirectPath")
+        val sourceFile = toRawFile()!!
+        val targetFolder = File(DocumentFileCompat.getRootRawFile(targetStorageId)!!.path + "/$targetFolderDirectPath")
         val targetFile = File(targetFolder, newFilenameInTargetPath ?: name.orEmpty())
         targetFolder.mkdirs()
         if (sourceFile.renameTo(targetFile)) {
@@ -671,7 +684,7 @@ fun DocumentFile?.moveTo(
             }
             val movedFileUri = DocumentsContract.moveDocument(context.contentResolver, uri, parentFile!!.uri, targetFolder.uri)
             if (movedFileUri != null) {
-                val newFile = DocumentFile.fromTreeUri(context, movedFileUri)
+                val newFile = context.fromTreeUri(movedFileUri)
                 if (newFile != null && newFile.isFile) {
                     if (newFilenameInTargetPath != null) newFile.renameTo(newFilenameInTargetPath)
                     callback?.onCompleted(newFile)

@@ -17,12 +17,13 @@ import android.provider.Settings
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat.checkSelfPermission
-import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
+import com.anggrayudi.storage.extension.fromSingleUri
+import com.anggrayudi.storage.extension.fromTreeUri
 import com.anggrayudi.storage.extension.getAppDirectory
 import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.StorageType
@@ -181,12 +182,12 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 val storageId = DocumentFileCompat.getStorageId(uri)
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageId == DocumentFileCompat.PRIMARY) {
                     saveUriPermission(uri)
-                    storageAccessCallback?.onRootPathPermissionGranted(requestCode, DocumentFile.fromTreeUri(wrapper.context, uri) ?: return)
+                    storageAccessCallback?.onRootPathPermissionGranted(requestCode, wrapper.context.fromTreeUri(uri) ?: return)
                     return
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R || DocumentFileCompat.isRootUri(uri)) {
                     if (saveUriPermission(uri)) {
-                        storageAccessCallback?.onRootPathPermissionGranted(requestCode, DocumentFile.fromTreeUri(wrapper.context, uri) ?: return)
+                        storageAccessCallback?.onRootPathPermissionGranted(requestCode, wrapper.context.fromTreeUri(uri) ?: return)
                     } else {
                         storageAccessCallback?.onStoragePermissionDenied(requestCode)
                     }
@@ -212,11 +213,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                     return
                 }
                 val uri = data?.data ?: return
-                val folder = try {
-                    DocumentFile.fromTreeUri(wrapper.context, uri)
-                } catch (e: SecurityException) {
-                    null
-                }
+                val folder = wrapper.context.fromTreeUri(uri)
                 val storageId = DocumentFileCompat.getStorageId(uri)
                 val storageType = when (storageId) {
                     "" -> null
@@ -250,12 +247,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                     filePickerCallback?.onCancelledByUser(requestCode)
                     return
                 }
-                val uri = data?.data ?: return
-                val file = try {
-                    DocumentFile.fromSingleUri(wrapper.context, uri)
-                } catch (e: SecurityException) {
-                    null
-                }
+                val file = wrapper.context.fromSingleUri(data?.data ?: return)
                 if (file == null || !file.canRead()) {
                     filePickerCallback?.onStoragePermissionDenied(requestCode, file)
                 } else {

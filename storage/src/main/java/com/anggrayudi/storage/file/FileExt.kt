@@ -56,7 +56,7 @@ val File.rootPath: String
         }
     }
 
-fun File.getRootFile(requiresWriteAccess: Boolean = false) = rootPath.let {
+fun File.getRootRawFile(requiresWriteAccess: Boolean = false) = rootPath.let {
     if (it.isEmpty()) null else File(it).run {
         if (canRead() && (requiresWriteAccess && canWrite() || !requiresWriteAccess)) this else null
     }

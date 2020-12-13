@@ -17,6 +17,7 @@ import java.io.File
  *
  * @author Anggrayudi H
  */
+@Suppress("DEPRECATION")
 @RunWith(PowerMockRunner::class)
 @PrepareForTest(Environment::class)
 class DocumentFileCompatTest {
