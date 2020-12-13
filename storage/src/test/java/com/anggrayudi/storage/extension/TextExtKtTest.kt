@@ -2,7 +2,6 @@ package com.anggrayudi.storage.extension
 
 import org.junit.Assert.*
 import org.junit.Test
-import kotlin.math.roundToInt
 
 /**
  * Created on 20/08/20
@@ -18,7 +17,6 @@ class TextExtKtTest {
         assertEquals(0, "87jkakku baakjnaaa".count(""))
         assertEquals(0, "87jka kkubaakjnaaa".count("abc"))
         assertEquals(1, "primary:DCIM/document/primary:DCIM/document/assas/document/as".count("/document/") % 2)
-        println(0.5.roundToInt())
     }
 
     fun String.splitToPairAt(text: String, occurence: Int): Pair<String, String>? {
@@ -42,7 +40,7 @@ class TextExtKtTest {
 
     @Test
     fun splitAt() {
-        println("asosdisf/doc/safsfsfaf/doc/8hhyjbh".splitToPairAt("/", 2))
+        assertEquals(Pair("asosdisf/doc", "safsfsfaf/doc/8hhyjbh"), "asosdisf/doc/safsfsfaf/doc/8hhyjbh".splitToPairAt("/", 2))
     }
 
     @Test
