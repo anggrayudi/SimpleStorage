@@ -121,9 +121,9 @@ You can read file with helper functions in `DocumentFileCompat` and `MediaStoreC
 
 #### Example
 ```kotlin
-val fileFromExternalStorage = DocumentFileCompat.fromPath(context, directPath = "Downloads/MyMovie.mp4")
+val fileFromExternalStorage = DocumentFileCompat.fromPath(context, basePath = "Downloads/MyMovie.mp4")
 
-val fileFromSdCard = DocumentFileCompat.fromPath(context, storageId = "9016-4EF8", directPath = "Downloads/MyMovie.mp4")
+val fileFromSdCard = DocumentFileCompat.fromPath(context, storageId = "9016-4EF8", basePath = "Downloads/MyMovie.mp4")
 ```
 
 ### `MediaStoreCompat`
@@ -151,7 +151,7 @@ Since `java.io.File` has been deprecated in Android 10, thus you have to use `Do
 Simple Storage adds Kotlin extension functions to `DocumentFile`, so you can manage files like this:
 * `DocumentFile.storageId`
 * `DocumentFile.storageType`
-* `DocumentFile.directPath`
+* `DocumentFile.basePath`
 * `DocumentFile.copyTo()`
 * `DocumentFile.moveTo()`
 * `DocumentFile.search()`

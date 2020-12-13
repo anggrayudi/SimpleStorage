@@ -1,9 +1,3 @@
-/*
- * DANA.id
- * PT. Espay Debit Indonesia Koe.
- * Copyright (c) 2017-2020 All Rights Reserved.
- */
-
 package com.anggrayudi.storage.permission
 
 import android.content.pm.PackageManager
@@ -59,11 +53,7 @@ class PermissionRequest private constructor(
      */
     fun continueToPermissionRequest() {
         permissions.forEach {
-            if (ContextCompat.checkSelfPermission(
-                    wrapper.context,
-                    it
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
+            if (ContextCompat.checkSelfPermission(wrapper.context, it) != PackageManager.PERMISSION_GRANTED) {
                 wrapper.checkPermissions(permissions, requestCode)
                 return
             }

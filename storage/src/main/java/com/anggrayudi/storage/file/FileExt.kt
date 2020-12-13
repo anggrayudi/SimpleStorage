@@ -35,7 +35,7 @@ val File.storageType: StorageType?
         else -> null
     }
 
-val File.directPath: String
+val File.basePath: String
     get() {
         val externalStoragePath = SimpleStorage.externalStoragePath
         val sdCardStoragePath = "/storage/$storageId"
@@ -56,6 +56,7 @@ val File.rootPath: String
         }
     }
 
+@JvmOverloads
 fun File.getRootRawFile(requiresWriteAccess: Boolean = false) = rootPath.let {
     if (it.isEmpty()) null else File(it).run {
         if (canRead() && (requiresWriteAccess && canWrite() || !requiresWriteAccess)) this else null

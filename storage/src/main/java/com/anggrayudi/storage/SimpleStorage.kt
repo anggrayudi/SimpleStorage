@@ -1,7 +1,6 @@
 package com.anggrayudi.storage
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ContentResolver
 import android.content.Context
@@ -24,12 +23,10 @@ import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
 import com.anggrayudi.storage.extension.fromSingleUri
 import com.anggrayudi.storage.extension.fromTreeUri
-import com.anggrayudi.storage.extension.getAppDirectory
 import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.StorageType
 import com.anggrayudi.storage.file.canModify
 import timber.log.Timber
-import java.io.File
 import kotlin.concurrent.thread
 
 /**
@@ -317,18 +314,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         @JvmStatic
         fun hasStorageReadPermission(context: Context): Boolean {
             return checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-        }
-
-        /**
-         * Full storage access means you have access to [direct file path](https://developer.android.com/training/data-storage/shared/media#direct-file-paths)
-         */
-        @JvmStatic
-        @SuppressLint("NewApi")
-        fun hasFullStorageAccess(context: Context, file: File? = null) = when {
-            Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> file != null && file.absolutePath.startsWith(externalStoragePath)
-            Build.VERSION.SDK_INT == Build.VERSION_CODES.Q -> file != null && file.absolutePath.startsWith(context.getAppDirectory())
-            file != null -> Environment.isExternalStorageManager(file)
-            else -> Environment.isExternalStorageManager()
         }
 
         /**

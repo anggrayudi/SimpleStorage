@@ -40,13 +40,13 @@ class DocumentFileCompatTest {
     }
 
     @Test
-    fun getDirectPath() {
-        assertEquals("", DocumentFileCompat.getDirectPath("/storage/emulated/0"))
-        assertEquals("", DocumentFileCompat.getDirectPath("AAAA-BBBB:"))
-        assertEquals("Music", DocumentFileCompat.getDirectPath("/storage/emulated/0/Music"))
-        assertEquals("Music", DocumentFileCompat.getDirectPath("primary:Music"))
-        assertEquals("Music/Pop", DocumentFileCompat.getDirectPath("/storage/AAAA-BBBB//Music///Pop/"))
-        assertEquals("Music", DocumentFileCompat.getDirectPath("AAAA-BBBB:Music"))
+    fun getBasePath() {
+        assertEquals("", DocumentFileCompat.getBasePath("/storage/emulated/0"))
+        assertEquals("", DocumentFileCompat.getBasePath("AAAA-BBBB:"))
+        assertEquals("Music", DocumentFileCompat.getBasePath("/storage/emulated/0/Music"))
+        assertEquals("Music", DocumentFileCompat.getBasePath("primary:Music"))
+        assertEquals("Music/Pop", DocumentFileCompat.getBasePath("/storage/AAAA-BBBB//Music///Pop/"))
+        assertEquals("Music", DocumentFileCompat.getBasePath("AAAA-BBBB:Music"))
     }
 
     @Test

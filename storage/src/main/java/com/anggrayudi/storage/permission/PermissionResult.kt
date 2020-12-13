@@ -1,9 +1,3 @@
-/*
- * DANA.id
- * PT. Espay Debit Indonesia Koe.
- * Copyright (c) 2017-2020 All Rights Reserved.
- */
-
 package com.anggrayudi.storage.permission
 
 /**
