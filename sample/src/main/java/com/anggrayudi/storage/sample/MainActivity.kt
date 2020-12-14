@@ -37,6 +37,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        recyclerView.adapter = StorageInfoAdapter(applicationContext, ioScope, uiScope)
+
         setupSimpleStorage()
         setupFolderPickerCallback()
         setupFilePickerCallback()

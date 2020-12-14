@@ -316,6 +316,15 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             return checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
 
+        @JvmStatic
+        fun hasFullDiskAccess(context: Context, storageId: String): Boolean {
+            return hasStoragePermission(context) && DocumentFileCompat.getAccessibleRootDocumentFile(
+                context,
+                DocumentFileCompat.buildAbsolutePath(storageId, ""),
+                requiresWriteAccess = true
+            ) != null
+        }
+
         /**
          * Max persistable URI per app is 128, so cleanup redundant URI permissions. Given the following URIs:
          * 1) `content://com.android.externalstorage.documents/tree/primary%3AMovies`

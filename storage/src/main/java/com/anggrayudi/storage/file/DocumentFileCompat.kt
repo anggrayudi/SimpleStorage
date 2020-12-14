@@ -201,7 +201,7 @@ object DocumentFileCompat {
      * To get root file access on API 30+, you need to have full storage access by
      * granting [Manifest.permission.MANAGE_EXTERNAL_STORAGE] in runtime.
      * @see SimpleStorage.requestFullStorageAccess
-     * @see SimpleStorage.hasFullStorageAccess
+     * @see SimpleStorage.hasFullDiskAccess
      * @see Environment.isExternalStorageManager
      * @see getRootRawFile
      */
@@ -268,7 +268,7 @@ object DocumentFileCompat {
      * To get root file access on API 30+, you need to have full storage access by
      * granting [Manifest.permission.MANAGE_EXTERNAL_STORAGE] in runtime.
      * @see SimpleStorage.requestFullStorageAccess
-     * @see SimpleStorage.hasFullStorageAccess
+     * @see SimpleStorage.hasFullDiskAccess
      * @see Environment.isExternalStorageManager
      * @return `null` if you have no full storage access
      */
@@ -285,12 +285,12 @@ object DocumentFileCompat {
     }
 
     @JvmStatic
-    fun buildAbsolutePath(storageId: String = PRIMARY, basePath: String): String {
-        val cleanBasePath = basePath.trimEnd('/').removeForbiddenCharsFromFilename()
+    fun buildAbsolutePath(storageId: String, basePath: String): String {
+        val cleanBasePath = basePath.removeForbiddenCharsFromFilename()
         return if (storageId == PRIMARY) {
-            SimpleStorage.externalStoragePath + "/$cleanBasePath"
+            SimpleStorage.externalStoragePath + "/$cleanBasePath".trimEnd('/')
         } else {
-            "/storage/$storageId/$cleanBasePath"
+            "/storage/$storageId/$cleanBasePath".trimEnd('/')
         }
     }
 
@@ -305,7 +305,7 @@ object DocumentFileCompat {
     }
 
     @JvmStatic
-    fun buildSimplePath(storageId: String = PRIMARY, basePath: String): String {
+    fun buildSimplePath(storageId: String, basePath: String): String {
         val cleanBasePath = basePath.removeForbiddenCharsFromFilename().trimFileSeparator()
         return "$storageId:$cleanBasePath"
     }
@@ -368,7 +368,7 @@ object DocumentFileCompat {
         } else {
             val persistedStorageIds = context.contentResolver.persistedUriPermissions
                 .filter { it.isReadPermission && it.isWritePermission }
-                .mapNotNull { it.uri.path?.run { substringBefore(':', "").substringAfterLast('/') } }
+                .mapNotNull { it.uri.path?.run { substringBefore(':').substringAfterLast('/') } }
             storageIds.toMutableList().run {
                 addAll(persistedStorageIds)
                 distinct()
@@ -786,7 +786,14 @@ object DocumentFileCompat {
             privateAppDirectory.mkdirs()
             DocumentFile.fromFile(privateAppDirectory)
         } else {
-            getAccessibleRootDocumentFile(context, getStorageIds(context).find { it == storageId } ?: return null)
+            // /storage/131D-261A/Android/data/com.anggrayudi.storage.sample/files
+            val folder = File("/storage/$storageId/Android/data/${context.packageName}/files")
+            folder.mkdirs()
+            if (folder.canRead()) {
+                DocumentFile.fromFile(folder)
+            } else {
+                getAccessibleRootDocumentFile(context, folder.absolutePath, considerRawFile = false)
+            }
         }
     }
 

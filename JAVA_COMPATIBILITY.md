@@ -148,7 +148,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onRootPathPermissionGranted(int requestCode, @NotNull DocumentFile root) {
-                Toast.makeText(getBaseContext(), "Storage access has been granted for ${root.storageId}", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getBaseContext(), "Storage access has been granted for " + DocumentFileExtKt.getStorageId(root), Toast.LENGTH_SHORT).show();
             }
 
             @Override
