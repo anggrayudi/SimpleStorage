@@ -14,7 +14,7 @@ If you want to know more about the background of this library, please read this 
 Adding Simple Storage into your project is simple:
 
 ```groovy
-implementation "com.anggrayudi:storage:0.3.1"
+implementation "com.anggrayudi:storage:0.3.2"
 ```
 
 Snapshots can be found [here](https://oss.sonatype.org/#nexus-search;quick~com.anggrayudi).

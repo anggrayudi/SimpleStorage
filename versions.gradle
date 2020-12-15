@@ -30,7 +30,7 @@ versions.timber = "4.7.1"
 ext.versions = versions
 
 def build_versions = [:]
-build_versions.min_sdk = 21
+build_versions.min_sdk = 19
 build_versions.compile_sdk = 30
 build_versions.target_sdk = 30
 build_versions.build_tools = "30.0.2"

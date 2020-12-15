@@ -12,8 +12,8 @@ import androidx.annotation.RequiresApi
 import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.PublicDirectory
 import com.anggrayudi.storage.file.avoidDuplicateFileNameFor
+import com.anggrayudi.storage.file.canModify
 import java.io.File
-import java.io.IOException
 
 /**
  * Created on 05/09/20
@@ -51,7 +51,6 @@ object MediaStoreCompat {
     }
 
     @Suppress("DEPRECATION")
-    @Throws(IOException::class)
     private fun createMedia(context: Context, mediaType: MediaType, folderName: String?, file: FileDescription): MediaFile? {
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, file.name)
@@ -62,35 +61,27 @@ object MediaStoreCompat {
                 put(MediaStore.MediaColumns.OWNER_PACKAGE_NAME, context.packageName)
                 put(MediaStore.MediaColumns.IS_PENDING, 1)
                 if (folderName != null) {
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, "$folderName/${file.subFolder}")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "$folderName/${file.subFolder}".trimEnd('/'))
                 }
             }
-            MediaFile(
-                context,
-                context.contentResolver.insert(mediaType.writeUri, contentValues)
-                    ?: throw IOException("Unable to create media file: ${file.name} in directory $folderName/${file.subFolder}")
-            )
+            MediaFile(context, context.contentResolver.insert(mediaType.writeUri, contentValues) ?: return null)
         } else {
-            val externalDirectory = Environment.getExternalStoragePublicDirectory(folderName)
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                if (Environment.MEDIA_MOUNTED_READ_ONLY == Environment.getExternalStorageState()) {
-                    throw IOException("External storage not currently available")
+            val publicDirectory = Environment.getExternalStoragePublicDirectory(folderName)
+            if (publicDirectory.canModify) {
+                var media = File("$publicDirectory/${file.subFolder}", file.name)
+                val parentFile = media.parentFile ?: return null
+                parentFile.mkdirs()
+                if (media.exists()) {
+                    val filename = parentFile.avoidDuplicateFileNameFor(file.name)
+                    contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                    media = File(parentFile, filename)
                 }
-            } else if (Environment.MEDIA_MOUNTED_READ_ONLY == Environment.getExternalStorageState(externalDirectory)) {
-                throw IOException("External storage not currently available")
-            }
-
-            var media = File("$externalDirectory/${file.subFolder}", file.name)
-            val parentFile = media.parentFile!!
-            parentFile.mkdirs()
-            if (media.isFile) {
-                val filename = parentFile.avoidDuplicateFileNameFor(file.name)
-                contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
-                media = File(parentFile, filename)
-            }
-            context.contentResolver.insert(mediaType.writeUri, contentValues)?.let {
-                media.createNewFile()
-                MediaFile(context, it)
+                context.contentResolver.insert(mediaType.writeUri, contentValues)?.let {
+                    media.createNewFile()
+                    MediaFile(context, it)
+                }
+            } else {
+                null
             }
         }
     }

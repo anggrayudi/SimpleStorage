@@ -14,6 +14,8 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.extension.*
+import com.anggrayudi.storage.media.FileDescription
+import com.anggrayudi.storage.media.MediaStoreCompat
 import java.io.File
 import java.io.IOException
 import java.net.URLDecoder
@@ -469,6 +471,16 @@ object DocumentFileCompat {
             results[index] = results[index]?.takeIf { requiresWriteAccess && it.canWrite() || !requiresWriteAccess }
         }
         return results
+    }
+
+    @JvmStatic
+    fun createDownloadWithMediaStoreFallback(context: Context, file: FileDescription): Uri? {
+        val publicFolder = fromPublicFolder(context, PublicDirectory.DOWNLOADS, true)
+        return if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+            MediaStoreCompat.createDownload(context, file)?.uri
+        } else {
+            publicFolder?.makeFile(file.name, file.mimeType)?.uri
+        }
     }
 
     /**

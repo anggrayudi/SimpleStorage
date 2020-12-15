@@ -15,9 +15,7 @@ import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.callback.FileCallback
 import com.anggrayudi.storage.callback.FileCopyCallback
 import com.anggrayudi.storage.callback.FileMoveCallback
-import com.anggrayudi.storage.extension.closeStream
-import com.anggrayudi.storage.extension.fromTreeUri
-import com.anggrayudi.storage.extension.startCoroutineTimer
+import com.anggrayudi.storage.extension.*
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import kotlinx.coroutines.Job
 import java.io.*
@@ -366,31 +364,10 @@ private fun DocumentFile.walkFileTree(
  */
 @JvmOverloads
 @WorkerThread
-fun DocumentFile.openOutputStream(context: Context, append: Boolean = true): OutputStream? {
-    return try {
-        if (isRawFile) {
-            FileOutputStream(toRawFile(), append)
-        } else {
-            context.contentResolver.openOutputStream(uri, if (append && isExternalStorageDocument) "wa" else "w")
-        }
-    } catch (e: FileNotFoundException) {
-        null
-    }
-}
+fun DocumentFile.openOutputStream(context: Context, append: Boolean = true) = uri.openOutputStream(context, append)
 
 @WorkerThread
-fun DocumentFile.openInputStream(context: Context): InputStream? {
-    return try {
-        if (isRawFile) {
-            // handle file from external storage
-            FileInputStream(toRawFile())
-        } else {
-            context.contentResolver.openInputStream(uri)
-        }
-    } catch (e: FileNotFoundException) {
-        null
-    }
-}
+fun DocumentFile.openInputStream(context: Context) = uri.openInputStream(context)
 
 @UiThread
 fun DocumentFile.openFileIntent(context: Context, authority: String) = Intent(Intent.ACTION_VIEW)
