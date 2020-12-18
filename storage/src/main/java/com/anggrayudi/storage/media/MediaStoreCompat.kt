@@ -11,7 +11,7 @@ import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.PublicDirectory
-import com.anggrayudi.storage.file.avoidDuplicateFileNameFor
+import com.anggrayudi.storage.file.autoIncrementFileName
 import com.anggrayudi.storage.file.canModify
 import java.io.File
 
@@ -55,6 +55,7 @@ object MediaStoreCompat {
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, file.name)
             put(MediaStore.MediaColumns.MIME_TYPE, file.mimeType)
+            put(MediaStore.MediaColumns.DATE_ADDED, System.currentTimeMillis())
         }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             contentValues.apply {
@@ -72,7 +73,7 @@ object MediaStoreCompat {
                 val parentFile = media.parentFile ?: return null
                 parentFile.mkdirs()
                 if (media.exists()) {
-                    val filename = parentFile.avoidDuplicateFileNameFor(file.name)
+                    val filename = parentFile.autoIncrementFileName(file.name)
                     contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
                     media = File(parentFile, filename)
                 }

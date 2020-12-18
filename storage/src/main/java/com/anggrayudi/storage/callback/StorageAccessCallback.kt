@@ -1,5 +1,6 @@
 package com.anggrayudi.storage.callback
 
+import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.file.StorageType
 
@@ -14,7 +15,7 @@ interface StorageAccessCallback {
         // default implementation
     }
 
-    fun onRootPathNotSelected(requestCode: Int, rootPath: String, rootStorageType: StorageType)
+    fun onRootPathNotSelected(requestCode: Int, rootPath: String, rootStorageType: StorageType, uri: Uri)
 
     fun onStoragePermissionDenied(requestCode: Int)
 

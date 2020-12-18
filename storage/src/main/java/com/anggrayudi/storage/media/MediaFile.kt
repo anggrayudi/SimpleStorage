@@ -3,7 +3,10 @@ package com.anggrayudi.storage.media
 import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.app.RecoverableSecurityException
-import android.content.*
+import android.content.ContentValues
+import android.content.Context
+import android.content.Intent
+import android.content.IntentSender
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -17,10 +20,7 @@ import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.callback.FileCallback
 import com.anggrayudi.storage.callback.FileCopyCallback
 import com.anggrayudi.storage.callback.FileMoveCallback
-import com.anggrayudi.storage.extension.closeStream
-import com.anggrayudi.storage.extension.startCoroutineTimer
-import com.anggrayudi.storage.extension.toInt
-import com.anggrayudi.storage.extension.trimFileSeparator
+import com.anggrayudi.storage.extension.*
 import com.anggrayudi.storage.file.*
 import kotlinx.coroutines.Job
 import java.io.*
@@ -77,7 +77,7 @@ class MediaFile(_context: Context, val uri: Uri) {
      * `true` if this file was created with [File]. Only works on API 28 and lower.
      */
     val isRawFile: Boolean
-        get() = uri.scheme == ContentResolver.SCHEME_FILE
+        get() = uri.isRawFile
 
     /**
      * @return `null` in Android 10+ or if you try to read files from SD Card or you want to convert a file picked
@@ -85,12 +85,12 @@ class MediaFile(_context: Context, val uri: Uri) {
      * @see toDocumentFile
      */
     @Deprecated("Accessing files with java.io.File only works on app private directory since Android 10.")
-    fun toRawFile() = if (isRawFile) File(uri.path!!) else null
+    fun toRawFile() = if (isRawFile) uri.path?.let { File(it) } else null
 
-    fun toDocumentFile() = realPath.let { if (it.isEmpty()) null else DocumentFileCompat.fromFullPath(context, it) }
+    fun toDocumentFile() = absolutePath.let { if (it.isEmpty()) null else DocumentFileCompat.fromFullPath(context, it) }
 
     @Suppress("DEPRECATION")
-    val realPath: String
+    val absolutePath: String
         @SuppressLint("InlinedApi")
         get() {
             val file = toRawFile()
@@ -111,14 +111,17 @@ class MediaFile(_context: Context, val uri: Uri) {
                     val projection = arrayOf(MediaStore.MediaColumns.RELATIVE_PATH, MediaStore.MediaColumns.DISPLAY_NAME)
                     context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
                         if (cursor.moveToFirst()) {
+                            val relativePath = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)) ?: return ""
                             val name = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME))
-                            val relativePath = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH))
-                            "${SimpleStorage.externalStoragePath}/$relativePath/$name"
+                            "${SimpleStorage.externalStoragePath}/$relativePath/$name".trimEnd('/').replaceCompletely("//", "/")
                         } else ""
                     }.orEmpty()
                 }
             }
         }
+
+    val basePath: String
+        get() = absolutePath.substringAfter(SimpleStorage.externalStoragePath).trimFileSeparator()
 
     /**
      * @see MediaStore.MediaColumns.RELATIVE_PATH
@@ -347,7 +350,7 @@ class MediaFile(_context: Context, val uri: Uri) {
                 return null
             }
 
-            targetFile = targetFolder.makeFile(type ?: DocumentFileCompat.MIME_TYPE_UNKNOWN, name.orEmpty())
+            targetFile = targetFolder.makeFile(name.orEmpty(), type ?: DocumentFileCompat.MIME_TYPE_UNKNOWN)
             if (targetFile == null) {
                 callback?.onFailed(ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
             } else {
