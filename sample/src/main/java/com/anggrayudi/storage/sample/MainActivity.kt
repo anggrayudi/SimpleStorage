@@ -44,29 +44,6 @@ class MainActivity : AppCompatActivity() {
         setupFolderPickerCallback()
         setupFilePickerCallback()
         setupButtonActions()
-
-        ioScope.launch {
-//            val download = DocumentFileCompat.fromPublicFolder(baseContext, PublicDirectory.DOWNLOADS) ?: return@launch
-//            val folder = download.toRawFile()?.makeFolder("/Aduhp/Bana/Lah/Yoo/Nu", false)
-//            Timber.d("onCreate: ${folder?.basePath}")
-
-//            val download = DocumentFileCompat.fromPublicFolder(baseContext, PublicDirectory.DOWNLOADS)?.listFiles()?.filter { it.isDirectory } ?: return@launch
-//            val file = DocumentFileCompat.fromUri(baseContext, Uri.parse("content://com.android.providers.downloads.documents/tree/downloads/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2FIKO5%2FWew%2FYoo"))
-//                ?.toWritableDownloadsDocumentFile(baseContext)
-//                ?: return@launch
-//            var file = DocumentFileCompat.fromPublicFolder(baseContext, PublicDirectory.DOWNLOADS, "/Den/Bagak/Kini/Mah", requiresWriteAccess = true) ?: return@launch
-//            file = file?.makeFolder(baseContext, "/Den/Bagak/Kini/Mah") ?: return@launch
-//            val s = contentResolver.persistedUriPermissions.filter { it.uri.isDownloadsDocument }.map { it.uri }
-//            Timber.d("onCreate: $s")
-//            val d = file.isDirectory
-//            val f = file.canModify
-//            val c = file.parentFile
-//            Timber.d("onCreate: ${c?.name}")
-//            val m = file.makeFile(baseContext, "Waduh", "video/mp4")
-//            val e = m?.name
-//            val g = m?.type
-//            Timber.d("NickoDana2: ${m}")
-        }
     }
 
     private fun setupButtonActions() {
