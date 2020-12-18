@@ -1,8 +1,11 @@
 package com.anggrayudi.storage.file
 
 import android.content.Context
+import android.webkit.MimeTypeMap
+import androidx.annotation.WorkerThread
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.extension.trimFileSeparator
+import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import java.io.File
 import java.io.IOException
 
@@ -75,33 +78,76 @@ fun File.createNewFileIfPossible(): Boolean = try {
     false
 }
 
-fun File.toDocumentFile(context: Context) = if (canRead()) DocumentFileCompat.fromFile(context, this) else null
+/**
+ * Create file and if exists, increment file name.
+ */
+@WorkerThread
+fun File.makeFile(name: String, mimeType: String = DocumentFileCompat.MIME_TYPE_UNKNOWN): File? {
+    if (!isDirectory || !canWrite()) {
+        return null
+    }
 
-fun File.avoidDuplicateFileNameFor(filename: String): String {
-    return if (File(this, filename).isFile) {
-        val baseName = filename.substringBeforeLast('.')
-        val ext = filename.substringAfterLast('.')
-        val prefix = "$baseName ("
-        val lastFile = listFiles { _, name ->
-            name.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(name)
-                    || DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION.matches(name))
-        }.orEmpty().filter { it.isFile }.maxOfOrNull { it.name }
-        var count = lastFile.orEmpty().substringAfterLast('(').substringBefore(')').toIntOrNull() ?: 0
-        "$baseName (${++count}).$ext"
+    val extension = if (mimeType == DocumentFileCompat.MIME_TYPE_UNKNOWN) {
+        ""
     } else {
-        filename
+        MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType).orEmpty()
+    }
+    val baseFileName = name.removeForbiddenCharsFromFilename().removeSuffix(".$extension")
+    val fullFileName = "$baseFileName.$extension".trimEnd('.')
+
+    return try {
+        File(this, autoIncrementFileName(fullFileName)).let { if (it.createNewFile()) it else null }
+    } catch (e: IOException) {
+        null
     }
 }
 
-fun File.avoidDuplicateFolderNameFor(folderName: String): String {
-    return if (File("$path/$folderName").isDirectory) {
-        val prefix = "$folderName ("
-        val lastFolder = listFiles { _, name ->
-            name.startsWith(prefix) && DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION.matches(name)
-        }.orEmpty().filter { it.isDirectory }.maxOfOrNull { it.name }
-        var count = lastFolder.orEmpty().substringAfterLast('(').substringBefore(')').toIntOrNull() ?: 0
-        "$folderName (${++count})"
+/**
+ * @param name can input `MyFolder` or `MyFolder/SubFolder`
+ */
+@WorkerThread
+@JvmOverloads
+fun File.makeFolder(name: String, createNewFolderIfAlreadyExists: Boolean = true): File? {
+    if (!isDirectory || !canWrite()) {
+        return null
+    }
+
+    val directorySequence = DocumentFileCompat.getDirectorySequence(name.removeForbiddenCharsFromFilename()).toMutableList()
+    val folderNameLevel1 = directorySequence.removeFirstOrNull() ?: return null
+    val incrementedFolderNameLevel1 = if (createNewFolderIfAlreadyExists) autoIncrementFileName(folderNameLevel1) else folderNameLevel1
+    val newDirectory = File(this, incrementedFolderNameLevel1).apply { mkdir() }
+    return if (newDirectory.isDirectory) {
+        if (directorySequence.isEmpty()) {
+            newDirectory
+        } else {
+            File(newDirectory, directorySequence.joinToString("/")).let { if (it.mkdirs() || it.exists()) it else null }
+        }
     } else {
-        folderName
+        null
+    }
+}
+
+fun File.toDocumentFile(context: Context) = if (canRead()) DocumentFileCompat.fromFile(context, this) else null
+
+/**
+ * Avoid duplicate file name.
+ */
+fun File.autoIncrementFileName(filename: String): String {
+    return if (File(absolutePath, filename).exists()) {
+        val baseName = filename.substringBeforeLast('.')
+        val ext = filename.substringAfterLast('.', "")
+        val prefix = "$baseName ("
+        val lastFile = list().orEmpty().filter {
+            it.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(it)
+                    || DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION.matches(it))
+        }
+            .maxOfOrNull { it }
+            .orEmpty()
+        var count = lastFile.substringAfterLast('(', "")
+            .substringBefore(')', "")
+            .toIntOrNull() ?: 0
+        "$baseName (${++count}).$ext".trimEnd('.')
+    } else {
+        filename
     }
 }

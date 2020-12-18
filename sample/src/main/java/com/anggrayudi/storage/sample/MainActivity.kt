@@ -2,6 +2,7 @@ package com.anggrayudi.storage.sample
 
 import android.Manifest
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.widget.ProgressBar
@@ -43,6 +44,29 @@ class MainActivity : AppCompatActivity() {
         setupFolderPickerCallback()
         setupFilePickerCallback()
         setupButtonActions()
+
+        ioScope.launch {
+//            val download = DocumentFileCompat.fromPublicFolder(baseContext, PublicDirectory.DOWNLOADS) ?: return@launch
+//            val folder = download.toRawFile()?.makeFolder("/Aduhp/Bana/Lah/Yoo/Nu", false)
+//            Timber.d("onCreate: ${folder?.basePath}")
+
+//            val download = DocumentFileCompat.fromPublicFolder(baseContext, PublicDirectory.DOWNLOADS)?.listFiles()?.filter { it.isDirectory } ?: return@launch
+//            val file = DocumentFileCompat.fromUri(baseContext, Uri.parse("content://com.android.providers.downloads.documents/tree/downloads/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2FIKO5%2FWew%2FYoo"))
+//                ?.toWritableDownloadsDocumentFile(baseContext)
+//                ?: return@launch
+//            var file = DocumentFileCompat.fromPublicFolder(baseContext, PublicDirectory.DOWNLOADS, "/Den/Bagak/Kini/Mah", requiresWriteAccess = true) ?: return@launch
+//            file = file?.makeFolder(baseContext, "/Den/Bagak/Kini/Mah") ?: return@launch
+//            val s = contentResolver.persistedUriPermissions.filter { it.uri.isDownloadsDocument }.map { it.uri }
+//            Timber.d("onCreate: $s")
+//            val d = file.isDirectory
+//            val f = file.canModify
+//            val c = file.parentFile
+//            Timber.d("onCreate: ${c?.name}")
+//            val m = file.makeFile(baseContext, "Waduh", "video/mp4")
+//            val e = m?.name
+//            val g = m?.type
+//            Timber.d("NickoDana2: ${m}")
+        }
     }
 
     private fun setupButtonActions() {
@@ -85,7 +109,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupSimpleStorage() {
         storage = SimpleStorage(this)
         storage.storageAccessCallback = object : StorageAccessCallback {
-            override fun onRootPathNotSelected(requestCode: Int, rootPath: String, rootStorageType: StorageType) {
+            override fun onRootPathNotSelected(requestCode: Int, rootPath: String, rootStorageType: StorageType, uri: Uri) {
                 MaterialDialog(this@MainActivity)
                     .message(text = "Please select $rootPath")
                     .negativeButton(android.R.string.cancel)

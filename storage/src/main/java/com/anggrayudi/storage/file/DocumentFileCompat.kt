@@ -38,6 +38,11 @@ object DocumentFileCompat {
 
     const val MEDIA_FOLDER_AUTHORITY = "com.android.providers.media.documents"
 
+    /**
+     * Only available on API 26 to 29.
+     */
+    const val DOWNLOADS_TREE_URI = "content://$DOWNLOADS_FOLDER_AUTHORITY/tree/downloads"
+
     val FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION = Regex("(.*?) \\(\\d+\\)\\.[a-zA-Z0-9]+")
 
     val FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION = Regex("(.*?) \\(\\d+\\)")
@@ -45,20 +50,7 @@ object DocumentFileCompat {
     @JvmStatic
     fun isRootUri(uri: Uri): Boolean {
         val path = uri.path ?: return false
-        return uri.authority == EXTERNAL_STORAGE_AUTHORITY && path.indexOf(':') == path.length - 1
-    }
-
-    /**
-     * If given [Uri] with path `/tree/primary:Downloads/MyVideo.mp4`, then return `primary`.
-     */
-    @JvmStatic
-    fun getStorageId(uri: Uri): String {
-        val path = uri.path.orEmpty()
-        return if (uri.scheme == ContentResolver.SCHEME_FILE) {
-            File(path).storageId
-        } else {
-            if (uri.authority == EXTERNAL_STORAGE_AUTHORITY) path.substringBefore(':', "").substringAfterLast('/') else ""
-        }
+        return uri.isExternalStorageDocument && path.indexOf(':') == path.length - 1
     }
 
     /**
@@ -97,6 +89,15 @@ object DocumentFileCompat {
             fullPath.substringAfter(':', "")
         }
         return basePath.trimFileSeparator().removeForbiddenCharsFromFilename()
+    }
+
+    @JvmStatic
+    fun fromUri(context: Context, uri: Uri): DocumentFile? {
+        return when {
+            uri.isRawFile -> File(uri.path ?: return null).run { if (canRead()) DocumentFile.fromFile(this) else null }
+            uri.isTreeDocumentFile -> context.fromTreeUri(uri)?.run { if (isDownloadsDocument) toWritableDownloadsDocumentFile(context) else this }
+            else -> context.fromSingleUri(uri)
+        }
     }
 
     /**
@@ -175,6 +176,8 @@ object DocumentFileCompat {
 
     /**
      * Returns `null` if folder does not exist or you have no permission on this directory
+     *
+     * @param subFile can input sub folder or sub file
      */
     @JvmOverloads
     @JvmStatic
@@ -182,19 +185,47 @@ object DocumentFileCompat {
     fun fromPublicFolder(
         context: Context,
         type: PublicDirectory,
+        subFile: String = "",
         requiresWriteAccess: Boolean = false,
         considerRawFile: Boolean = true
     ): DocumentFile? {
-        val rawFile = Environment.getExternalStoragePublicDirectory(type.folderName)
+        var rawFile = Environment.getExternalStoragePublicDirectory(type.folderName)
+        if (subFile.isNotEmpty()) {
+            rawFile = File("$rawFile/$subFile".trimEnd('/'))
+        }
         if (considerRawFile && rawFile.canRead() && (requiresWriteAccess && rawFile.canWrite() || !requiresWriteAccess)) {
             return DocumentFile.fromFile(rawFile)
         }
 
         val folder = if (type == PublicDirectory.DOWNLOADS) {
-            val downloadFolder = context.fromTreeUri(Uri.parse("content://$DOWNLOADS_FOLDER_AUTHORITY/tree/downloads"))
-            if (downloadFolder?.canRead() == true) downloadFolder else fromFullPath(context, rawFile.absolutePath, DocumentFileType.FOLDER, false)
+            /*
+            Root path will be                   => content://com.android.providers.downloads.documents/tree/downloads/document/downloads
+            Get file/listFiles() will be        => content://com.android.providers.downloads.documents/tree/downloads/document/msf%3A268
+            When creating files with makeFile() => content://com.android.providers.downloads.documents/tree/downloads/document/147
+            When creating directory  "IKO5"     => content://com.android.providers.downloads.documents/tree/downloads/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2FIKO5
+
+            Seems that com.android.providers.downloads.documents no longer available on SAF's folder selector on API 30+.
+
+            You can create directory with authority com.android.providers.downloads.documents on API 29,
+            but unfortunately cannot create file in the directory. So creating directory with this authority is useless.
+            Hence, convert it to writable URI with DocumentFile.toWritableDownloadsDocumentFile()
+            */
+            var downloadFolder = context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))
+            if (downloadFolder?.canRead() == true) {
+                getDirectorySequence(subFile).forEach {
+                    val directory = downloadFolder?.findFile(it) ?: return null
+                    if (directory.canRead()) {
+                        downloadFolder = directory
+                    } else {
+                        return null
+                    }
+                }
+                downloadFolder
+            } else {
+                fromFullPath(context, rawFile.absolutePath, considerRawFile = false)
+            }
         } else {
-            fromFullPath(context, rawFile.absolutePath, DocumentFileType.FOLDER, false)
+            fromFullPath(context, rawFile.absolutePath, considerRawFile = false)
         }
         return folder?.takeIf { it.canRead() && (requiresWriteAccess && folder.canWrite() || !requiresWriteAccess) }
     }
@@ -232,6 +263,7 @@ object DocumentFileCompat {
      * @param fullPath construct it using [buildAbsolutePath] or [buildSimplePath]
      * @return `null` if accessible root path is not found in [ContentResolver.getPersistedUriPermissions], or the folder does not exist.
      */
+    @Suppress("DEPRECATION")
     @JvmOverloads
     @JvmStatic
     fun getAccessibleRootDocumentFile(
@@ -249,12 +281,17 @@ object DocumentFileCompat {
         val storageId = getStorageId(fullPath)
         if (storageId.isNotEmpty()) {
             val cleanBasePath = getBasePath(fullPath)
+            val downloadPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
             context.contentResolver.persistedUriPermissions
                 // For instance, content://com.android.externalstorage.documents/tree/primary%3AMusic
-                .filter { it.isReadPermission && it.isWritePermission }
+                .filter { it.isReadPermission && it.isWritePermission && it.uri.isTreeDocumentFile }
                 .forEach {
+                    if (fullPath.startsWith(downloadPath) && it.uri.isDownloadsDocument) {
+                        return context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))
+                    }
+
                     val uriPath = it.uri.path // e.g. /tree/primary:Music
-                    if (uriPath != null) {
+                    if (uriPath != null && it.uri.isExternalStorageDocument) {
                         val currentStorageId = uriPath.substringBefore(':').substringAfterLast('/')
                         val currentRootFolder = uriPath.substringAfter(':', "")
                         if (currentStorageId == storageId && (currentRootFolder.isEmpty() || cleanBasePath.hasParent(currentRootFolder))) {
@@ -348,6 +385,12 @@ object DocumentFileCompat {
         return context.contentResolver.persistedUriPermissions.any { it.isReadPermission && it.isWritePermission && it.uri == root }
     }
 
+    @JvmStatic
+    fun isDownloadsUriPermissionGranted(context: Context): Boolean {
+        val uri = Uri.parse(DOWNLOADS_TREE_URI)
+        return context.contentResolver.persistedUriPermissions.any { it.isReadPermission && it.isWritePermission && it.uri == uri }
+    }
+
     /**
      * Get all storage IDs on this device. The first index is primary storage.
      * Prior to API 28, retrieving storage ID for SD card only applicable if URI permission is granted for read & write access.
@@ -369,7 +412,7 @@ object DocumentFileCompat {
             storageIds
         } else {
             val persistedStorageIds = context.contentResolver.persistedUriPermissions
-                .filter { it.isReadPermission && it.isWritePermission }
+                .filter { it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument }
                 .mapNotNull { it.uri.path?.run { substringBefore(':').substringAfterLast('/') } }
             storageIds.toMutableList().run {
                 addAll(persistedStorageIds)
@@ -475,7 +518,7 @@ object DocumentFileCompat {
 
     @JvmStatic
     fun createDownloadWithMediaStoreFallback(context: Context, file: FileDescription): Uri? {
-        val publicFolder = fromPublicFolder(context, PublicDirectory.DOWNLOADS, true)
+        val publicFolder = fromPublicFolder(context, PublicDirectory.DOWNLOADS, requiresWriteAccess = true)
         return if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
             MediaStoreCompat.createDownload(context, file)?.uri
         } else {
@@ -503,7 +546,7 @@ object DocumentFileCompat {
         } else try {
             val directory = mkdirsParentDirectory(context, storageId, basePath, considerRawFile)
             val filename = getFileNameFromPath(basePath).removeForbiddenCharsFromFilename()
-            if (filename.isEmpty()) null else directory?.makeFile(mimeType, filename)
+            if (filename.isEmpty()) null else directory?.makeFile(filename, mimeType)
         } catch (e: Exception) {
             null
         }
@@ -545,7 +588,7 @@ object DocumentFileCompat {
         }
         return directory?.run {
             findFile(filename)?.delete()
-            makeFile(mimeType, filename)
+            makeFile(filename, mimeType)
         }
     }
 
@@ -615,7 +658,7 @@ object DocumentFileCompat {
     /**
      * For example, `Downloads/Video/Sports/` will become array `["Downloads", "Video", "Sports"]`
      */
-    private fun getDirectorySequence(path: String) = path.split('/')
+    internal fun getDirectorySequence(path: String) = path.split('/')
         .filterNot { it.isBlank() }
 
     private fun recreateAppDirectory(context: Context) = context.getAppDirectory().apply { File(this).mkdirs() }
