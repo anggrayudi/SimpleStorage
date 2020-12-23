@@ -14,8 +14,10 @@ If you want to know more about the background of this library, please read this 
 Adding Simple Storage into your project is pretty simple:
 
 ```groovy
-implementation "com.anggrayudi:storage:0.4.0"
+implementation "com.anggrayudi:storage:X.Y.Z"
 ```
+
+Where `X.Y.Z` is the library version: ![Maven Central](https://img.shields.io/maven-central/v/com.anggrayudi/storage.svg)
 
 Snapshots can be found [here](https://oss.sonatype.org/#nexus-search;quick~com.anggrayudi).
 To use SNAPSHOT version, you need to add this URL to the root Gradle:
