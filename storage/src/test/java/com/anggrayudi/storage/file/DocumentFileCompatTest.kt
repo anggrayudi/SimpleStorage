@@ -59,9 +59,9 @@ class DocumentFileCompatTest {
             "/storage/9016-4EF8/Music/Favorites/Pop",
             "/storage/emulated/0/Music",
             "/storage/emulated/0/Music Indo",
-            "/tree/primary/b/c",
-            "/tree/primary/b",
-            "/tree/primary/b/d",
+            "/folder/subFolder/b/c",
+            "/folder/subFolder/b",
+            "/folder/subFolder/b/d",
             "primary:Alarm/Morning",
             "primary:Alarm",
         )
@@ -72,7 +72,7 @@ class DocumentFileCompatTest {
             "/storage/9016-4EF8/Music",
             "/storage/emulated/0/Music",
             "/storage/emulated/0/Music Indo",
-            "/tree/primary/b",
+            "/folder/subFolder/b",
             "/storage/emulated/0/Alarm",
         )
 

@@ -360,9 +360,9 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                     .filter { it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument }
                     .map { it.uri }
                 val writeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                val uniqueUriParents = DocumentFileCompat.findUniqueParents(persistedUris.mapNotNull { it.path })
+                val uniqueUriParents = DocumentFileCompat.findUniqueParents(persistedUris.mapNotNull { it.path?.substringAfter("/tree/") })
                 persistedUris.forEach {
-                    if (it.path !in uniqueUriParents) {
+                    if (DocumentFileCompat.buildAbsolutePath(it.path.orEmpty().substringAfter("/tree/")) !in uniqueUriParents) {
                         resolver.releasePersistableUriPermission(it, writeFlags)
                         Timber.d("Removed redundant URI permission => $it")
                     }
