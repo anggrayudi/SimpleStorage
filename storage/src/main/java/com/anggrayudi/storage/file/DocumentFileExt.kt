@@ -556,7 +556,7 @@ fun DocumentFile.openFileIntent(context: Context, authority: String) = Intent(In
     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-// TODO: 08/09/20 moveTo and copyTo for folder and subfolders
+// TODO: 08/09/20 moveFolderTo and copyFolderTo for folder and subfolders: skipEmptyFolders = false
 
 @WorkerThread
 fun DocumentFile?.copyTo(

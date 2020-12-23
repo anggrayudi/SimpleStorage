@@ -131,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
         storage = new SimpleStorage(this, savedInstanceState);
         storage.setStorageAccessCallback(new StorageAccessCallback() {
             @Override
-            public void onRootPathNotSelected(int requestCode, @NotNull String rootPath, @NotNull StorageType rootStorageType) {
+            public void onRootPathNotSelected(int requestCode, @NotNull String rootPath, @NotNull StorageType rootStorageType, @NotNull Uri uri) {
                 /*
                 Show dialog to tell user that the root path of storage is not selected.
                 When user tap OK button, request storage access again.
