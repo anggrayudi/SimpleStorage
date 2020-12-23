@@ -40,6 +40,73 @@ Simple Storage is built in Kotlin. Follow this [documentation](JAVA_COMPATIBILIT
 
 ![Alt text](art/terminology.png?raw=true "Simple Storage Terms")
 
+## Read Files
+
+In Simple Storage, `DocumentFile` is used to access files when your app has been granted full storage access,
+included URI permissions for read and write. Whereas `MediaFile` is used to access media files from `MediaStore`
+without URI permissions to the storage.
+
+You can read file with helper functions in `DocumentFileCompat` and `MediaStoreCompat`:
+
+### `DocumentFileCompat`
+
+* `DocumentFileCompat.fromFullPath()`
+* `DocumentFileCompat.fromSimplePath()`
+* `DocumentFileCompat.fromFile()`
+* `DocumentFileCompat.fromPublicFolder()`
+
+#### Example
+```kotlin
+val fileFromExternalStorage = DocumentFileCompat.fromSimplePath(context, basePath = "Downloads/MyMovie.mp4")
+
+val fileFromSdCard = DocumentFileCompat.fromSimplePath(context, storageId = "9016-4EF8", basePath = "Downloads/MyMovie.mp4")
+```
+
+### `MediaStoreCompat`
+
+* `MediaStoreCompat.fromMediaId()`
+* `MediaStoreCompat.fromFileName()`
+* `MediaStoreCompat.fromRelativePath()`
+* `MediaStoreCompat.fromFileNameContains()`
+* `MediaStoreCompat.fromMimeType()`
+* `MediaStoreCompat.fromMediaType()`
+
+#### Example
+```kotlin
+val myVideo = MediaStoreCompat.fromFileName(context, MediaType.DOWNLOADS, "MyMovie.mp4")
+
+val imageList = MediaStoreCompat.fromMediaType(context, MediaType.IMAGE)
+```
+
+## Manage Files
+
+### `DocumentFile`
+
+Since `java.io.File` has been deprecated in Android 10, thus you have to use `DocumentFile` for file management.
+
+Simple Storage adds Kotlin extension functions to `DocumentFile`, so you can manage files like this:
+* `DocumentFile.storageId`
+* `DocumentFile.storageType`
+* `DocumentFile.basePath`
+* `DocumentFile.copyTo()`
+* `DocumentFile.moveTo()`
+* `DocumentFile.search()`
+* `DocumentFile.deleteRecursively()`
+* `DocumentFile.openInputStream()`
+* `DocumentFile.openOutputStream()`, and many more…
+
+### `MediaFile`
+
+For media files, you can have similar capabilities to `DocumentFile`, i.e.:
+* `MediaFile.realPath`
+* `MediaFile.isPending`
+* `MediaFile.delete()`
+* `MediaFile.renameTo()`
+* `MediaFile.copyTo()`
+* `MediaFile.moveTo()`
+* `MediaFile.openInputStream()`
+* `MediaFile.openOutputStream()`, etc.
+
 ## Request Storage Access
 
 Although user has granted read and write permissions during runtime, your app may still does not
@@ -65,7 +132,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupSimpleStorage() {
         storage = SimpleStorage(this)
         storage.storageAccessCallback = object : StorageAccessCallback {
-            override fun onRootPathNotSelected(rootPath: String, rootStorageType: StorageType) {
+            override fun onRootPathNotSelected(rootPath: String, rootStorageType: StorageType, uri: Uri) {
                 MaterialDialog(this@MainActivity)
                     .message(text = "Please select $rootPath")
                     .negativeButton(android.R.string.cancel)
@@ -108,72 +175,68 @@ class MainActivity : AppCompatActivity() {
 }
 ```
 
-## Read Files
+## Folder Picker
 
-In Simple Storage, `DocumentFile` is used to access files when your app has been granted full storage access,
-included URI permissions for read and write. Whereas `MediaFile` is used to access media files from `MediaStore`
-without URI permissions to the storage.
-
-You can read file with helper functions in `DocumentFileCompat` and `MediaStoreCompat`:
-
-### `DocumentFileCompat`
-
-* `DocumentFileCompat.fromFullPath()`
-* `DocumentFileCompat.fromSimplePath()`
-* `DocumentFileCompat.fromFile()`
-* `DocumentFileCompat.fromPublicFolder()`
-
-#### Example
 ```kotlin
-val fileFromExternalStorage = DocumentFileCompat.fromPath(context, basePath = "Downloads/MyMovie.mp4")
+    private fun requestStoragePermission() {
+        /*
+        Request runtime permissions for Manifest.permission.WRITE_EXTERNAL_STORAGE
+        and Manifest.permission.READ_EXTERNAL_STORAGE
+        */
+    }
 
-val fileFromSdCard = DocumentFileCompat.fromPath(context, storageId = "9016-4EF8", basePath = "Downloads/MyMovie.mp4")
+    private fun setupFolderPickerCallback() {
+        storage.folderPickerCallback = object : FolderPickerCallback {
+            override fun onStoragePermissionDenied(requestCode: Int) {
+                requestStoragePermission()
+            }
+
+            override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType?) {
+                if (storageType == null) {
+                    requestStoragePermission()
+                    return
+                }
+                MaterialDialog(this@MainActivity)
+                    .message(
+                        text = "You have no write access to this storage, thus selecting this folder is useless." +
+                                "\nWould you like to grant access to this folder?"
+                    )
+                    .negativeButton(android.R.string.cancel)
+                    .positiveButton {
+                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, storageType)
+                    }.show()
+            }
+
+            override fun onFolderSelected(requestCode: Int, folder: DocumentFile) {
+                Toast.makeText(baseContext, folder.absolutePath, Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onCancelledByUser(requestCode: Int) {
+                Toast.makeText(baseContext, "Folder picker cancelled by user", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 ```
 
-### `MediaStoreCompat`
+## File Picker
 
-* `MediaStoreCompat.fromMediaId()`
-* `MediaStoreCompat.fromFileName()`
-* `MediaStoreCompat.fromRelativePath()`
-* `MediaStoreCompat.fromFileNameContains()`
-* `MediaStoreCompat.fromMimeType()`
-* `MediaStoreCompat.fromMediaType()`
-
-#### Example
 ```kotlin
-val myVideo = MediaStoreCompat.fromFileName(context, MediaType.DOWNLOADS, "MyMovie.mp4")
+    private fun setupFilePickerCallback() {
+        storage.filePickerCallback = object : FilePickerCallback {
+            override fun onCancelledByUser(requestCode: Int) {
+                Toast.makeText(baseContext, "File picker cancelled by user", Toast.LENGTH_SHORT).show()
+            }
 
-val imageList = MediaStoreCompat.fromMediaType(context, MediaType.IMAGE)
+            override fun onStoragePermissionDenied(requestCode: Int, file: DocumentFile?) {
+                requestStoragePermission()
+            }
+
+            override fun onFileSelected(requestCode: Int, file: DocumentFile) {
+                Toast.makeText(baseContext, "File selected: ${file.name}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 ```
-
-## Manage Files
-
-### `DocumentFile`
-
-Since `java.io.File` has been deprecated in Android 10, thus you have to use `DocumentFile` for file management.
-
-Simple Storage adds Kotlin extension functions to `DocumentFile`, so you can manage files like this:
-* `DocumentFile.storageId`
-* `DocumentFile.storageType`
-* `DocumentFile.basePath`
-* `DocumentFile.copyTo()`
-* `DocumentFile.moveTo()`
-* `DocumentFile.search()`
-* `DocumentFile.recreateFile()`
-* `DocumentFile.openInputStream()`
-* `DocumentFile.openOutputStream()`, and many more…
-
-### `MediaFile`
-
-For media files, you can have similar capabilities to `DocumentFile`, i.e.:
-* `MediaFile.realPath`
-* `MediaFile.isPending`
-* `MediaFile.delete()`
-* `MediaFile.renameTo()`
-* `MediaFile.copyTo()`
-* `MediaFile.moveTo()`
-* `MediaFile.openInputStream()`
-* `MediaFile.openOutputStream()`, etc.
 
 ## License
 
