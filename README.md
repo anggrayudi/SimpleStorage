@@ -11,7 +11,7 @@ Simple Storage ease you in accessing and managing files across API levels.
 If you want to know more about the background of this library, please read this article:
 [Easy Storage Access Framework in Android with SimpleStorage](https://medium.com/@hardiannicko/easy-storage-access-framework-in-android-with-simplestorage-ec0a566f472c)
 
-Adding Simple Storage into your project is simple:
+Adding Simple Storage into your project is pretty simple:
 
 ```groovy
 implementation "com.anggrayudi:storage:0.4.0"

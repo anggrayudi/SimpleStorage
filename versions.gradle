@@ -15,7 +15,6 @@ versions.dexter = "6.2.1"
 versions.documentfile = "1.0.1"
 versions.espresso = "3.3.0"
 versions.junit = "4.13.1"
-versions.kotlin = "1.4.21"
 versions.material_dialogs = "2.8.1"
 versions.material_progressbar = "1.6.1"
 versions.mockito = "3.3.0"
@@ -28,13 +27,6 @@ versions.robolectric = "4.4"
 versions.timber = "4.7.1"
 
 ext.versions = versions
-
-def build_versions = [:]
-build_versions.min_sdk = 19
-build_versions.compile_sdk = 30
-build_versions.target_sdk = 30
-build_versions.build_tools = "30.0.2"
-ext.build_versions = build_versions
 
 def deps = [:]
 
@@ -50,13 +42,6 @@ atsl.ext_junit = "androidx.test.ext:junit:$versions.atsl_junit"
 atsl.runner = "androidx.test:runner:$versions.atsl_runner"
 atsl.rules = "androidx.test:rules:$versions.atsl_rules"
 deps.atsl = atsl
-
-// JetBrains ----------------------------
-def kotlin = [:]
-kotlin.stdlib = "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$versions.kotlin"
-kotlin.plugin = "org.jetbrains.kotlin:kotlin-gradle-plugin:$versions.kotlin"
-kotlin.test = "org.jetbrains.kotlin:kotlin-test-junit:$versions.kotlin"
-deps.kotlin = kotlin
 
 def coroutines = [:]
 coroutines.core = "org.jetbrains.kotlinx:kotlinx-coroutines-core:$versions.coroutines"

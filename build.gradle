@@ -4,9 +4,11 @@ buildscript {
 
     addRepos(repositories)
 
+    ext.kotlin_version = '1.4.21'
+
     dependencies {
         classpath "com.android.tools.build:gradle:4.1.1"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${versions.kotlin}"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.vanniktech:gradle-maven-publish-plugin:0.13.0'
         classpath "org.jetbrains.dokka:dokka-gradle-plugin:1.4.0"
     }
@@ -21,6 +23,34 @@ allprojects {
             freeCompilerArgs = ['-Xjvm-default=all', '-Xopt-in=kotlin.RequiresOptIn']
             jvmTarget = '1.8'
             includeRuntime = true
+        }
+    }
+}
+
+subprojects {
+    afterEvaluate {
+        android {
+            compileSdkVersion 30
+            buildToolsVersion '30.0.2'
+
+            defaultConfig {
+                minSdkVersion 19
+                targetSdkVersion 30
+                versionCode 1
+                versionName "$STORAGE_VERSION"
+                testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+                vectorDrawables.useSupportLibrary = true
+            }
+
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_1_8
+                targetCompatibility JavaVersion.VERSION_1_8
+            }
+        }
+        // global dependencies for all modules
+        dependencies {
+            implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+            implementation "org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version"
         }
     }
 }

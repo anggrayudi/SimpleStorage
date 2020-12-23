@@ -6,16 +6,7 @@ group = 'com.anggrayudi'
 version = "$STORAGE_VERSION"
 
 android {
-    compileSdkVersion build_versions.compile_sdk
-    buildToolsVersion build_versions.build_tools
-
     defaultConfig {
-        minSdkVersion build_versions.min_sdk
-        targetSdkVersion build_versions.target_sdk
-        versionCode 1
-        versionName version
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
     }
 
@@ -26,20 +17,17 @@ android {
         }
     }
 
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
+    resourcePrefix 'ss_'
 }
 
 dependencies {
-    implementation deps.kotlin.stdlib
     implementation deps.core_ktx
     implementation deps.appcompat
     api deps.documentfile
     api deps.dexter
     api deps.coroutines.core
     api deps.coroutines.android
+    api deps.material_dialogs
     implementation deps.timber
 
     testImplementation deps.junit

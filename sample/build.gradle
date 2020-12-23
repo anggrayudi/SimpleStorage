@@ -3,9 +3,6 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
 android {
-    compileSdkVersion build_versions.compile_sdk
-    buildToolsVersion build_versions.build_tools
-
     signingConfigs {
         debug {
             keyAlias 'androiddebugkey'
@@ -17,13 +14,7 @@ android {
 
     defaultConfig {
         applicationId "com.anggrayudi.storage.sample"
-        minSdkVersion build_versions.min_sdk
-        targetSdkVersion build_versions.target_sdk
-        versionCode 1
-        versionName "$STORAGE_VERSION"
         multiDexEnabled true
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables.useSupportLibrary = true
     }
 
     buildTypes {
@@ -32,11 +23,6 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.debug
         }
-    }
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
     }
 
     flavorDimensions "libSource"
@@ -61,7 +47,6 @@ dependencies {
 //    localImplementation project(":storage")
 //    mavenImplementation("com.anggrayudi:storage:$STORAGE_VERSION") { changing = true }
 
-    implementation deps.kotlin.stdlib
     implementation deps.core_ktx
     implementation deps.appcompat
     implementation deps.multidex
