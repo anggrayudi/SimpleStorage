@@ -1,3 +1,5 @@
+@file:JvmName("IOUtils")
+
 package com.anggrayudi.storage.extension
 
 import java.io.IOException

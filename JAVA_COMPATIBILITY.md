@@ -74,10 +74,14 @@ val storageId = file.storageId
 
 ```java
 DocumentFile file = ...
+// Prior to 0.4.2:
 String storageId = DocumentFileExtKt.getStorageId(file);
+// 0.4.2 and higher
+String storageId = DocumentFileUtils.getStorageId(file);
 ```
 
-All extension functions work like static methods in Java.
+All extension functions work like static methods in Java. Note that since `0.4.2`,
+their class names are renamed from using suffix `ExtKt` to `Utils`.
 
 ### Utility Functions
 

@@ -1,3 +1,5 @@
+@file:JvmName("UriUtils")
+
 package com.anggrayudi.storage.extension
 
 import android.content.ContentResolver

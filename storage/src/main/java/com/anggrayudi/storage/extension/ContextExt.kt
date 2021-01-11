@@ -1,3 +1,5 @@
+@file:JvmName("ContextUtils")
+
 package com.anggrayudi.storage.extension
 
 import android.app.Activity

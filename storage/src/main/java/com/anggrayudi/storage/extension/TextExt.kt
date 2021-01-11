@@ -1,3 +1,5 @@
+@file:JvmName("TextUtils")
+
 package com.anggrayudi.storage.extension
 
 /**

@@ -242,7 +242,7 @@ class MainActivity : AppCompatActivity() {
 
 ## License
 
-    Copyright © 2020 Anggrayudi Hardiannicko A.
+    Copyright © 2020-2021 Anggrayudi Hardiannicko A.
  
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.

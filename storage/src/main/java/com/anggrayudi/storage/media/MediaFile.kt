@@ -29,9 +29,9 @@ import java.io.*
  * Created on 06/09/20
  * @author Anggrayudi H
  */
-class MediaFile(_context: Context, val uri: Uri) {
+class MediaFile(context: Context, val uri: Uri) {
 
-    private val context = _context.applicationContext
+    private val context = context.applicationContext
 
     interface AccessCallback {
 

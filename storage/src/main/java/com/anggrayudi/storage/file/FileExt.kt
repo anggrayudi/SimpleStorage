@@ -1,3 +1,5 @@
+@file:JvmName("FileUtils")
+
 package com.anggrayudi.storage.file
 
 import android.content.Context
