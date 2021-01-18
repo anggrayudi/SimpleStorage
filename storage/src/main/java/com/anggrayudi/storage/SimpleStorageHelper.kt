@@ -112,7 +112,8 @@ class SimpleStorageHelper {
         const val REQUEST_CODE_STORAGE_GET_FOLDER = 12
         const val REQUEST_CODE_STORAGE_GET_FILE = 13
 
-        inline fun requestStoragePermission(context: Context, crossinline onPermissionsGranted: () -> Unit) {
+        @JvmStatic
+        fun requestStoragePermission(context: Context, onPermissionsGranted: () -> Unit) {
             Dexter.withContext(context)
                 .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
                 .withListener(object : BaseMultiplePermissionsListener() {
