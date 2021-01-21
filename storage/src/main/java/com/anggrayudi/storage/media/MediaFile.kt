@@ -66,12 +66,23 @@ class MediaFile(context: Context, val uri: Uri) {
     val length: Long
         get() = toRawFile()?.length() ?: getColumnInfoLong(MediaStore.MediaColumns.SIZE)
 
+    /**
+     * Check if file exists
+     */
     @Suppress("DEPRECATION")
     val exists: Boolean
         get() = toRawFile()?.exists()
-            ?: context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)?.use {
-                true
-            } ?: false
+            ?: uri.openInputStream(context)?.use { true }
+            ?: false
+
+    /**
+     * The URI presents in SAF database, but the file is not found.
+     */
+    @Suppress("DEPRECATION")
+    val empty: Boolean
+        get() = context.contentResolver.query(uri, null, null, null, null)?.use {
+            it.count > 0 && !exists
+        } ?: false
 
     /**
      * `true` if this file was created with [File]. Only works on API 28 and lower.
