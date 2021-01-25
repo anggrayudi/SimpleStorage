@@ -90,6 +90,11 @@ class MediaFile(context: Context, val uri: Uri) {
     val isRawFile: Boolean
         get() = uri.isRawFile
 
+    @Suppress("DEPRECATION")
+    val lastModified: Long
+        get() = toRawFile()?.lastModified()
+            ?: getColumnInfoLong(MediaStore.MediaColumns.DATE_MODIFIED)
+
     /**
      * @return `null` in Android 10+ or if you try to read files from SD Card or you want to convert a file picked
      * from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT].

@@ -55,10 +55,12 @@ object MediaStoreCompat {
 
     @Suppress("DEPRECATION")
     private fun createMedia(context: Context, mediaType: MediaType, folderName: String?, file: FileDescription): MediaFile? {
+        val dateCreated = System.currentTimeMillis()
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, file.name)
             put(MediaStore.MediaColumns.MIME_TYPE, file.mimeType)
-            put(MediaStore.MediaColumns.DATE_ADDED, System.currentTimeMillis())
+            put(MediaStore.MediaColumns.DATE_ADDED, dateCreated)
+            put(MediaStore.MediaColumns.DATE_MODIFIED, dateCreated)
         }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val relativePath = if (folderName != null) "$folderName/${file.subFolder}".trimFileSeparator() else null
