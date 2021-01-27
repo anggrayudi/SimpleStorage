@@ -240,6 +240,46 @@ class MainActivity : AppCompatActivity() {
     }
 ```
 
+## `SimpleStorageHelper`
+
+If you feel implementing folder & file picker and full disk request are complicated,
+you can use `SimpleStorageHelper` to simplify the process. This helper class contains
+default styles for managing storage access.
+
+```kotlin
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var storageHelper: SimpleStorageHelper
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        storageHelper = SimpleStorageHelper(this, savedInstanceState)
+        btnRequestStorageAccess.setOnClickListener { storageHelper.requestStorageAccess() }
+        btnOpenFolderPicker.setOnClickListener { storageHelper.openFolderPicker() }
+        btnOpenFilePicker.setOnClickListener { storageHelper.openFilePicker() }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        storageHelper.storage.onActivityResult(requestCode, resultCode, data)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        storageHelper.storage.onSaveInstanceState(outState)
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        storageHelper.storage.onRestoreInstanceState(savedInstanceState)
+    }
+}
+```
+
+Simpler, right?
+
 ## License
 
     Copyright © 2020-2021 Anggrayudi Hardiannicko A.

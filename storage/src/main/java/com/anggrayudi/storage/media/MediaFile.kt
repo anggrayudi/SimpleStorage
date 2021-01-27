@@ -207,6 +207,10 @@ class MediaFile(context: Context, val uri: Uri) {
         }
     }
 
+    /**
+     * Set to `true` if the file is being written to prevent users from accessing it.
+     * @see MediaStore.MediaColumns.IS_PENDING
+     */
     var isPending: Boolean
         @RequiresApi(Build.VERSION_CODES.Q)
         get() = getColumnInfoInt(MediaStore.MediaColumns.IS_PENDING) == 1
