@@ -519,8 +519,18 @@ object DocumentFileCompat {
     @JvmStatic
     fun createDownloadWithMediaStoreFallback(context: Context, file: FileDescription): Uri? {
         val publicFolder = fromPublicFolder(context, PublicDirectory.DOWNLOADS, requiresWriteAccess = true)
-        return if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+        return if (publicFolder == null && Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
             MediaStoreCompat.createDownload(context, file)?.uri
+        } else {
+            publicFolder?.makeFile(file.name, file.mimeType)?.uri
+        }
+    }
+
+    @JvmStatic
+    fun createPictureWithMediaStoreFallback(context: Context, file: FileDescription): Uri? {
+        val publicFolder = fromPublicFolder(context, PublicDirectory.PICTURES, requiresWriteAccess = true)
+        return if (publicFolder == null && Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+            MediaStoreCompat.createImage(context, file)?.uri
         } else {
             publicFolder?.makeFile(file.name, file.mimeType)?.uri
         }

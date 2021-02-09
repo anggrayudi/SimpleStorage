@@ -5,9 +5,11 @@ package com.anggrayudi.storage.extension
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import android.provider.MediaStore
 import androidx.annotation.WorkerThread
 import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.storageId
+import com.anggrayudi.storage.media.MediaFile
 import java.io.*
 
 /**
@@ -44,6 +46,13 @@ val Uri.isMediaDocument: Boolean
 
 val Uri.isRawFile: Boolean
     get() = scheme == ContentResolver.SCHEME_FILE
+
+val Uri.isMediaFile: Boolean
+    get() = authority == MediaStore.AUTHORITY
+
+fun Uri.toMediaFile(context: Context) = if (isMediaFile) MediaFile(context, this) else null
+
+fun Uri.toDocumentFile(context: Context) = DocumentFileCompat.fromUri(context, this)
 
 @JvmOverloads
 @WorkerThread

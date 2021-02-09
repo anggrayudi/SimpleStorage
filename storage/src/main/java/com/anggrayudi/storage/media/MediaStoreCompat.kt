@@ -37,24 +37,24 @@ object MediaStoreCompat {
 
     @JvmOverloads
     @JvmStatic
-    fun createImage(context: Context, file: FileDescription, relativeParentDirectory: ImageMediaDirectory? = null): MediaFile? {
-        return createMedia(context, MediaType.IMAGE, relativeParentDirectory?.folderName, file)
+    fun createImage(context: Context, file: FileDescription, relativeParentDirectory: ImageMediaDirectory = ImageMediaDirectory.PICTURES): MediaFile? {
+        return createMedia(context, MediaType.IMAGE, relativeParentDirectory.folderName, file)
     }
 
     @JvmOverloads
     @JvmStatic
-    fun createAudio(context: Context, file: FileDescription, relativeParentDirectory: AudioMediaDirectory? = null): MediaFile? {
-        return createMedia(context, MediaType.AUDIO, relativeParentDirectory?.folderName, file)
+    fun createAudio(context: Context, file: FileDescription, relativeParentDirectory: AudioMediaDirectory = AudioMediaDirectory.MUSIC): MediaFile? {
+        return createMedia(context, MediaType.AUDIO, relativeParentDirectory.folderName, file)
     }
 
     @JvmOverloads
     @JvmStatic
-    fun createVideo(context: Context, file: FileDescription, relativeParentDirectory: VideoMediaDirectory? = null): MediaFile? {
-        return createMedia(context, MediaType.VIDEO, relativeParentDirectory?.folderName, file)
+    fun createVideo(context: Context, file: FileDescription, relativeParentDirectory: VideoMediaDirectory = VideoMediaDirectory.MOVIES): MediaFile? {
+        return createMedia(context, MediaType.VIDEO, relativeParentDirectory.folderName, file)
     }
 
     @Suppress("DEPRECATION")
-    private fun createMedia(context: Context, mediaType: MediaType, folderName: String?, file: FileDescription): MediaFile? {
+    private fun createMedia(context: Context, mediaType: MediaType, folderName: String, file: FileDescription): MediaFile? {
         val dateCreated = System.currentTimeMillis()
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, file.name)
@@ -63,10 +63,10 @@ object MediaStoreCompat {
             put(MediaStore.MediaColumns.DATE_MODIFIED, dateCreated)
         }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val relativePath = if (folderName != null) "$folderName/${file.subFolder}".trimFileSeparator() else null
+            val relativePath = "$folderName/${file.subFolder}".trimFileSeparator()
             contentValues.apply {
                 put(MediaStore.MediaColumns.OWNER_PACKAGE_NAME, context.packageName)
-                if (relativePath != null) {
+                if (relativePath.isNotBlank()) {
                     put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
                 }
             }
@@ -78,7 +78,7 @@ object MediaStoreCompat {
                     val baseName = file.name.substringBeforeLast('.')
                     val prefix = "$baseName ("
                     val lastFile = fromFileNameContains(context, mediaType, baseName)
-                        .filter { relativePath == null || relativePath == it.relativePath.removeSuffix("/") }
+                        .filter { relativePath.isNotBlank() || relativePath == it.relativePath.removeSuffix("/") }
                         .mapNotNull { it.name }
                         .filter {
                             it.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(it)

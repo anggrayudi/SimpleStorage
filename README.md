@@ -242,7 +242,7 @@ class MainActivity : AppCompatActivity() {
 
 ## `SimpleStorageHelper`
 
-If you feel implementing folder & file picker and full disk request are complicated,
+If you feel implementing folder & file picker and full disk request are complicated enough,
 you can use `SimpleStorageHelper` to simplify the process. This helper class contains
 default styles for managing storage access.
 
@@ -256,6 +256,13 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         storageHelper = SimpleStorageHelper(this, savedInstanceState)
+        storageHelper.onFolderSelected = { requestCode, folder ->
+            // do stuff
+        }
+        storageHelper.onFileSelected = { requestCode, file ->
+            // do stuff
+        }
+
         btnRequestStorageAccess.setOnClickListener { storageHelper.requestStorageAccess() }
         btnOpenFolderPicker.setOnClickListener { storageHelper.openFolderPicker() }
         btnOpenFilePicker.setOnClickListener { storageHelper.openFilePicker() }
