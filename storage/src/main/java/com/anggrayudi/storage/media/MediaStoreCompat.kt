@@ -78,7 +78,7 @@ object MediaStoreCompat {
                     val baseName = file.name.substringBeforeLast('.')
                     val prefix = "$baseName ("
                     val lastFile = fromFileNameContains(context, mediaType, baseName)
-                        .filter { relativePath.isNotBlank() || relativePath == it.relativePath.removeSuffix("/") }
+                        .filter { relativePath.isBlank() || relativePath == it.relativePath.removeSuffix("/") }
                         .mapNotNull { it.name }
                         .filter {
                             it.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(it)
