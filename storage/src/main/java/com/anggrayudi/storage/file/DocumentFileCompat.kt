@@ -117,7 +117,17 @@ object DocumentFileCompat {
         return if (basePath.isEmpty()) {
             getRootDocumentFile(context, storageId, considerRawFile)
         } else {
-            exploreFile(context, storageId, basePath, documentType, considerRawFile)
+            val file = exploreFile(context, storageId, basePath, documentType, considerRawFile)
+            if (file == null && basePath.startsWith(Environment.DIRECTORY_DOWNLOADS) && storageId == PRIMARY) {
+                fromPublicFolder(context, PublicDirectory.DOWNLOADS, basePath.substringAfter('/', ""), considerRawFile = considerRawFile)
+                    ?.takeIf {
+                        documentType == DocumentFileType.ANY
+                                || documentType == DocumentFileType.FILE && it.isFile
+                                || documentType == DocumentFileType.FOLDER && it.isDirectory
+                    }
+            } else {
+                file
+            }
         }
     }
 
@@ -171,6 +181,7 @@ object DocumentFileCompat {
         } else {
             val basePath = file.basePath.removeForbiddenCharsFromFilename().trimFileSeparator()
             exploreFile(context, file.storageId, basePath, documentType, considerRawFile)
+                ?: fromSimplePath(context, file.storageId, basePath, documentType, considerRawFile)
         }
     }
 

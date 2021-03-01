@@ -7,7 +7,6 @@ package com.anggrayudi.storage.file
 enum class ErrorCode {
     STORAGE_PERMISSION_DENIED,
     CANNOT_CREATE_FILE_IN_TARGET,
-    TARGET_FILE_EXISTS,
     SOURCE_FILE_NOT_FOUND,
     TARGET_FILE_NOT_FOUND,
     TARGET_FOLDER_NOT_FOUND,

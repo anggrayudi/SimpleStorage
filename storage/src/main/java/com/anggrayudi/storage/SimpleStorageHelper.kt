@@ -12,6 +12,7 @@ import com.afollestad.materialdialogs.MaterialDialog
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
+import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.StorageType
 import com.anggrayudi.storage.file.absolutePath
 import com.karumi.dexter.Dexter
@@ -103,7 +104,7 @@ class SimpleStorageHelper {
 
     fun openFolderPicker() = storage.openFolderPicker(requestCodeFolderPicker)
 
-    fun openFilePicker() = storage.openFolderPicker(requestCodeFilePicker)
+    fun openFilePicker(filterMimeType: String = DocumentFileCompat.MIME_TYPE_UNKNOWN) = storage.openFilePicker(requestCodeFilePicker, filterMimeType)
 
     fun requestStorageAccess() = storage.requestStorageAccess(requestCodeStorageAccess)
 

@@ -13,6 +13,7 @@ import androidx.documentfile.provider.DocumentFile
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.customview.customView
 import com.afollestad.materialdialogs.customview.getCustomView
+import com.afollestad.materialdialogs.list.listItems
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.callback.*
 import com.anggrayudi.storage.file.*
@@ -21,10 +22,7 @@ import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.listener.multi.BaseMultiplePermissionsListener
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.view_file_picked.view.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -220,6 +218,11 @@ class MainActivity : AppCompatActivity() {
                         return fileSize + 100 * FileSize.MB < freeSpace // Give tolerant 100MB
                     }
 
+                    override fun onConflict(destinationFile: DocumentFile, action: FileCallback.FileConflictAction): Long {
+                        handleFileConflict(action)
+                        return FileCallback.FileConflictAction.DEFAULT_CONFIRMATION_TIMEOUT
+                    }
+
                     override fun onStartCopying(file: Any): Long {
                         // only show dialog if file size greater than 10Mb
                         if ((file as DocumentFile).length() > 10 * FileSize.MB) {
@@ -297,6 +300,11 @@ class MainActivity : AppCompatActivity() {
                         return fileSize + 100 * FileSize.MB < freeSpace // Give tolerant 100MB
                     }
 
+                    override fun onConflict(destinationFile: DocumentFile, action: FileCallback.FileConflictAction): Long {
+                        handleFileConflict(action)
+                        return FileCallback.FileConflictAction.DEFAULT_CONFIRMATION_TIMEOUT
+                    }
+
                     override fun onStartMoving(file: Any): Long {
                         // only show dialog if file size greater than 10Mb
                         if ((file as DocumentFile).length() > 10 * FileSize.MB) {
@@ -342,6 +350,25 @@ class MainActivity : AppCompatActivity() {
                 })
             }
         }
+    }
+
+    private fun handleFileConflict(action: FileCallback.FileConflictAction) {
+        MaterialDialog(this)
+            .cancelable(false)
+            .title(text = "Conflict Found")
+            .message(text = "What do you want to do with the file already exist in destination?")
+            .listItems(items = listOf("Replace", "Create New", "Skip Duplicate")) { _, index, _ ->
+                val resolution = FileCallback.ConflictResolution.values()[index]
+                action.confirmResolution(resolution)
+                if (resolution == FileCallback.ConflictResolution.SKIP_DUPLICATE) {
+                    Toast.makeText(this, "Skipped duplicate file", Toast.LENGTH_SHORT).show()
+                }
+                /*
+                When confirmation timeout has reached and the user does not confirm, calling action.confirmResolution(resolution) will be useless.
+                Read FileCallback.onConflict()
+                 */
+            }
+            .show()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
