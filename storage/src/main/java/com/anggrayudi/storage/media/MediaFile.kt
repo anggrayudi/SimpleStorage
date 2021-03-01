@@ -18,8 +18,6 @@ import androidx.core.content.FileProvider
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.callback.FileCallback
-import com.anggrayudi.storage.callback.FileCopyCallback
-import com.anggrayudi.storage.callback.FileMoveCallback
 import com.anggrayudi.storage.extension.*
 import com.anggrayudi.storage.file.*
 import kotlinx.coroutines.*
@@ -283,7 +281,7 @@ class MediaFile(context: Context, val uri: Uri) {
     }
 
     @WorkerThread
-    fun moveTo(targetFolder: DocumentFile, newFilenameInTargetPath: String? = null, callback: FileMoveCallback) {
+    fun moveTo(targetFolder: DocumentFile, newFilenameInTargetPath: String? = null, callback: FileCallback) {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
             sourceFile.moveTo(context, targetFolder, newFilenameInTargetPath, callback)
@@ -304,13 +302,13 @@ class MediaFile(context: Context, val uri: Uri) {
             return
         }
 
-        val reportInterval = callback.onStartMoving(this)
+        val reportInterval = callback.onStart(this)
         val watchProgress = reportInterval > 0
 
         try {
             val targetFile = createTargetFile(targetFolder, callback) ?: return
             createFileStreams(targetFile, callback) { inputStream, outputStream ->
-                copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, callback)
+                copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, true, callback)
             }
         } catch (e: SecurityException) {
             handleSecurityException(e, callback)
@@ -324,7 +322,7 @@ class MediaFile(context: Context, val uri: Uri) {
     }
 
     @WorkerThread
-    fun copyTo(targetFolder: DocumentFile, newFilenameInTargetPath: String? = null, callback: FileCopyCallback) {
+    fun copyTo(targetFolder: DocumentFile, newFilenameInTargetPath: String? = null, callback: FileCallback) {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
             sourceFile.copyTo(context, targetFolder, newFilenameInTargetPath, callback)
@@ -345,12 +343,12 @@ class MediaFile(context: Context, val uri: Uri) {
             return
         }
 
-        val reportInterval = callback.onStartCopying(this)
+        val reportInterval = callback.onStart(this)
         val watchProgress = reportInterval > 0
         try {
             val targetFile = createTargetFile(targetFolder, callback) ?: return
             createFileStreams(targetFile, callback) { inputStream, outputStream ->
-                copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, callback)
+                copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, false, callback)
             }
         } catch (e: SecurityException) {
             handleSecurityException(e, callback)
@@ -417,6 +415,7 @@ class MediaFile(context: Context, val uri: Uri) {
         targetFile: DocumentFile,
         watchProgress: Boolean,
         reportInterval: Long,
+        deleteSourceFileWhenComplete: Boolean,
         callback: FileCallback
     ) {
         var timer: Job? = null
@@ -440,12 +439,10 @@ class MediaFile(context: Context, val uri: Uri) {
                 read = inputStream.read(buffer)
             }
             timer?.cancel()
-            if (callback is FileCopyCallback && callback.onCompleted(targetFile)) {
+            if (deleteSourceFileWhenComplete) {
                 delete()
-            } else if (callback is FileMoveCallback) {
-                delete()
-                callback.onCompleted(targetFile)
             }
+            callback.onCompleted(targetFile)
         } finally {
             timer?.cancel()
             inputStream.closeStream()

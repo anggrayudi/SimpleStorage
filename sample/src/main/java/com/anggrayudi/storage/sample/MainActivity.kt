@@ -208,7 +208,7 @@ class MainActivity : AppCompatActivity() {
             val file = layoutCopyFromFile.tag as DocumentFile
             val targetFolder = layoutCopyToFolder.tag as DocumentFile
             ioScope.launch {
-                file.copyTo(it.context, targetFolder, callback = object : FileCopyCallback {
+                file.copyTo(it.context, targetFolder, callback = object : FileCallback {
 
                     var dialog: MaterialDialog? = null
                     var tvStatus: TextView? = null
@@ -223,7 +223,7 @@ class MainActivity : AppCompatActivity() {
                         return FileCallback.FileConflictAction.DEFAULT_CONFIRMATION_TIMEOUT
                     }
 
-                    override fun onStartCopying(file: Any): Long {
+                    override fun onStart(file: Any): Long {
                         // only show dialog if file size greater than 10Mb
                         if ((file as DocumentFile).length() > 10 * FileSize.MB) {
                             uiScope.launch {
@@ -259,12 +259,11 @@ class MainActivity : AppCompatActivity() {
                         uiScope.launch { dialog?.dismiss() }
                     }
 
-                    override fun onCompleted(file: Any): Boolean {
+                    override fun onCompleted(file: Any) {
                         uiScope.launch {
                             dialog?.dismiss()
                             Toast.makeText(it.context, "File copied successfully", Toast.LENGTH_SHORT).show()
                         }
-                        return false
                     }
                 })
             }
@@ -290,7 +289,7 @@ class MainActivity : AppCompatActivity() {
             val file = layoutMoveFromFile.tag as DocumentFile
             val targetFolder = layoutMoveToFolder.tag as DocumentFile
             ioScope.launch {
-                file.moveTo(it.context, targetFolder, callback = object : FileMoveCallback {
+                file.moveTo(it.context, targetFolder, callback = object : FileCallback {
 
                     var dialog: MaterialDialog? = null
                     var tvStatus: TextView? = null
@@ -305,7 +304,7 @@ class MainActivity : AppCompatActivity() {
                         return FileCallback.FileConflictAction.DEFAULT_CONFIRMATION_TIMEOUT
                     }
 
-                    override fun onStartMoving(file: Any): Long {
+                    override fun onStart(file: Any): Long {
                         // only show dialog if file size greater than 10Mb
                         if ((file as DocumentFile).length() > 10 * FileSize.MB) {
                             uiScope.launch {

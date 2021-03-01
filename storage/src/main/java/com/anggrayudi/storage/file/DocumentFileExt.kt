@@ -14,8 +14,6 @@ import androidx.core.content.FileProvider
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.callback.FileCallback
-import com.anggrayudi.storage.callback.FileCopyCallback
-import com.anggrayudi.storage.callback.FileMoveCallback
 import com.anggrayudi.storage.extension.*
 import com.anggrayudi.storage.file.DocumentFileCompat.PRIMARY
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
@@ -565,18 +563,18 @@ fun DocumentFile?.copyTo(
     context: Context,
     targetFolderFullPath: String,
     newFilenameInTargetPath: String? = null,
-    callback: FileCopyCallback
+    callback: FileCallback
 ) {
     copyTo(context, File(targetFolderFullPath), newFilenameInTargetPath, callback)
 }
 
 @WorkerThread
-fun DocumentFile?.copyTo(context: Context, targetFolder: File, newFilenameInTargetPath: String? = null, callback: FileCopyCallback) {
+fun DocumentFile?.copyTo(context: Context, targetFolder: File, newFilenameInTargetPath: String? = null, callback: FileCallback) {
     copyTo(context, targetFolder.storageId, targetFolder.basePath, newFilenameInTargetPath, callback)
 }
 
 @WorkerThread
-fun DocumentFile?.copyTo(context: Context, targetFolder: DocumentFile?, newFilenameInTargetPath: String? = null, callback: FileCopyCallback) {
+fun DocumentFile?.copyTo(context: Context, targetFolder: DocumentFile?, newFilenameInTargetPath: String? = null, callback: FileCallback) {
     when {
         targetFolder == null -> callback.onFailed(ErrorCode.TARGET_FOLDER_NOT_FOUND)
         targetFolder.isDownloadsDocument -> copyTo(
@@ -596,7 +594,7 @@ fun DocumentFile?.copyTo(
     targetStorageId: String,
     targetFolderBasePath: String,
     newFilenameInTargetPath: String? = null,
-    callback: FileCopyCallback
+    callback: FileCallback
 ) {
     if (targetStorageId.isEmpty()) {
         callback.onFailed(ErrorCode.TARGET_FOLDER_NOT_FOUND)
@@ -627,7 +625,7 @@ fun DocumentFile?.copyTo(
         return
     }
 
-    val reportInterval = callback.onStartCopying(this)
+    val reportInterval = callback.onStart(this)
     if (reportInterval < 0) return
     val watchProgress = reportInterval > 0
     try {
@@ -637,7 +635,7 @@ fun DocumentFile?.copyTo(
         ) ?: return
 
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
-            copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, callback)
+            copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, false, callback)
         }
     } catch (e: SecurityException) {
         callback.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
@@ -730,7 +728,8 @@ private fun DocumentFile.copyFileStream(
     targetFile: DocumentFile,
     watchProgress: Boolean,
     reportInterval: Long,
-    callback: FileCallback?
+    deleteSourceFileWhenComplete: Boolean,
+    callback: FileCallback
 ) {
     var timer: Job? = null
     try {
@@ -738,7 +737,7 @@ private fun DocumentFile.copyFileStream(
         var writeSpeed = 0
         val srcSize = length()
         // using timer on small file is useless. We set minimum 10MB.
-        if (watchProgress && callback != null && srcSize > 10 * FileSize.MB) {
+        if (watchProgress && srcSize > 10 * FileSize.MB) {
             timer = startCoroutineTimer(repeatMillis = reportInterval) {
                 callback.onReport(byteMoved * 100f / srcSize, byteMoved, writeSpeed)
                 writeSpeed = 0
@@ -753,12 +752,10 @@ private fun DocumentFile.copyFileStream(
             read = inputStream.read(buffer)
         }
         timer?.cancel()
-        if (callback is FileCopyCallback && callback.onCompleted(targetFile)) {
+        if (deleteSourceFileWhenComplete) {
             delete()
-        } else if (callback is FileMoveCallback) {
-            delete()
-            callback.onCompleted(targetFile)
         }
+        callback.onCompleted(targetFile)
     } finally {
         timer?.cancel()
         inputStream.closeStream()
@@ -771,18 +768,18 @@ fun DocumentFile?.moveTo(
     context: Context,
     targetFolderFullPath: String,
     newFilenameInTargetPath: String? = null,
-    callback: FileMoveCallback
+    callback: FileCallback
 ) {
     moveTo(context, File(targetFolderFullPath), newFilenameInTargetPath, callback)
 }
 
 @WorkerThread
-fun DocumentFile?.moveTo(context: Context, targetFolder: File, newFilenameInTargetPath: String? = null, callback: FileMoveCallback) {
+fun DocumentFile?.moveTo(context: Context, targetFolder: File, newFilenameInTargetPath: String? = null, callback: FileCallback) {
     moveTo(context, targetFolder.storageId, targetFolder.basePath, newFilenameInTargetPath, callback)
 }
 
 @WorkerThread
-fun DocumentFile?.moveTo(context: Context, targetFolder: DocumentFile?, newFilenameInTargetPath: String? = null, callback: FileMoveCallback) {
+fun DocumentFile?.moveTo(context: Context, targetFolder: DocumentFile?, newFilenameInTargetPath: String? = null, callback: FileCallback) {
     when {
         targetFolder == null -> callback.onFailed(ErrorCode.TARGET_FOLDER_NOT_FOUND)
         targetFolder.isDownloadsDocument -> moveTo(
@@ -805,7 +802,7 @@ fun DocumentFile?.moveTo(
     targetStorageId: String,
     targetFolderBasePath: String,
     newFilenameInTargetPath: String? = null,
-    callback: FileMoveCallback
+    callback: FileCallback
 ) {
     if (targetStorageId.isEmpty()) {
         callback.onFailed(ErrorCode.TARGET_FOLDER_NOT_FOUND)
@@ -887,7 +884,7 @@ fun DocumentFile?.moveTo(
         return
     }
 
-    val reportInterval = callback.onStartMoving(this)
+    val reportInterval = callback.onStart(this)
     if (reportInterval < 0) return
     val watchProgress = reportInterval > 0
 
@@ -899,7 +896,7 @@ fun DocumentFile?.moveTo(
         ) ?: return
 
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
-            copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, callback)
+            copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, true, callback)
         }
     } catch (e: SecurityException) {
         callback.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
