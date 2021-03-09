@@ -17,6 +17,10 @@ android {
         }
     }
 
+    lintOptions {
+        abortOnError false
+    }
+
     resourcePrefix 'ss_'
 }
 
