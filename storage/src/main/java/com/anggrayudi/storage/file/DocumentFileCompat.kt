@@ -444,7 +444,12 @@ object DocumentFileCompat {
      */
     @JvmOverloads
     @JvmStatic
-    fun mkdirs(context: Context, fullPath: String, requiresWriteAccess: Boolean = true, considerRawFile: Boolean = true): DocumentFile? {
+    fun mkdirs(
+        context: Context,
+        fullPath: String,
+        requiresWriteAccess: Boolean = true,
+        considerRawFile: Boolean = true
+    ): DocumentFile? {
         if (considerRawFile && fullPath.startsWith('/')) {
             val folder = File(fullPath.removeForbiddenCharsFromFilename()).apply { mkdirs() }
             if (folder.isDirectory && folder.canRead() && (requiresWriteAccess && folder.canWrite() || !requiresWriteAccess)) {
@@ -455,11 +460,12 @@ object DocumentFileCompat {
         var currentDirectory = getAccessibleRootDocumentFile(context, fullPath, requiresWriteAccess, considerRawFile) ?: return null
         getDirectorySequence(getBasePath(fullPath)).forEach {
             try {
-                val directory = currentDirectory.findFolder(it)
-                if (directory == null)
-                    currentDirectory = currentDirectory.createDirectory(it) ?: return null
-                else if (directory.canRead())
-                    currentDirectory = directory
+                val directory = currentDirectory.findFile(it)
+                currentDirectory = when {
+                    directory == null -> currentDirectory.createDirectory(it) ?: return null
+                    directory.isDirectory && directory.canRead() -> directory
+                    else -> return null
+                }
             } catch (e: Exception) {
                 return null
             }
@@ -497,7 +503,7 @@ object DocumentFileCompat {
                 var currentDirectory = getAccessibleRootDocumentFile(context, path, requiresWriteAccess, considerRawFile) ?: continue
                 getDirectorySequence(getBasePath(path)).forEach {
                     try {
-                        val directory = currentDirectory.findFolder(it)
+                        val directory = currentDirectory.findFile(it)
                         if (directory == null) {
                             currentDirectory = currentDirectory.createDirectory(it) ?: return@forEach
                             val fullPath = currentDirectory.absolutePath
@@ -506,7 +512,7 @@ object DocumentFileCompat {
                                     results[index] = currentDirectory
                                 }
                             }
-                        } else if (directory.canRead()) {
+                        } else if (directory.isDirectory && directory.canRead()) {
                             currentDirectory = directory
                             val fullPath = directory.absolutePath
                             cleanedFullPaths.forEachIndexed { index, s ->
@@ -533,7 +539,7 @@ object DocumentFileCompat {
         return if (publicFolder == null && Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
             MediaStoreCompat.createDownload(context, file)?.uri
         } else {
-            publicFolder?.makeFile(file.name, file.mimeType)?.uri
+            publicFolder?.makeFile(context, file.name, file.mimeType)?.uri
         }
     }
 
@@ -543,7 +549,7 @@ object DocumentFileCompat {
         return if (publicFolder == null && Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
             MediaStoreCompat.createImage(context, file)?.uri
         } else {
-            publicFolder?.makeFile(file.name, file.mimeType)?.uri
+            publicFolder?.makeFile(context, file.name, file.mimeType)?.uri
         }
     }
 
@@ -567,7 +573,7 @@ object DocumentFileCompat {
         } else try {
             val directory = mkdirsParentDirectory(context, storageId, basePath, considerRawFile)
             val filename = getFileNameFromPath(basePath).removeForbiddenCharsFromFilename()
-            if (filename.isEmpty()) null else directory?.makeFile(filename, mimeType)
+            if (filename.isEmpty()) null else directory?.makeFile(context, filename, mimeType)
         } catch (e: Exception) {
             null
         }
@@ -609,7 +615,7 @@ object DocumentFileCompat {
         }
         return directory?.run {
             findFile(filename)?.delete()
-            makeFile(filename, mimeType)
+            makeFile(context, filename, mimeType)
         }
     }
 

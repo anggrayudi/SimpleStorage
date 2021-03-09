@@ -7,6 +7,8 @@ import android.webkit.MimeTypeMap
 import androidx.annotation.WorkerThread
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.extension.trimFileSeparator
+import com.anggrayudi.storage.file.DocumentFileCompat.MIME_TYPE_BINARY_FILE
+import com.anggrayudi.storage.file.DocumentFileCompat.MIME_TYPE_UNKNOWN
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import java.io.File
 import java.io.IOException
@@ -74,6 +76,9 @@ val File.isReadOnly: Boolean
 val File.canModify: Boolean
     get() = canRead() && canWrite()
 
+val File.isEmpty: Boolean
+    get() = isFile && length() == 0L || isDirectory && list().isNullOrEmpty()
+
 fun File.createNewFileIfPossible(): Boolean = try {
     isFile || createNewFile()
 } catch (e: IOException) {
@@ -84,21 +89,35 @@ fun File.createNewFileIfPossible(): Boolean = try {
  * Create file and if exists, increment file name.
  */
 @WorkerThread
-fun File.makeFile(name: String, mimeType: String = DocumentFileCompat.MIME_TYPE_UNKNOWN): File? {
+fun File.makeFile(name: String, mimeType: String? = MIME_TYPE_UNKNOWN, forceCreate: Boolean = true): File? {
     if (!isDirectory || !canWrite()) {
         return null
     }
 
-    val extension = if (mimeType == DocumentFileCompat.MIME_TYPE_UNKNOWN) {
-        ""
-    } else {
-        MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType).orEmpty()
+    val cleanName = name.removeForbiddenCharsFromFilename().trimFileSeparator()
+    val subFolder = cleanName.substringBeforeLast('/', "")
+    val parent = if (subFolder.isEmpty()) this else {
+        File(this, subFolder).apply { mkdirs() }
     }
-    val baseFileName = name.removeForbiddenCharsFromFilename().removeSuffix(".$extension")
+
+    val filename = cleanName.substringAfterLast('/')
+
+    if (!forceCreate) {
+        val existingFile = File(parent, filename)
+        if (existingFile.exists()) return existingFile.let { if (it.isFile) it else null }
+    }
+
+    val extension = when (mimeType) {
+        MIME_TYPE_UNKNOWN -> ""
+        MIME_TYPE_BINARY_FILE -> "bin"
+        null -> name.substringAfterLast('.', "")
+        else -> MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType).orEmpty()
+    }
+    val baseFileName = filename.removeSuffix(".$extension")
     val fullFileName = "$baseFileName.$extension".trimEnd('.')
 
     return try {
-        File(this, autoIncrementFileName(fullFileName)).let { if (it.createNewFile()) it else null }
+        File(parent, autoIncrementFileName(fullFileName)).let { if (it.createNewFile()) it else null }
     } catch (e: IOException) {
         null
     }
@@ -109,14 +128,14 @@ fun File.makeFile(name: String, mimeType: String = DocumentFileCompat.MIME_TYPE_
  */
 @WorkerThread
 @JvmOverloads
-fun File.makeFolder(name: String, createNewFolderIfAlreadyExists: Boolean = true): File? {
+fun File.makeFolder(name: String, forceCreate: Boolean = true): File? {
     if (!isDirectory || !canWrite()) {
         return null
     }
 
     val directorySequence = DocumentFileCompat.getDirectorySequence(name.removeForbiddenCharsFromFilename()).toMutableList()
     val folderNameLevel1 = directorySequence.removeFirstOrNull() ?: return null
-    val incrementedFolderNameLevel1 = if (createNewFolderIfAlreadyExists) autoIncrementFileName(folderNameLevel1) else folderNameLevel1
+    val incrementedFolderNameLevel1 = if (forceCreate) autoIncrementFileName(folderNameLevel1) else folderNameLevel1
     val newDirectory = File(this, incrementedFolderNameLevel1).apply { mkdir() }
     return if (newDirectory.isDirectory) {
         if (directorySequence.isEmpty()) {
@@ -130,6 +149,25 @@ fun File.makeFolder(name: String, createNewFolderIfAlreadyExists: Boolean = true
 }
 
 fun File.toDocumentFile(context: Context) = if (canRead()) DocumentFileCompat.fromFile(context, this) else null
+
+fun File.deleteEmptyFolders() {
+    if (isDirectory && canWrite()) {
+        walkFileTreeAndDeleteEmptyFolders().reversed().forEach { it.delete() }
+    }
+}
+
+private fun File.walkFileTreeAndDeleteEmptyFolders(): List<File> {
+    val fileTree = mutableListOf<File>()
+    listFiles()?.forEach {
+        if (it.isDirectory) {
+            if (!it.delete()) { // Only success if the folder is empty
+                fileTree.add(it)
+                fileTree.addAll(it.walkFileTreeAndDeleteEmptyFolders())
+            }
+        }
+    }
+    return fileTree
+}
 
 /**
  * Avoid duplicate file name.

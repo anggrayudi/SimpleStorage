@@ -20,7 +20,9 @@ import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.callback.FileCallback
 import com.anggrayudi.storage.extension.*
 import com.anggrayudi.storage.file.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.*
 
 /**
@@ -189,7 +191,7 @@ class MediaFile(context: Context, val uri: Uri) {
 
     /**
      * Please note that this function does not move file if you input `newName` as `Download/filename.mp4`.
-     * If you want to move media files, please use [moveTo] instead.
+     * If you want to move media files, please use [moveFileTo] instead.
      */
     @Suppress("DEPRECATION")
     fun renameTo(newName: String): Boolean {
@@ -226,7 +228,7 @@ class MediaFile(context: Context, val uri: Uri) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && e is RecoverableSecurityException) {
             accessCallback?.onWriteAccessDenied(this, e.userAction.actionIntent.intentSender)
         } else {
-            callback?.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
+            callback?.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
         }
     }
 
@@ -284,17 +286,17 @@ class MediaFile(context: Context, val uri: Uri) {
     fun moveTo(targetFolder: DocumentFile, newFilenameInTargetPath: String? = null, callback: FileCallback) {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sourceFile.moveTo(context, targetFolder, newFilenameInTargetPath, callback)
+            sourceFile.moveFileTo(context, targetFolder, newFilenameInTargetPath, callback)
             return
         }
 
         try {
             if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.storageId), length)) {
-                callback.onFailed(ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH)
+                callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH)
                 return
             }
         } catch (e: Throwable) {
-            callback.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
+            callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
             return
         }
 
@@ -313,11 +315,11 @@ class MediaFile(context: Context, val uri: Uri) {
         } catch (e: SecurityException) {
             handleSecurityException(e, callback)
         } catch (e: InterruptedIOException) {
-            callback.onFailed(ErrorCode.CANCELLED)
+            callback.onFailed(FileCallback.ErrorCode.CANCELLED)
         } catch (e: InterruptedException) {
-            callback.onFailed(ErrorCode.CANCELLED)
+            callback.onFailed(FileCallback.ErrorCode.CANCELLED)
         } catch (e: IOException) {
-            callback.onFailed(ErrorCode.UNKNOWN_IO_ERROR)
+            callback.onFailed(FileCallback.ErrorCode.UNKNOWN_IO_ERROR)
         }
     }
 
@@ -325,17 +327,17 @@ class MediaFile(context: Context, val uri: Uri) {
     fun copyTo(targetFolder: DocumentFile, newFilenameInTargetPath: String? = null, callback: FileCallback) {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sourceFile.copyTo(context, targetFolder, newFilenameInTargetPath, callback)
+            sourceFile.copyFileTo(context, targetFolder, newFilenameInTargetPath, callback)
             return
         }
 
         try {
             if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.storageId), length)) {
-                callback.onFailed(ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH)
+                callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH)
                 return
             }
         } catch (e: Throwable) {
-            callback.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
+            callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
             return
         }
 
@@ -353,11 +355,11 @@ class MediaFile(context: Context, val uri: Uri) {
         } catch (e: SecurityException) {
             handleSecurityException(e, callback)
         } catch (e: InterruptedIOException) {
-            callback.onFailed(ErrorCode.CANCELLED)
+            callback.onFailed(FileCallback.ErrorCode.CANCELLED)
         } catch (e: InterruptedException) {
-            callback.onFailed(ErrorCode.CANCELLED)
+            callback.onFailed(FileCallback.ErrorCode.CANCELLED)
         } catch (e: IOException) {
-            callback.onFailed(ErrorCode.UNKNOWN_IO_ERROR)
+            callback.onFailed(FileCallback.ErrorCode.UNKNOWN_IO_ERROR)
         }
     }
 
@@ -366,24 +368,24 @@ class MediaFile(context: Context, val uri: Uri) {
             val targetFolder =
                 DocumentFileCompat.mkdirs(context, DocumentFileCompat.buildAbsolutePath(targetDirectory.storageId, targetDirectory.basePath))
             if (targetFolder == null) {
-                callback.onFailed(ErrorCode.STORAGE_PERMISSION_DENIED)
+                callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
                 return null
             }
 
-            val targetFile = targetFolder.makeFile(name.orEmpty(), type ?: DocumentFileCompat.MIME_TYPE_UNKNOWN)
+            val targetFile = targetFolder.makeFile(context, name.orEmpty(), type)
             if (targetFile == null) {
-                callback.onFailed(ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
+                callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
             } else {
                 return targetFile
             }
         } catch (e: SecurityException) {
             handleSecurityException(e, callback)
         } catch (e: InterruptedIOException) {
-            callback.onFailed(ErrorCode.CANCELLED)
+            callback.onFailed(FileCallback.ErrorCode.CANCELLED)
         } catch (e: InterruptedException) {
-            callback.onFailed(ErrorCode.CANCELLED)
+            callback.onFailed(FileCallback.ErrorCode.CANCELLED)
         } catch (e: IOException) {
-            callback.onFailed(ErrorCode.UNKNOWN_IO_ERROR)
+            callback.onFailed(FileCallback.ErrorCode.UNKNOWN_IO_ERROR)
         }
         return null
     }
@@ -395,13 +397,13 @@ class MediaFile(context: Context, val uri: Uri) {
     ) {
         val outputStream = targetFile.openOutputStream(context)
         if (outputStream == null) {
-            callback.onFailed(ErrorCode.TARGET_FILE_NOT_FOUND)
+            callback.onFailed(FileCallback.ErrorCode.TARGET_FILE_NOT_FOUND)
             return
         }
 
         val inputStream = openInputStream()
         if (inputStream == null) {
-            callback.onFailed(ErrorCode.SOURCE_FILE_NOT_FOUND)
+            callback.onFailed(FileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND)
             outputStream.closeStream()
             return
         }
@@ -455,32 +457,24 @@ class MediaFile(context: Context, val uri: Uri) {
         newFilenameInTargetPath: String?,
         callback: FileCallback
     ): Boolean {
-        targetFolder.findFile(newFilenameInTargetPath ?: name.orEmpty())?.let { file ->
+        targetFolder.findFile(newFilenameInTargetPath ?: name.orEmpty())?.let { targetFile ->
             val resolution = runBlocking<FileCallback.ConflictResolution> {
                 suspendCancellableCoroutine { continuation ->
-                    GlobalScope.launch(Dispatchers.Main) {
-                        val action = FileCallback.FileConflictAction(continuation)
-                        val confirmationTimeout = callback.onConflict(file, action)
-                        if (continuation.isActive) {
-                            startCoroutineTimer(delayMillis = confirmationTimeout) {
-                                if (continuation.isActive) {
-                                    action.confirmResolution(FileCallback.ConflictResolution.SKIP_DUPLICATE)
-                                }
-                            }
-                        }
+                    launchOnUiThread {
+                        callback.onConflict(targetFile, FileCallback.FileConflictAction(continuation))
                     }
                 }
             }
             when (resolution) {
                 FileCallback.ConflictResolution.REPLACE -> {
-                    val deleteSuccess = if (file.isDirectory) file.deleteRecursively(context) else file.delete()
-                    if (!deleteSuccess || file.exists()) {
-                        callback.onFailed(ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
+                    val deleteSuccess = if (targetFile.isDirectory) targetFile.deleteRecursively(context) else targetFile.delete()
+                    if (!deleteSuccess || targetFile.exists()) {
+                        callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
                         return true
                     }
                 }
 
-                FileCallback.ConflictResolution.SKIP_DUPLICATE -> {
+                FileCallback.ConflictResolution.SKIP -> {
                     return true
                 }
 

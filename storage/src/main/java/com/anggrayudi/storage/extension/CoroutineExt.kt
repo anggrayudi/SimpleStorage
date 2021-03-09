@@ -1,26 +1,23 @@
 package com.anggrayudi.storage.extension
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 
 /**
  * @author Anggrayudi Hardiannico A. (anggrayudi.hardiannico@dana.id)
  * @version CoroutineExt.kt, v 0.0.1 04/04/20 18.26 by Anggrayudi Hardiannico A.
  */
 
-inline fun startCoroutineTimer(
+fun startCoroutineTimer(
     delayMillis: Long = 0,
     repeatMillis: Long = 0,
     runActionOnUiThread: Boolean = false,
-    crossinline action: () -> Unit
+    action: () -> Unit
 ) = GlobalScope.launch {
     delay(delayMillis)
     if (repeatMillis > 0) {
         while (true) {
             if (runActionOnUiThread) {
-                GlobalScope.launch(Dispatchers.Main) { action() }
+                launchOnUiThread { action() }
             } else {
                 action()
             }
@@ -28,9 +25,13 @@ inline fun startCoroutineTimer(
         }
     } else {
         if (runActionOnUiThread) {
-            GlobalScope.launch(Dispatchers.Main) { action() }
+            launchOnUiThread { action() }
         } else {
             action()
         }
     }
+}
+
+fun launchOnUiThread(action: suspend CoroutineScope.() -> Unit) {
+    GlobalScope.launch(Dispatchers.Main, block = action)
 }

@@ -59,6 +59,9 @@ class StorageInfoAdapter(
         }
     }
 
+    /**
+     * A storageId may contains more than one granted URIs
+     */
     @Suppress("DEPRECATION")
     private fun showGrantedUris(context: Context, storageId: String) {
         val grantedUris = context.contentResolver.persistedUriPermissions

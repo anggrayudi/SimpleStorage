@@ -2,28 +2,33 @@ package com.anggrayudi.storage.callback
 
 import androidx.annotation.UiThread
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.media.MediaFile
+import com.anggrayudi.storage.callback.FileCallback.FileConflictAction
+import com.anggrayudi.storage.file.FileSize
 import kotlinx.coroutines.CancellableContinuation
 
 /**
- * Created on 17/08/20
- *
+ * Created on 3/1/21
  * @author Anggrayudi H
  */
-interface FileCallback {
+interface FolderCallback {
 
     @JvmDefault
     fun onPrepare() {
         // default implementation
     }
 
+    @JvmDefault
+    fun onCountingFiles() {
+        // default implementation
+    }
+
     /**
-     * @param file can be [DocumentFile] or [MediaFile]
-     * @return Time interval to watch file copy/move progress in milliseconds, otherwise `0` if you don't want to watch at all.
+     * @param folder directory to be copied/moved
+     * @return Time interval to watch folder copy/move progress in milliseconds, otherwise `0` if you don't want to watch at all.
      * Setting negative value will cancel the operation.
      */
     @JvmDefault
-    fun onStart(file: Any): Long = 0
+    fun onStart(folder: DocumentFile, totalFilesToCopy: Int): Long = 0
 
     /**
      * Do not call `super` when you override this function.
@@ -32,10 +37,13 @@ interface FileCallback {
      * You have to give an answer, or the thread will be alive until the app is killed.
      * If you want to cancel, just pass [ConflictResolution.SKIP] into [FileConflictAction.confirmResolution].
      * If the worker the thread is suspended for too long, it may be interrupted by the system.
+     *
+     * @param canMerge when conflict found, action `MERGE` may not exists.
+     *                 This happens if the destination is a file, an empty folder, or a folder without content conflicts.
      */
     @UiThread
     @JvmDefault
-    fun onConflict(destinationFile: DocumentFile, action: FileConflictAction) {
+    fun onConflict(destinationFolder: DocumentFile, action: FolderConflictAction, canMerge: Boolean) {
         action.confirmResolution(ConflictResolution.CREATE_NEW)
     }
 
@@ -48,8 +56,7 @@ interface FileCallback {
      */
     @JvmDefault
     fun onCheckFreeSpace(freeSpace: Long, fileSize: Long): Boolean {
-        // default implementation
-        return true
+        return fileSize + 100 * FileSize.MB < freeSpace // Give tolerant 100MB
     }
 
     /**
@@ -57,17 +64,23 @@ interface FileCallback {
      *
      * @param progress   in percent
      * @param writeSpeed in bytes
+     * @param fileCount total files/folders that are successfully copied/moved
      */
     @JvmDefault
-    fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int) {
+    fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int, fileCount: Int) {
         // default implementation
     }
 
     /**
-     * @param file newly moved/copied file. Can be [DocumentFile] or [MediaFile]
+     * If `totalCopiedFiles` are less than `totalFilesToCopy`, then some files cannot be copied/moved or the files are skipped due to [ConflictResolution.MERGE]
+     * [onFailed] can be called before [onCompleted] when an error has occurred.
+     * @param folder newly moved/copied file
+     * @param success `true` if the process is not cancelled and no error during copy/move
+     * @param totalFilesToCopy total files, not folders
+     * @param totalCopiedFiles total files, not folders
      */
     @JvmDefault
-    fun onCompleted(file: Any) {
+    fun onCompleted(folder: DocumentFile, totalFilesToCopy: Int, totalCopiedFiles: Int, success: Boolean) {
         // default implementation
     }
 
@@ -76,7 +89,8 @@ interface FileCallback {
         // default implementation
     }
 
-    class FileConflictAction(private val continuation: CancellableContinuation<ConflictResolution>) {
+
+    class FolderConflictAction(private val continuation: CancellableContinuation<ConflictResolution>) {
 
         fun confirmResolution(resolution: ConflictResolution) {
             continuation.resumeWith(Result.success(resolution))
@@ -85,12 +99,18 @@ interface FileCallback {
 
     enum class ConflictResolution {
         /**
-         * Delete the file in destination if existed, then start copy/move.
+         * Delete the folder in destination if existed, then start copy/move.
          */
         REPLACE,
 
         /**
-         * * If a file named `ABC.zip` already exist, then create a new one named `ABC (1).zip`
+         * Skip duplicate files inside the folder.
+         */
+        MERGE,
+
+        /**
+         * * If a folder named `ABC` already exist, then create a new one named `ABC (1)`
+         * * If the folder is empty, just use it.
          */
         CREATE_NEW,
 
@@ -103,9 +123,9 @@ interface FileCallback {
     enum class ErrorCode {
         STORAGE_PERMISSION_DENIED,
         CANNOT_CREATE_FILE_IN_TARGET,
+        SOURCE_FOLDER_NOT_FOUND,
         SOURCE_FILE_NOT_FOUND,
-        TARGET_FILE_NOT_FOUND,
-        TARGET_FOLDER_NOT_FOUND,
+        INVALID_TARGET_FOLDER,
         UNKNOWN_IO_ERROR,
         CANCELLED,
         TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER,

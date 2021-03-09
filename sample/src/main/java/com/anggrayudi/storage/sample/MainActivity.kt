@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.Menu
+import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -23,6 +25,7 @@ import com.karumi.dexter.listener.multi.BaseMultiplePermissionsListener
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.view_file_picked.view.*
 import kotlinx.coroutines.*
+import timber.log.Timber
 
 class MainActivity : AppCompatActivity() {
 
@@ -42,6 +45,10 @@ class MainActivity : AppCompatActivity() {
         setupFolderPickerCallback()
         setupFilePickerCallback()
         setupButtonActions()
+    }
+
+    private fun scrollToView(view: View) {
+        view.post(Runnable { scrollView?.scrollTo(0, view.top) })
     }
 
     private fun setupButtonActions() {
@@ -78,7 +85,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupFileCopy()
+        setupFolderCopy()
         setupFileMove()
+        setupFolderMove()
     }
 
     private fun setupSimpleStorage() {
@@ -87,7 +96,7 @@ class MainActivity : AppCompatActivity() {
             override fun onRootPathNotSelected(requestCode: Int, rootPath: String, rootStorageType: StorageType, uri: Uri) {
                 MaterialDialog(this@MainActivity)
                     .message(text = "Please select $rootPath")
-                    .negativeButton(android.R.string.cancel)
+                    .negativeButton()
                     .positiveButton {
                         storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, rootStorageType)
                     }.show()
@@ -137,7 +146,7 @@ class MainActivity : AppCompatActivity() {
                         text = "You have no write access to this storage, thus selecting this folder is useless." +
                                 "\nWould you like to grant access to this folder?"
                     )
-                    .negativeButton(android.R.string.cancel)
+                    .negativeButton()
                     .positiveButton {
                         storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, storageType)
                     }.show()
@@ -145,14 +154,12 @@ class MainActivity : AppCompatActivity() {
 
             override fun onFolderSelected(requestCode: Int, folder: DocumentFile) {
                 when (requestCode) {
-                    REQUEST_CODE_PICK_FOLDER_TARGET_FOR_COPY -> layoutCopyToFolder.run {
-                        tag = folder
-                        tvFilePath.text = folder.absolutePath
-                    }
-                    REQUEST_CODE_PICK_FOLDER_TARGET_FOR_MOVE -> layoutMoveToFolder.run {
-                        tag = folder
-                        tvFilePath.text = folder.absolutePath
-                    }
+                    REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_COPY -> layoutCopyFileToFolder.updateFolderSelectionView(folder)
+                    REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_MOVE -> layoutMoveFileToFolder.updateFolderSelectionView(folder)
+                    REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_COPY -> layoutCopyFolderFromFolder.updateFolderSelectionView(folder)
+                    REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_COPY -> layoutCopyFolderToFolder.updateFolderSelectionView(folder)
+                    REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MOVE -> layoutMoveFolderFromFolder.updateFolderSelectionView(folder)
+                    REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_MOVE -> layoutMoveFolderToFolder.updateFolderSelectionView(folder)
                     else -> Toast.makeText(baseContext, folder.absolutePath, Toast.LENGTH_SHORT).show()
                 }
             }
@@ -161,6 +168,11 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(baseContext, "Folder picker cancelled by user", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun View.updateFolderSelectionView(folder: DocumentFile) {
+        tag = folder
+        tvFilePath.text = folder.absolutePath
     }
 
     private fun setupFilePickerCallback() {
@@ -175,63 +187,168 @@ class MainActivity : AppCompatActivity() {
 
             override fun onFileSelected(requestCode: Int, file: DocumentFile) {
                 when (requestCode) {
-                    REQUEST_CODE_PICK_FILE_FOR_COPY -> layoutCopyFromFile.run {
-                        tag = file
-                        tvFilePath.text = file.name
-                    }
-                    REQUEST_CODE_PICK_FILE_FOR_MOVE -> layoutMoveFromFile.run {
-                        tag = file
-                        tvFilePath.text = file.name
-                    }
+                    REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY -> layoutCopyFromFile.updateFileSelectionView(file)
+                    REQUEST_CODE_PICK_SOURCE_FILE_FOR_MOVE -> layoutMoveFromFile.updateFileSelectionView(file)
                     else -> Toast.makeText(baseContext, "File selected: ${file.name}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
+    private fun View.updateFileSelectionView(file: DocumentFile) {
+        tag = file
+        tvFilePath.text = file.name
+    }
+
+    private fun setupFolderCopy() {
+        layoutCopyFolderFromFolder.btnBrowse.setOnClickListener {
+            storage.openFolderPicker(REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_COPY)
+        }
+        layoutCopyFolderToFolder.btnBrowse.setOnClickListener {
+            storage.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_COPY)
+        }
+        btnStartCopyFolder.setOnClickListener {
+            val folder = layoutCopyFolderFromFolder.tag as? DocumentFile
+            val targetFolder = layoutCopyFolderToFolder.tag as? DocumentFile
+            if (folder == null) {
+                Toast.makeText(this, "Please select folder to be copied", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (targetFolder == null) {
+                Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            ioScope.launch {
+                folder.copyFolderTo(it.context, targetFolder, false, callback = object : FolderCallback {
+                    override fun onPrepare() {
+                        // Show notification or progress bar dialog with indeterminate state
+                    }
+
+                    override fun onCountingFiles() {
+                        // Inform user that the app is counting & calculating files
+                    }
+
+                    override fun onStart(folder: DocumentFile, totalFilesToCopy: Int): Long {
+                        return 1000 // update progress every 1 second
+                    }
+
+                    override fun onConflict(destinationFolder: DocumentFile, action: FolderCallback.FolderConflictAction, canMerge: Boolean) {
+                        handleFolderConflict(action, canMerge)
+                    }
+
+                    override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int, fileCount: Int) {
+                        Timber.d("onReport() -> ${progress.toInt()}% | Copied $fileCount files")
+                    }
+
+                    override fun onCompleted(folder: DocumentFile, totalFilesToCopy: Int, totalCopiedFiles: Int, success: Boolean) {
+                        uiScope.launch {
+                            Toast.makeText(it.context, "Copied $totalCopiedFiles of $totalFilesToCopy files", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                    override fun onFailed(errorCode: FolderCallback.ErrorCode) {
+                        uiScope.launch {
+                            Toast.makeText(it.context, "An error has occurred: $errorCode", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                })
+            }
+        }
+    }
+
+    private fun setupFolderMove() {
+        layoutMoveFolderFromFolder.btnBrowse.setOnClickListener {
+            storage.openFolderPicker(REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MOVE)
+        }
+        layoutMoveFolderToFolder.btnBrowse.setOnClickListener {
+            storage.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_MOVE)
+        }
+        btnStartMoveFolder.setOnClickListener {
+            val folder = layoutMoveFolderFromFolder.tag as? DocumentFile
+            val targetFolder = layoutMoveFolderToFolder.tag as? DocumentFile
+            if (folder == null) {
+                Toast.makeText(this, "Please select folder to be moved", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (targetFolder == null) {
+                Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            ioScope.launch {
+                folder.moveFolderTo(it.context, targetFolder, false, callback = object : FolderCallback {
+                    override fun onPrepare() {
+                        // Show notification or progress bar dialog with indeterminate state
+                    }
+
+                    override fun onCountingFiles() {
+                        // Inform user that the app is counting & calculating files
+                    }
+
+                    override fun onStart(folder: DocumentFile, totalFilesToCopy: Int): Long {
+                        return 1000 // update progress every 1 second
+                    }
+
+                    override fun onConflict(destinationFolder: DocumentFile, action: FolderCallback.FolderConflictAction, canMerge: Boolean) {
+                        handleFolderConflict(action, canMerge)
+                    }
+
+                    override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int, fileCount: Int) {
+                        Timber.d("onReport() -> ${progress.toInt()}% | Moved $fileCount files")
+                    }
+
+                    override fun onCompleted(folder: DocumentFile, totalFilesToCopy: Int, totalCopiedFiles: Int, success: Boolean) {
+                        uiScope.launch {
+                            Toast.makeText(it.context, "Moved $totalCopiedFiles of $totalFilesToCopy files", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                    override fun onFailed(errorCode: FolderCallback.ErrorCode) {
+                        uiScope.launch {
+                            Toast.makeText(it.context, "An error has occurred: $errorCode", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                })
+            }
+        }
+    }
+
     private fun setupFileCopy() {
         layoutCopyFromFile.btnBrowse.setOnClickListener {
-            storage.openFilePicker(REQUEST_CODE_PICK_FILE_FOR_COPY)
+            storage.openFilePicker(REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY)
         }
-        layoutCopyToFolder.btnBrowse.setOnClickListener {
-            storage.openFolderPicker(REQUEST_CODE_PICK_FOLDER_TARGET_FOR_COPY)
+        layoutCopyFileToFolder.btnBrowse.setOnClickListener {
+            storage.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_COPY)
         }
         btnStartCopyFile.setOnClickListener {
             if (layoutCopyFromFile.tag == null) {
                 Toast.makeText(this, "Please select file to be copied", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            if (layoutCopyToFolder.tag == null) {
+            if (layoutCopyFileToFolder.tag == null) {
                 Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             val file = layoutCopyFromFile.tag as DocumentFile
-            val targetFolder = layoutCopyToFolder.tag as DocumentFile
+            val targetFolder = layoutCopyFileToFolder.tag as DocumentFile
             ioScope.launch {
-                file.copyTo(it.context, targetFolder, callback = object : FileCallback {
+                file.copyFileTo(it.context, targetFolder, callback = object : FileCallback {
 
                     var dialog: MaterialDialog? = null
                     var tvStatus: TextView? = null
                     var progressBar: ProgressBar? = null
 
-                    override fun onCheckFreeSpace(freeSpace: Long, fileSize: Long): Boolean {
-                        return fileSize + 100 * FileSize.MB < freeSpace // Give tolerant 100MB
-                    }
-
-                    override fun onConflict(destinationFile: DocumentFile, action: FileCallback.FileConflictAction): Long {
+                    override fun onConflict(destinationFile: DocumentFile, action: FileCallback.FileConflictAction) {
                         handleFileConflict(action)
-                        return FileCallback.FileConflictAction.DEFAULT_CONFIRMATION_TIMEOUT
                     }
 
                     override fun onStart(file: Any): Long {
                         // only show dialog if file size greater than 10Mb
                         if ((file as DocumentFile).length() > 10 * FileSize.MB) {
+                            val workerThread = Thread.currentThread()
                             uiScope.launch {
                                 dialog = MaterialDialog(it.context)
                                     .cancelable(false)
-                                    .positiveButton(android.R.string.cancel) {
-                                        // TODO: 20/08/20 Interrupt thread and cancel copy
-                                    }
+                                    .positiveButton(android.R.string.cancel) { workerThread.interrupt() }
                                     .customView(R.layout.dialog_copy_progress).apply {
                                         tvStatus = getCustomView().findViewById<TextView>(R.id.tvProgressStatus).apply {
                                             text = "Copying file: 0%"
@@ -255,8 +372,11 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
 
-                    override fun onFailed(errorCode: ErrorCode) {
-                        uiScope.launch { dialog?.dismiss() }
+                    override fun onFailed(errorCode: FileCallback.ErrorCode) {
+                        uiScope.launch {
+                            dialog?.dismiss()
+                            Toast.makeText(it.context, "Failed copying file: $errorCode", Toast.LENGTH_SHORT).show()
+                        }
                     }
 
                     override fun onCompleted(file: Any) {
@@ -272,47 +392,41 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupFileMove() {
         layoutMoveFromFile.btnBrowse.setOnClickListener {
-            storage.openFilePicker(REQUEST_CODE_PICK_FILE_FOR_MOVE)
+            storage.openFilePicker(REQUEST_CODE_PICK_SOURCE_FILE_FOR_MOVE)
         }
-        layoutMoveToFolder.btnBrowse.setOnClickListener {
-            storage.openFolderPicker(REQUEST_CODE_PICK_FOLDER_TARGET_FOR_MOVE)
+        layoutMoveFileToFolder.btnBrowse.setOnClickListener {
+            storage.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_MOVE)
         }
         btnStartMoveFile.setOnClickListener {
             if (layoutMoveFromFile.tag == null) {
                 Toast.makeText(this, "Please select file to be moved", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            if (layoutMoveToFolder.tag == null) {
+            if (layoutMoveFileToFolder.tag == null) {
                 Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             val file = layoutMoveFromFile.tag as DocumentFile
-            val targetFolder = layoutMoveToFolder.tag as DocumentFile
+            val targetFolder = layoutMoveFileToFolder.tag as DocumentFile
             ioScope.launch {
-                file.moveTo(it.context, targetFolder, callback = object : FileCallback {
+                file.moveFileTo(it.context, targetFolder, callback = object : FileCallback {
 
                     var dialog: MaterialDialog? = null
                     var tvStatus: TextView? = null
                     var progressBar: ProgressBar? = null
 
-                    override fun onCheckFreeSpace(freeSpace: Long, fileSize: Long): Boolean {
-                        return fileSize + 100 * FileSize.MB < freeSpace // Give tolerant 100MB
-                    }
-
-                    override fun onConflict(destinationFile: DocumentFile, action: FileCallback.FileConflictAction): Long {
+                    override fun onConflict(destinationFile: DocumentFile, action: FileCallback.FileConflictAction) {
                         handleFileConflict(action)
-                        return FileCallback.FileConflictAction.DEFAULT_CONFIRMATION_TIMEOUT
                     }
 
                     override fun onStart(file: Any): Long {
                         // only show dialog if file size greater than 10Mb
                         if ((file as DocumentFile).length() > 10 * FileSize.MB) {
+                            val workerThread = Thread.currentThread()
                             uiScope.launch {
                                 dialog = MaterialDialog(it.context)
                                     .cancelable(false)
-                                    .positiveButton(android.R.string.cancel) {
-                                        // TODO: 20/08/20 Interrupt thread and cancel copy
-                                    }
+                                    .positiveButton(android.R.string.cancel) { workerThread.interrupt() }
                                     .customView(R.layout.dialog_copy_progress).apply {
                                         tvStatus = getCustomView().findViewById<TextView>(R.id.tvProgressStatus).apply {
                                             text = "Moving file: 0%"
@@ -336,8 +450,11 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
 
-                    override fun onFailed(errorCode: ErrorCode) {
-                        uiScope.launch { dialog?.dismiss() }
+                    override fun onFailed(errorCode: FileCallback.ErrorCode) {
+                        uiScope.launch {
+                            dialog?.dismiss()
+                            Toast.makeText(it.context, "Failed moving file: $errorCode", Toast.LENGTH_SHORT).show()
+                        }
                     }
 
                     override fun onCompleted(file: Any) {
@@ -355,17 +472,28 @@ class MainActivity : AppCompatActivity() {
         MaterialDialog(this)
             .cancelable(false)
             .title(text = "Conflict Found")
-            .message(text = "What do you want to do with the file already exist in destination?")
+            .message(text = "What do you want to do with the file already exists in destination?")
             .listItems(items = listOf("Replace", "Create New", "Skip Duplicate")) { _, index, _ ->
                 val resolution = FileCallback.ConflictResolution.values()[index]
                 action.confirmResolution(resolution)
-                if (resolution == FileCallback.ConflictResolution.SKIP_DUPLICATE) {
+                if (resolution == FileCallback.ConflictResolution.SKIP) {
                     Toast.makeText(this, "Skipped duplicate file", Toast.LENGTH_SHORT).show()
                 }
-                /*
-                When confirmation timeout has reached and the user does not confirm, calling action.confirmResolution(resolution) will be useless.
-                Read FileCallback.onConflict()
-                 */
+            }
+            .show()
+    }
+
+    private fun handleFolderConflict(action: FolderCallback.FolderConflictAction, canMerge: Boolean) {
+        MaterialDialog(this)
+            .cancelable(false)
+            .title(text = "Conflict Found")
+            .message(text = "What do you want to do with the folder already exists in destination?")
+            .listItems(items = mutableListOf("Replace", "Merge", "Create New", "Skip Duplicate").apply { if (!canMerge) remove("Merge") }) { _, index, _ ->
+                val resolution = FolderCallback.ConflictResolution.values()[if (!canMerge && index > 0) index + 1 else index]
+                action.confirmResolution(resolution)
+                if (resolution == FolderCallback.ConflictResolution.SKIP) {
+                    Toast.makeText(this, "Skipped duplicate folders & files", Toast.LENGTH_SHORT).show()
+                }
             }
             .show()
     }
@@ -385,6 +513,19 @@ class MainActivity : AppCompatActivity() {
         storage.onRestoreInstanceState(savedInstanceState)
     }
 
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.main, menu)
+        menu.findItem(R.id.action_donate).intent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=TGPGSY66LKUMN&source=url")
+        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        menu.findItem(R.id.action_about).intent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("https://github.com/anggrayudi/SimpleStorage")
+        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return super.onCreateOptionsMenu(menu)
+    }
+
     override fun onDestroy() {
         job.cancel()
         super.onDestroy()
@@ -395,10 +536,16 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_CODE_PICK_FOLDER = 2
         const val REQUEST_CODE_PICK_FILE = 3
 
-        const val REQUEST_CODE_PICK_FILE_FOR_COPY = 4
-        const val REQUEST_CODE_PICK_FOLDER_TARGET_FOR_COPY = 5
+        const val REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY = 4
+        const val REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_COPY = 5
 
-        const val REQUEST_CODE_PICK_FILE_FOR_MOVE = 6
-        const val REQUEST_CODE_PICK_FOLDER_TARGET_FOR_MOVE = 7
+        const val REQUEST_CODE_PICK_SOURCE_FILE_FOR_MOVE = 6
+        const val REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_MOVE = 7
+
+        const val REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_COPY = 8
+        const val REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_COPY = 9
+
+        const val REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MOVE = 10
+        const val REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_MOVE = 11
     }
 }

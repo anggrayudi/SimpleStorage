@@ -52,7 +52,7 @@ class SimpleStorageHelper {
             override fun onRootPathNotSelected(requestCode: Int, rootPath: String, rootStorageType: StorageType, uri: Uri) {
                 MaterialDialog(storage.context)
                     .message(if (rootStorageType == StorageType.SD_CARD) R.string.ss_please_select_root_storage_sdcard else R.string.ss_please_select_root_storage_primary)
-                    .negativeButton(android.R.string.cancel)
+                    .negativeButton()
                     .positiveButton {
                         storage.requestStorageAccess(requestCodeStorageAccess, rootStorageType)
                     }.show()
@@ -80,7 +80,7 @@ class SimpleStorageHelper {
                 }
                 MaterialDialog(storage.context)
                     .message(R.string.ss_storage_access_denied_confirm)
-                    .negativeButton(android.R.string.cancel)
+                    .negativeButton()
                     .positiveButton {
                         storage.requestStorageAccess(requestCodeStorageAccess, storageType)
                     }.show()
