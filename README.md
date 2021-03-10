@@ -90,8 +90,8 @@ Simple Storage adds Kotlin extension functions to `DocumentFile`, so you can man
 * `DocumentFile.storageId`
 * `DocumentFile.storageType`
 * `DocumentFile.basePath`
-* `DocumentFile.copyTo()`
-* `DocumentFile.moveTo()`
+* `DocumentFile.copyFileTo()`
+* `DocumentFile.moveFolderTo()`
 * `DocumentFile.search()`
 * `DocumentFile.deleteRecursively()`
 * `DocumentFile.openInputStream()`
@@ -104,8 +104,8 @@ For media files, you can have similar capabilities to `DocumentFile`, i.e.:
 * `MediaFile.isPending`
 * `MediaFile.delete()`
 * `MediaFile.renameTo()`
-* `MediaFile.copyTo()`
-* `MediaFile.moveTo()`
+* `MediaFile.copyFileTo()`
+* `MediaFile.moveFileTo()`
 * `MediaFile.openInputStream()`
 * `MediaFile.openOutputStream()`, etc.
 
@@ -274,13 +274,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        storageHelper.storage.onSaveInstanceState(outState)
+        storageHelper.onSaveInstanceState(outState)
         super.onSaveInstanceState(outState)
     }
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         super.onRestoreInstanceState(savedInstanceState)
-        storageHelper.storage.onRestoreInstanceState(savedInstanceState)
+        storageHelper.onRestoreInstanceState(savedInstanceState)
     }
 }
 ```

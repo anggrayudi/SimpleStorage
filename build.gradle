@@ -7,7 +7,7 @@ buildscript {
     ext.kotlin_version = '1.4.31'
 
     dependencies {
-        classpath "com.android.tools.build:gradle:4.1.1"
+        classpath "com.android.tools.build:gradle:4.1.2"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.vanniktech:gradle-maven-publish-plugin:0.13.0'
         classpath "org.jetbrains.dokka:dokka-gradle-plugin:1.4.20"
@@ -50,7 +50,7 @@ subprojects {
         // global dependencies for all modules
         dependencies {
             implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-            implementation "org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version"
+            testImplementation "org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version"
         }
     }
 }

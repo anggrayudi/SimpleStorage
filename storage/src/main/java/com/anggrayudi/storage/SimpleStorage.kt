@@ -272,15 +272,15 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
 
     fun onSaveInstanceState(outState: Bundle) {
-        outState.putInt(REQUEST_CODE_STORAGE_ACCESS, requestCodeStorageAccess)
-        outState.putInt(REQUEST_CODE_FOLDER_PICKER, requestCodeFolderPicker)
-        outState.putInt(REQUEST_CODE_FILE_PICKER, requestCodeFilePicker)
+        outState.putInt(KEY_REQUEST_CODE_STORAGE_ACCESS, requestCodeStorageAccess)
+        outState.putInt(KEY_REQUEST_CODE_FOLDER_PICKER, requestCodeFolderPicker)
+        outState.putInt(KEY_REQUEST_CODE_FILE_PICKER, requestCodeFilePicker)
     }
 
     fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        requestCodeStorageAccess = savedInstanceState.getInt(REQUEST_CODE_STORAGE_ACCESS)
-        requestCodeFolderPicker = savedInstanceState.getInt(REQUEST_CODE_FOLDER_PICKER)
-        requestCodeFilePicker = savedInstanceState.getInt(REQUEST_CODE_FILE_PICKER)
+        requestCodeStorageAccess = savedInstanceState.getInt(KEY_REQUEST_CODE_STORAGE_ACCESS)
+        requestCodeFolderPicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FOLDER_PICKER)
+        requestCodeFilePicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FILE_PICKER)
     }
 
     private fun saveUriPermission(root: Uri) = try {
@@ -295,9 +295,9 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
     companion object {
 
-        private const val REQUEST_CODE_STORAGE_ACCESS = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeStorageAccess"
-        private const val REQUEST_CODE_FOLDER_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFolderPicker"
-        private const val REQUEST_CODE_FILE_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFilePicker"
+        private const val KEY_REQUEST_CODE_STORAGE_ACCESS = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeStorageAccess"
+        private const val KEY_REQUEST_CODE_FOLDER_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFolderPicker"
+        private const val KEY_REQUEST_CODE_FILE_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFilePicker"
 
         @JvmStatic
         @Suppress("DEPRECATION")

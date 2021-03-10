@@ -16,7 +16,7 @@ import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.customview.customView
 import com.afollestad.materialdialogs.customview.getCustomView
 import com.afollestad.materialdialogs.list.listItems
-import com.anggrayudi.storage.SimpleStorage
+import com.anggrayudi.storage.SimpleStorageHelper
 import com.anggrayudi.storage.callback.*
 import com.anggrayudi.storage.file.*
 import com.karumi.dexter.Dexter
@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
     private val ioScope = CoroutineScope(Dispatchers.IO + job)
     private val uiScope = CoroutineScope(Dispatchers.Main + job)
 
-    private lateinit var storage: SimpleStorage
+    private lateinit var storageHelper: SimpleStorageHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,8 +42,6 @@ class MainActivity : AppCompatActivity() {
         recyclerView.adapter = StorageInfoAdapter(applicationContext, ioScope, uiScope)
 
         setupSimpleStorage()
-        setupFolderPickerCallback()
-        setupFilePickerCallback()
         setupButtonActions()
     }
 
@@ -64,12 +62,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnRequestStorageAccess.setOnClickListener {
-            storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS)
+            storageHelper.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS)
         }
 
         btnRequestFullStorageAccess.run {
             isEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                setOnClickListener { storage.requestFullStorageAccess() }
+                setOnClickListener { storageHelper.storage.requestFullStorageAccess() }
                 true
             } else {
                 false
@@ -77,11 +75,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnSelectFolder.setOnClickListener {
-            storage.openFolderPicker(REQUEST_CODE_PICK_FOLDER)
+            storageHelper.openFolderPicker(REQUEST_CODE_PICK_FOLDER)
         }
 
         btnSelectFile.setOnClickListener {
-            storage.openFilePicker(REQUEST_CODE_PICK_FILE)
+            storageHelper.openFilePicker(REQUEST_CODE_PICK_FILE)
         }
 
         setupFileCopy()
@@ -91,81 +89,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupSimpleStorage() {
-        storage = SimpleStorage(this)
-        storage.storageAccessCallback = object : StorageAccessCallback {
-            override fun onRootPathNotSelected(requestCode: Int, rootPath: String, rootStorageType: StorageType, uri: Uri) {
-                MaterialDialog(this@MainActivity)
-                    .message(text = "Please select $rootPath")
-                    .negativeButton()
-                    .positiveButton {
-                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, rootStorageType)
-                    }.show()
-            }
-
-            override fun onCancelledByUser(requestCode: Int) {
-                Toast.makeText(baseContext, "Cancelled by user", Toast.LENGTH_SHORT).show()
-            }
-
-            override fun onStoragePermissionDenied(requestCode: Int) {
-                requestStoragePermission()
-            }
-
-            override fun onRootPathPermissionGranted(requestCode: Int, root: DocumentFile) {
-                Toast.makeText(baseContext, "Storage access has been granted for ${root.absolutePath}", Toast.LENGTH_SHORT).show()
+        storageHelper = SimpleStorageHelper(this)
+        storageHelper.onFileSelected = { requestCode, file ->
+            when (requestCode) {
+                REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY -> layoutCopyFromFile.updateFileSelectionView(file)
+                REQUEST_CODE_PICK_SOURCE_FILE_FOR_MOVE -> layoutMoveFromFile.updateFileSelectionView(file)
+                else -> Toast.makeText(baseContext, "File selected: ${file.name}", Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun requestStoragePermission() {
-        Dexter.withContext(this)
-            .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
-            .withListener(object : BaseMultiplePermissionsListener() {
-                override fun onPermissionsChecked(report: MultiplePermissionsReport) {
-                    if (report.areAllPermissionsGranted()) {
-                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS)
-                    } else {
-                        Toast.makeText(baseContext, "Please grant storage permissions", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }).check()
-    }
-
-    private fun setupFolderPickerCallback() {
-        storage.folderPickerCallback = object : FolderPickerCallback {
-            override fun onStoragePermissionDenied(requestCode: Int) {
-                requestStoragePermission()
-            }
-
-            override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType?) {
-                if (storageType == null) {
-                    requestStoragePermission()
-                    return
-                }
-                MaterialDialog(this@MainActivity)
-                    .message(
-                        text = "You have no write access to this storage, thus selecting this folder is useless." +
-                                "\nWould you like to grant access to this folder?"
-                    )
-                    .negativeButton()
-                    .positiveButton {
-                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, storageType)
-                    }.show()
-            }
-
-            override fun onFolderSelected(requestCode: Int, folder: DocumentFile) {
-                when (requestCode) {
-                    REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_COPY -> layoutCopyFileToFolder.updateFolderSelectionView(folder)
-                    REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_MOVE -> layoutMoveFileToFolder.updateFolderSelectionView(folder)
-                    REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_COPY -> layoutCopyFolderFromFolder.updateFolderSelectionView(folder)
-                    REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_COPY -> layoutCopyFolderToFolder.updateFolderSelectionView(folder)
-                    REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MOVE -> layoutMoveFolderFromFolder.updateFolderSelectionView(folder)
-                    REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_MOVE -> layoutMoveFolderToFolder.updateFolderSelectionView(folder)
-                    else -> Toast.makeText(baseContext, folder.absolutePath, Toast.LENGTH_SHORT).show()
-                }
-            }
-
-            override fun onCancelledByUser(requestCode: Int) {
-                Toast.makeText(baseContext, "Folder picker cancelled by user", Toast.LENGTH_SHORT).show()
+        storageHelper.onFolderSelected = { requestCode, folder ->
+            when (requestCode) {
+                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_COPY -> layoutCopyFileToFolder.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_MOVE -> layoutMoveFileToFolder.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_COPY -> layoutCopyFolderFromFolder.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_COPY -> layoutCopyFolderToFolder.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MOVE -> layoutMoveFolderFromFolder.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_MOVE -> layoutMoveFolderToFolder.updateFolderSelectionView(folder)
+                else -> Toast.makeText(baseContext, folder.absolutePath, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -175,26 +115,6 @@ class MainActivity : AppCompatActivity() {
         tvFilePath.text = folder.absolutePath
     }
 
-    private fun setupFilePickerCallback() {
-        storage.filePickerCallback = object : FilePickerCallback {
-            override fun onCancelledByUser(requestCode: Int) {
-                Toast.makeText(baseContext, "File picker cancelled by user", Toast.LENGTH_SHORT).show()
-            }
-
-            override fun onStoragePermissionDenied(requestCode: Int, file: DocumentFile?) {
-                requestStoragePermission()
-            }
-
-            override fun onFileSelected(requestCode: Int, file: DocumentFile) {
-                when (requestCode) {
-                    REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY -> layoutCopyFromFile.updateFileSelectionView(file)
-                    REQUEST_CODE_PICK_SOURCE_FILE_FOR_MOVE -> layoutMoveFromFile.updateFileSelectionView(file)
-                    else -> Toast.makeText(baseContext, "File selected: ${file.name}", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
     private fun View.updateFileSelectionView(file: DocumentFile) {
         tag = file
         tvFilePath.text = file.name
@@ -202,10 +122,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupFolderCopy() {
         layoutCopyFolderFromFolder.btnBrowse.setOnClickListener {
-            storage.openFolderPicker(REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_COPY)
+            storageHelper.openFolderPicker(REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_COPY)
         }
         layoutCopyFolderToFolder.btnBrowse.setOnClickListener {
-            storage.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_COPY)
+            storageHelper.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_COPY)
         }
         btnStartCopyFolder.setOnClickListener {
             val folder = layoutCopyFolderFromFolder.tag as? DocumentFile
@@ -258,10 +178,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupFolderMove() {
         layoutMoveFolderFromFolder.btnBrowse.setOnClickListener {
-            storage.openFolderPicker(REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MOVE)
+            storageHelper.openFolderPicker(REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MOVE)
         }
         layoutMoveFolderToFolder.btnBrowse.setOnClickListener {
-            storage.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_MOVE)
+            storageHelper.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_MOVE)
         }
         btnStartMoveFolder.setOnClickListener {
             val folder = layoutMoveFolderFromFolder.tag as? DocumentFile
@@ -314,10 +234,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupFileCopy() {
         layoutCopyFromFile.btnBrowse.setOnClickListener {
-            storage.openFilePicker(REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY)
+            storageHelper.openFilePicker(REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY)
         }
         layoutCopyFileToFolder.btnBrowse.setOnClickListener {
-            storage.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_COPY)
+            storageHelper.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_COPY)
         }
         btnStartCopyFile.setOnClickListener {
             if (layoutCopyFromFile.tag == null) {
@@ -392,10 +312,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupFileMove() {
         layoutMoveFromFile.btnBrowse.setOnClickListener {
-            storage.openFilePicker(REQUEST_CODE_PICK_SOURCE_FILE_FOR_MOVE)
+            storageHelper.openFilePicker(REQUEST_CODE_PICK_SOURCE_FILE_FOR_MOVE)
         }
         layoutMoveFileToFolder.btnBrowse.setOnClickListener {
-            storage.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_MOVE)
+            storageHelper.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_MOVE)
         }
         btnStartMoveFile.setOnClickListener {
             if (layoutMoveFromFile.tag == null) {
@@ -500,17 +420,17 @@ class MainActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        storage.onActivityResult(requestCode, resultCode, data)
+        storageHelper.storage.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        storage.onSaveInstanceState(outState)
+        storageHelper.onSaveInstanceState(outState)
         super.onSaveInstanceState(outState)
     }
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         super.onRestoreInstanceState(savedInstanceState)
-        storage.onRestoreInstanceState(savedInstanceState)
+        storageHelper.onRestoreInstanceState(savedInstanceState)
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
