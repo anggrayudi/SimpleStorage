@@ -8,7 +8,6 @@ import android.content.Intent
 import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
-import android.webkit.MimeTypeMap
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.core.content.FileProvider
@@ -60,6 +59,16 @@ val DocumentFile.id: String
 
 val DocumentFile.rootId: String
     get() = DocumentsContract.getRootId(uri)
+
+/**
+ * Some media files do not return file extension from [DocumentFile.getName]. This function helps you to fix this kind of issue.
+ */
+val DocumentFile.fullName: String
+    get() = if (isRawFile || isExternalStorageDocument || isDirectory) {
+        name.orEmpty()
+    } else {
+        DocumentFileCompat.getFullFileName(name.orEmpty(), type)
+    }
 
 fun DocumentFile.isInSameMountPointWith(file: DocumentFile) = storageId == file.storageId
 
@@ -115,13 +124,21 @@ val DocumentFile.isRawFile: Boolean
  * Filename without extension
  */
 val DocumentFile.baseName: String
-    get() = name.orEmpty().substringBeforeLast('.')
+    get() = fullName.substringBeforeLast('.')
 
 /**
  * File extension
  */
 val DocumentFile.extension: String
-    get() = name.orEmpty().substringAfterLast('.', "")
+    get() = fullName.substringAfterLast('.', "")
+
+/**
+ * Advanced version of [DocumentFile.getType]. Returns:
+ * * `null` if it is a directory or the file does not exist
+ * * [DocumentFileCompat.MIME_TYPE_UNKNOWN] if the file exists but the mime type is not found
+ */
+val DocumentFile.mimeType: String?
+    get() = if (isFile) type ?: DocumentFileCompat.getMimeTypeFromExtension(extension) else null
 
 /**
  * Please notice that accessing files with [File] only works on app private directory since Android 10. You had better to stay using [DocumentFile].
@@ -260,7 +277,7 @@ val DocumentFile.absolutePath: String
  * @see absolutePath
  */
 val DocumentFile.simplePath
-    get() = "$storageId:$basePath"
+    get() = "$storageId:$basePath".removePrefix(":")
 
 /**
  * Delete this file and create new empty file using previous `filename` and `mimeType`.
@@ -336,7 +353,7 @@ fun DocumentFile.createBinaryFile(context: Context, name: String, forceCreate: B
  * Creating files in API 28- with `createFile("my video.mp4", "video/mp4")` will create `my video.mp4`,
  * whereas API 29+ will create `my video.mp4.mp4`. This function helps you to fix this kind of bug.
  *
- * @param name you can input `My Video.mp4` or `My Folder/Sub Folder/My Video.mp4`
+ * @param name you can input `My Video`, `My Video.mp4` or `My Folder/Sub Folder/My Video.mp4`
  * @param forceCreate if `true` and the file with this name already exists, create new file with a name that has suffix `(1)`, e.g. `My Movie (1).mp4`.
  *                    Otherwise use existed file.
  */
@@ -359,9 +376,12 @@ fun DocumentFile.makeFile(
     }
 
     val filename = cleanName.substringAfterLast('/')
+    val extension = DocumentFileCompat.getExtensionFromMimeTypeOrFileName(cleanName, mimeType)
+    val baseFileName = filename.removeSuffix(".$extension")
+    val fullFileName = "$baseFileName.$extension".trimEnd('.')
 
     if (!forceCreate) {
-        val existingFile = parent.findFile(filename)
+        val existingFile = parent.findFile(fullFileName)
         if (existingFile?.exists() == true) return existingFile.let { if (it.isFile) it else null }
     }
 
@@ -370,17 +390,9 @@ fun DocumentFile.makeFile(
         return DocumentFile.fromFile(toRawFile()?.makeFile(cleanName, mimeType) ?: return null)
     }
 
-    val extension = when (mimeType) {
-        MIME_TYPE_UNKNOWN -> ""
-        MIME_TYPE_BINARY_FILE -> "bin"
-        null -> name.substringAfterLast('.', "")
-        else -> MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType).orEmpty()
+    val correctMimeType = DocumentFileCompat.getMimeTypeFromExtension(extension).let {
+        if (mimeType != null && it == MIME_TYPE_UNKNOWN) mimeType else it
     }
-    val baseFileName = filename.removeSuffix(".$extension")
-    val fullFileName = "$baseFileName.$extension".trimEnd('.')
-
-    val correctMimeType = if (extension == "bin") MIME_TYPE_BINARY_FILE else
-        mimeType ?: MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: MIME_TYPE_UNKNOWN
 
     return if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
         parent.createFile(correctMimeType, baseFileName)
@@ -496,6 +508,9 @@ fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile
     }
 }
 
+/**
+ * @param names full file names, with their extension
+ */
 fun DocumentFile.findFiles(names: Array<String>, documentType: DocumentFileType = DocumentFileType.ANY): List<DocumentFile> {
     val files = listFiles().filter { it.name in names }
     return when (documentType) {
@@ -536,7 +551,7 @@ fun DocumentFile.search(
                 sequence = sequence.filter { regex.matches(it.name.orEmpty()) }
             }
             if (mimeType != MIME_TYPE_UNKNOWN) {
-                sequence = sequence.filter { it.type == mimeType }
+                sequence = sequence.filter { it.mimeType == mimeType }
             }
             @Suppress("NON_EXHAUSTIVE_WHEN")
             when (documentType) {
@@ -565,7 +580,7 @@ private fun DocumentFile.walkFileTreeForSearch(
             val filename = file.name.orEmpty()
             if ((nameFilter.isEmpty() || filename == nameFilter)
                 && (regex == null || regex.matches(filename))
-                && (mimeType == MIME_TYPE_UNKNOWN || file.type == mimeType)
+                && (mimeType == MIME_TYPE_UNKNOWN || file.mimeType == mimeType)
             ) {
                 fileTree.add(file)
             }
@@ -940,6 +955,9 @@ fun DocumentFile.copyFileTo(context: Context, targetFolder: File, newFilenameInT
     copyFileTo(context, targetFolder.absolutePath, newFilenameInTargetPath, callback)
 }
 
+/**
+ * @param targetFolderAbsolutePath use [DocumentFileCompat.buildAbsolutePath] to construct the path
+ */
 @WorkerThread
 fun DocumentFile.copyFileTo(context: Context, targetFolderAbsolutePath: String, newFilenameInTargetPath: String? = null, callback: FileCallback) {
     val targetFolder = DocumentFileCompat.mkdirs(context, targetFolderAbsolutePath, true)
@@ -971,7 +989,8 @@ fun DocumentFile.copyFileTo(
         return
     }
 
-    val cleanFileName = (newFilenameInTargetPath ?: name.orEmpty()).removeForbiddenCharsFromFilename().trimFileSeparator()
+    val cleanFileName = DocumentFileCompat.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), type)
+        .removeForbiddenCharsFromFilename().trimFileSeparator()
     if (handleFileConflict(context, writableTargetFolder, cleanFileName, callback)) {
         return
     }
@@ -1127,6 +1146,9 @@ fun DocumentFile.moveFileTo(context: Context, targetFolder: File, newFilenameInT
     moveFileTo(context, targetFolder.absolutePath, newFilenameInTargetPath, callback)
 }
 
+/**
+ * @param targetFolderAbsolutePath use [DocumentFileCompat.buildAbsolutePath] to construct the path
+ */
 @WorkerThread
 fun DocumentFile.moveFileTo(context: Context, targetFolderAbsolutePath: String, newFilenameInTargetPath: String? = null, callback: FileCallback) {
     val targetFolder = DocumentFileCompat.mkdirs(context, targetFolderAbsolutePath, true)
@@ -1151,7 +1173,8 @@ fun DocumentFile.moveFileTo(
 
     callback.onPrepare()
 
-    val cleanFileName = (newFilenameInTargetPath ?: name.orEmpty()).removeForbiddenCharsFromFilename().trimFileSeparator()
+    val cleanFileName = DocumentFileCompat.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), type)
+        .removeForbiddenCharsFromFilename().trimFileSeparator()
     if (handleFileConflict(context, writableTargetFolder, cleanFileName, callback)) {
         return
     }

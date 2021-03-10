@@ -23,7 +23,17 @@ class PermissionRequest private constructor(
 ) {
 
     fun check() = apply {
-        callback.onDisplayConsentDialog(this@PermissionRequest)
+        permissions.forEach {
+            if (ContextCompat.checkSelfPermission(wrapper.context, it) != PackageManager.PERMISSION_GRANTED) {
+                callback.onDisplayConsentDialog(this@PermissionRequest)
+                return@apply
+            }
+        }
+        callback.onPermissionsChecked(
+            PermissionResult(permissions.map {
+                PermissionReport(it, isGranted = true, deniedPermanently = false)
+            })
+        )
     }
 
     fun onRequestPermissionsResult(

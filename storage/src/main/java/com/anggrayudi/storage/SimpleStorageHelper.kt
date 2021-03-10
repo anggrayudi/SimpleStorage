@@ -32,13 +32,15 @@ class SimpleStorageHelper {
 
     @JvmOverloads
     constructor(activity: FragmentActivity, savedState: Bundle? = null) {
-        storage = SimpleStorage(activity, savedState)
+        storage = SimpleStorage(activity)
+        savedState?.let { onRestoreInstanceState(it) }
         init()
     }
 
     @JvmOverloads
     constructor(fragment: Fragment, savedState: Bundle? = null) {
-        storage = SimpleStorage(fragment, savedState)
+        storage = SimpleStorage(fragment)
+        savedState?.let { onRestoreInstanceState(it) }
         init()
     }
 

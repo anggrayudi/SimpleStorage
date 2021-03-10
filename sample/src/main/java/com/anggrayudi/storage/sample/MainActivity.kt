@@ -41,7 +41,7 @@ class MainActivity : AppCompatActivity() {
 
         recyclerView.adapter = StorageInfoAdapter(applicationContext, ioScope, uiScope)
 
-        setupSimpleStorage()
+        setupSimpleStorage(savedInstanceState)
         setupButtonActions()
     }
 
@@ -88,13 +88,13 @@ class MainActivity : AppCompatActivity() {
         setupFolderMove()
     }
 
-    private fun setupSimpleStorage() {
-        storageHelper = SimpleStorageHelper(this)
+    private fun setupSimpleStorage(savedInstanceState: Bundle?) {
+        storageHelper = SimpleStorageHelper(this, savedInstanceState)
         storageHelper.onFileSelected = { requestCode, file ->
             when (requestCode) {
                 REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY -> layoutCopyFromFile.updateFileSelectionView(file)
                 REQUEST_CODE_PICK_SOURCE_FILE_FOR_MOVE -> layoutMoveFromFile.updateFileSelectionView(file)
-                else -> Toast.makeText(baseContext, "File selected: ${file.name}", Toast.LENGTH_SHORT).show()
+                else -> Toast.makeText(baseContext, "File selected: ${file.fullName}", Toast.LENGTH_SHORT).show()
             }
         }
         storageHelper.onFolderSelected = { requestCode, folder ->
@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun View.updateFileSelectionView(file: DocumentFile) {
         tag = file
-        tvFilePath.text = file.name
+        tvFilePath.text = file.fullName
     }
 
     private fun setupFolderCopy() {

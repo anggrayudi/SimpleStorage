@@ -9,6 +9,7 @@ import android.os.Environment
 import android.os.StatFs
 import android.system.ErrnoException
 import android.system.Os
+import android.webkit.MimeTypeMap
 import androidx.annotation.WorkerThread
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
@@ -381,6 +382,43 @@ object DocumentFileCompat {
 
     @JvmStatic
     fun delete(context: Context, fullPath: String) = fromFullPath(context, fullPath)?.delete() == true
+
+    /**
+     * * Given `name` = `ABC` AND `mimeType` = `video/mp4`, then return `ABC.mp4`
+     * * Given `name` = `ABC` AND `mimeType` = `null`, then return `ABC`
+     * * Given `name` = `ABC.mp4` AND `mimeType` = `video/mp4`, then return `ABC.mp4`
+     * @param name can have file extension or not
+     */
+    @JvmStatic
+    fun getFullFileName(name: String, mimeType: String?): String {
+        // Prior to API 29, MIME_TYPE_BINARY_FILE has no file extension
+        return getExtensionFromMimeType(mimeType).let { if (it.isEmpty() || name.endsWith(".$it")) name else "$name.$it".trimEnd('.') }
+    }
+
+    /**
+     * Some mime types return no file extension on older API levels. This function adds compatibility accross API levels.
+     * @see getExtensionFromMimeTypeOrFileName
+     */
+    @JvmStatic
+    fun getExtensionFromMimeType(mimeType: String?): String {
+        return mimeType?.let { if (it == MIME_TYPE_BINARY_FILE) "bin" else MimeTypeMap.getSingleton().getExtensionFromMimeType(it) }.orEmpty()
+    }
+
+    /**
+     * @see getExtensionFromMimeType
+     */
+    @JvmStatic
+    fun getExtensionFromMimeTypeOrFileName(filename: String, mimeType: String?): String {
+        return if (mimeType == null) filename.substringAfterLast('.', "") else getExtensionFromMimeType(mimeType)
+    }
+
+    /**
+     * Some file types return no mime type on older API levels. This function adds compatibility accross API levels.
+     */
+    @JvmStatic
+    fun getMimeTypeFromExtension(fileExtension: String): String {
+        return if (fileExtension == "bin") MIME_TYPE_BINARY_FILE else MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileExtension) ?: MIME_TYPE_UNKNOWN
+    }
 
     /**
      * Check if storage has URI permission for read and write access.

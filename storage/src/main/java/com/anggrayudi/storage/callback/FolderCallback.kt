@@ -34,9 +34,9 @@ interface FolderCallback {
      * Do not call `super` when you override this function.
      *
      * The thread that does copy/move will be suspended until the user gives an answer via [FileConflictAction.confirmResolution].
-     * You have to give an answer, or the thread will be alive until the app is killed.
+     * You have to give an answer, or the thread will be alive until the app is killed and end up as a zombie thread.
      * If you want to cancel, just pass [ConflictResolution.SKIP] into [FileConflictAction.confirmResolution].
-     * If the worker the thread is suspended for too long, it may be interrupted by the system.
+     * If the worker thread is suspended for too long, it may be interrupted by the system.
      *
      * @param canMerge when conflict found, action `MERGE` may not exists.
      *                 This happens if the destination is a file, an empty folder, or a folder without content conflicts.

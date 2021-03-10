@@ -19,7 +19,7 @@ implementation "com.anggrayudi:storage:X.Y.Z"
 
 Where `X.Y.Z` is the library version: ![Maven Central](https://img.shields.io/maven-central/v/com.anggrayudi/storage.svg)
 
-Snapshots can be found [here](https://oss.sonatype.org/#nexus-search;quick~com.anggrayudi).
+Snapshots can be found [here](https://oss.sonatype.org/#nexus-search;gav~com.anggrayudi~storage~~~~kw,versionexpand).
 To use SNAPSHOT version, you need to add this URL to the root Gradle:
 
 ```groovy
