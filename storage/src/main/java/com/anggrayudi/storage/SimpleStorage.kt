@@ -354,7 +354,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
          */
         @JvmStatic
         fun cleanupRedundantUriPermissions(resolver: ContentResolver) {
-            thread { // <= comment this line to run the unit test
+            thread {
                 // e.g. content://com.android.externalstorage.documents/tree/primary%3AMusic
                 val persistedUris = resolver.persistedUriPermissions
                     .filter { it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument }

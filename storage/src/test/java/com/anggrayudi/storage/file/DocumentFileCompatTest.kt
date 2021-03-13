@@ -2,14 +2,11 @@ package com.anggrayudi.storage.file
 
 import android.os.Environment
 import com.anggrayudi.storage.file.DocumentFileCompat.PRIMARY
-import com.nhaarman.mockitokotlin2.whenever
+import io.mockk.every
+import io.mockk.mockkStatic
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.powermock.api.mockito.PowerMockito.mockStatic
-import org.powermock.core.classloader.annotations.PrepareForTest
-import org.powermock.modules.junit4.PowerMockRunner
 import java.io.File
 
 /**
@@ -18,16 +15,12 @@ import java.io.File
  * @author Anggrayudi H
  */
 @Suppress("DEPRECATION")
-@RunWith(PowerMockRunner::class)
-@PrepareForTest(Environment::class)
 class DocumentFileCompatTest {
 
     @Before
     fun setUp() {
-        mockStatic(Environment::class.java)
-
-        whenever(Environment.getExternalStorageDirectory())
-            .thenAnswer { File("/storage/emulated/0") }
+        mockkStatic(Environment::class)
+        every { Environment.getExternalStorageDirectory() } answers { File("/storage/emulated/0") }
     }
 
     @Test
