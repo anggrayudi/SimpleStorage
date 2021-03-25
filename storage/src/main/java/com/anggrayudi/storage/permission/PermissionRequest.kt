@@ -32,7 +32,7 @@ class PermissionRequest private constructor(
         callback.onPermissionsChecked(
             PermissionResult(permissions.map {
                 PermissionReport(it, isGranted = true, deniedPermanently = false)
-            })
+            }), false
         )
     }
 
@@ -51,7 +51,7 @@ class PermissionRequest private constructor(
         }
         val blockedPermissions = reports.filter { it.deniedPermanently }
         if (blockedPermissions.isEmpty()) {
-            callback.onPermissionsChecked(PermissionResult(reports))
+            callback.onPermissionsChecked(PermissionResult(reports), true)
         } else {
             callback.onShouldRedirectToSystemSettings(blockedPermissions)
         }
@@ -71,7 +71,7 @@ class PermissionRequest private constructor(
         callback.onPermissionsChecked(
             PermissionResult(permissions.map {
                 PermissionReport(it, isGranted = true, deniedPermanently = false)
-            })
+            }), false
         )
     }
 

@@ -72,7 +72,7 @@ object MediaStoreCompat {
             }
             var existingMedia = fromBasePath(context, mediaType, "$relativePath/${file.name}")
             when {
-                existingMedia?.empty == true -> existingMedia
+                existingMedia?.isEmpty == true -> existingMedia
                 existingMedia?.exists == true -> {
                     val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(file.mimeType) ?: file.name.substringAfterLast('.', "")
                     val baseName = file.name.substringBeforeLast('.')

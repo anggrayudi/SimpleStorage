@@ -11,7 +11,10 @@ interface PermissionCallback {
         request.continueToPermissionRequest()
     }
 
-    fun onPermissionsChecked(result: PermissionResult)
+    /**
+     * @param fromSystemDialog true if users agreed/denied the permission from the system dialog.
+     */
+    fun onPermissionsChecked(result: PermissionResult, fromSystemDialog: Boolean)
 
     @JvmDefault
     fun onShouldRedirectToSystemSettings(blockedPermissions: List<PermissionReport>) {

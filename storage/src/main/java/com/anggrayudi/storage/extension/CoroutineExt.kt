@@ -32,6 +32,4 @@ fun startCoroutineTimer(
     }
 }
 
-fun launchOnUiThread(action: suspend CoroutineScope.() -> Unit) {
-    GlobalScope.launch(Dispatchers.Main, block = action)
-}
+fun launchOnUiThread(action: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(Dispatchers.Main, block = action)

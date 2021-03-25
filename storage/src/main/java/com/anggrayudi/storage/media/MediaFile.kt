@@ -106,7 +106,7 @@ class MediaFile(context: Context, val uri: Uri) {
     /**
      * The URI presents in SAF database, but the file is not found.
      */
-    val empty: Boolean
+    val isEmpty: Boolean
         get() = context.contentResolver.query(uri, null, null, null, null)?.use {
             it.count > 0 && !exists
         } ?: false
@@ -120,6 +120,15 @@ class MediaFile(context: Context, val uri: Uri) {
     val lastModified: Long
         get() = toRawFile()?.lastModified()
             ?: getColumnInfoLong(MediaStore.MediaColumns.DATE_MODIFIED)
+
+    val owner: String?
+        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) getColumnInfoString(MediaStore.MediaColumns.OWNER_PACKAGE_NAME) else null
+
+    /**
+     * Check if this media is owned by your app.
+     */
+    val isMine: Boolean
+        get() = owner == context.packageName
 
     /**
      * @return `null` in Android 10+ or if you try to read files from SD Card or you want to convert a file picked

@@ -139,7 +139,7 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             ioScope.launch {
-                folder.copyFolderTo(it.context, targetFolder, false, callback = object : FolderCallback {
+                folder.copyFolderTo(applicationContext, targetFolder, false, callback = object : FolderCallback {
                     override fun onPrepare() {
                         // Show notification or progress bar dialog with indeterminate state
                     }
@@ -195,7 +195,7 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             ioScope.launch {
-                folder.moveFolderTo(it.context, targetFolder, false, callback = object : FolderCallback {
+                folder.moveFolderTo(applicationContext, targetFolder, false, callback = object : FolderCallback {
                     override fun onPrepare() {
                         // Show notification or progress bar dialog with indeterminate state
                     }
@@ -251,7 +251,7 @@ class MainActivity : AppCompatActivity() {
             val file = layoutCopyFromFile.tag as DocumentFile
             val targetFolder = layoutCopyFileToFolder.tag as DocumentFile
             ioScope.launch {
-                file.copyFileTo(it.context, targetFolder, callback = object : FileCallback {
+                file.copyFileTo(applicationContext, targetFolder, callback = object : FileCallback {
 
                     var dialog: MaterialDialog? = null
                     var tvStatus: TextView? = null
@@ -329,7 +329,7 @@ class MainActivity : AppCompatActivity() {
             val file = layoutMoveFromFile.tag as DocumentFile
             val targetFolder = layoutMoveFileToFolder.tag as DocumentFile
             ioScope.launch {
-                file.moveFileTo(it.context, targetFolder, callback = object : FileCallback {
+                file.moveFileTo(applicationContext, targetFolder, callback = object : FileCallback {
 
                     var dialog: MaterialDialog? = null
                     var tvStatus: TextView? = null

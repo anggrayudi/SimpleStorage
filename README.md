@@ -287,6 +287,65 @@ class MainActivity : AppCompatActivity() {
 
 Simpler, right?
 
+## Move & Copy: Files & Folders
+
+Simple Storage helps you in copying/moving files & folders via:
+* `DocumentFile.copyFileTo()`
+* `DocumentFile.moveFileTo()`
+* `DocumentFile.copyFolderTo()`
+* `DocumentFile.moveFolderTo()`
+
+For example, you can move a folder with few lines of code:
+
+```kotlin
+// execute on background thread
+val folder: DocumentFile = ...
+val targetFolder: DocumentFile = ...
+folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, callback = object : FolderCallback {
+    override fun onPrepare() {
+        // Show notification or progress bar dialog with indeterminate state
+    }
+
+    override fun onCountingFiles() {
+        // Inform user that the app is counting & calculating files
+    }
+
+    override fun onStart(folder: DocumentFile, totalFilesToCopy: Int): Long {
+        return 1000 // update progress every 1 second
+    }
+
+    override fun onConflict(destinationFolder: DocumentFile, action: FolderCallback.FolderConflictAction, canMerge: Boolean) {
+        MaterialDialog(this)
+            .cancelable(false)
+            .title(text = "Conflict Found")
+            .message(text = "What do you want to do with the folder already exists in destination?")
+            .listItems(items = mutableListOf("Replace", "Merge", "Create New", "Skip Duplicate").apply { if (!canMerge) remove("Merge") }) { _, index, _ ->
+                val resolution = FolderCallback.ConflictResolution.values()[if (!canMerge && index > 0) index + 1 else index]
+                action.confirmResolution(resolution)
+                if (resolution == FolderCallback.ConflictResolution.SKIP) {
+                    Toast.makeText(this, "Skipped duplicate folders & files", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .show()
+    }
+
+    override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int, fileCount: Int) {
+        Timber.d("onReport() -> ${progress.toInt()}% | Moved $fileCount files")
+    }
+
+    override fun onCompleted(folder: DocumentFile, totalFilesToCopy: Int, totalCopiedFiles: Int, success: Boolean) {
+        Timber.d("Moved $totalCopiedFiles of $totalFilesToCopy files")
+    }
+
+    override fun onFailed(errorCode: FolderCallback.ErrorCode) {
+        Timber.d("An error has occurred: $errorCode")
+    }
+})
+```
+
+The coolest thing of this library is you can ask users to choose Merge, Replace, Create New, or Skip Duplicate folders & files
+whenever a conflict is found via `onConflict()`.
+
 ## License
 
     Copyright © 2020-2021 Anggrayudi Hardiannicko A.
