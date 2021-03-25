@@ -2,6 +2,27 @@
 ![Maven Central](https://img.shields.io/maven-central/v/com.anggrayudi/storage.svg)
 [![Build Status](https://github.com/anggrayudi/SimpleStorage/workflows/Android%20CI/badge.svg)](https://github.com/anggrayudi/SimpleStorage/actions?query=workflow%3A%22Android+CI%22)
 
+### Table of Contents
+* [Overview](#overview)
+  + [Java Compatibility](#java-compatibility)
+* [Terminology](#terminology)
+* [Read Files](#read-files)
+  + [`DocumentFileCompat`](#documentfilecompat)
+    - [Example](#example)
+  + [`MediaStoreCompat`](#mediastorecompat)
+    - [Example](#example-1)
+* [Manage Files](#manage-files)
+  + [`DocumentFile`](#documentfile)
+  + [`MediaFile`](#mediafile)
+* [Request Storage Access](#request-storage-access)
+* [Folder Picker](#folder-picker)
+* [File Picker](#file-picker)
+* [`SimpleStorageHelper`](#simplestoragehelper)
+* [Move & Copy: Files & Folders](#move--copy-files--folders)
+* [License](#license)
+
+## Overview
+
 The more higher API level, the more Google restricted file access on Android storage.
 Although Storage Access Framework (SAF) is designed to secure user's storage from malicious apps,
 but this makes us even more difficult in accessing files. Let's take an example where
