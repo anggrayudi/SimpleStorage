@@ -1,6 +1,7 @@
 package com.anggrayudi.storage.callback
 
 import androidx.annotation.UiThread
+import androidx.annotation.WorkerThread
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.callback.FileCallback.FileConflictAction
 import com.anggrayudi.storage.file.FileSize
@@ -12,11 +13,13 @@ import kotlinx.coroutines.CancellableContinuation
  */
 interface FolderCallback {
 
+    @WorkerThread
     @JvmDefault
     fun onPrepare() {
         // default implementation
     }
 
+    @WorkerThread
     @JvmDefault
     fun onCountingFiles() {
         // default implementation
@@ -27,6 +30,7 @@ interface FolderCallback {
      * @return Time interval to watch folder copy/move progress in milliseconds, otherwise `0` if you don't want to watch at all.
      * Setting negative value will cancel the operation.
      */
+    @WorkerThread
     @JvmDefault
     fun onStart(folder: DocumentFile, totalFilesToCopy: Int): Long = 0
 
@@ -54,6 +58,7 @@ interface FolderCallback {
      * @param freeSpace of target path
      * @return `true` to continue process
      */
+    @WorkerThread
     @JvmDefault
     fun onCheckFreeSpace(freeSpace: Long, fileSize: Long): Boolean {
         return fileSize + 100 * FileSize.MB < freeSpace // Give tolerant 100MB
@@ -66,6 +71,7 @@ interface FolderCallback {
      * @param writeSpeed in bytes
      * @param fileCount total files/folders that are successfully copied/moved
      */
+    @WorkerThread
     @JvmDefault
     fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int, fileCount: Int) {
         // default implementation
@@ -79,11 +85,13 @@ interface FolderCallback {
      * @param totalFilesToCopy total files, not folders
      * @param totalCopiedFiles total files, not folders
      */
+    @WorkerThread
     @JvmDefault
     fun onCompleted(folder: DocumentFile, totalFilesToCopy: Int, totalCopiedFiles: Int, success: Boolean) {
         // default implementation
     }
 
+    @WorkerThread
     @JvmDefault
     fun onFailed(errorCode: ErrorCode) {
         // default implementation

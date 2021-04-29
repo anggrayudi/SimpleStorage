@@ -1,6 +1,7 @@
 package com.anggrayudi.storage.callback
 
 import androidx.annotation.UiThread
+import androidx.annotation.WorkerThread
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.media.MediaFile
 import kotlinx.coroutines.CancellableContinuation
@@ -12,6 +13,7 @@ import kotlinx.coroutines.CancellableContinuation
  */
 interface FileCallback {
 
+    @WorkerThread
     @JvmDefault
     fun onPrepare() {
         // default implementation
@@ -22,6 +24,7 @@ interface FileCallback {
      * @return Time interval to watch file copy/move progress in milliseconds, otherwise `0` if you don't want to watch at all.
      * Setting negative value will cancel the operation.
      */
+    @WorkerThread
     @JvmDefault
     fun onStart(file: Any): Long = 0
 
@@ -46,6 +49,7 @@ interface FileCallback {
      * @param freeSpace of target path
      * @return `true` to continue process
      */
+    @WorkerThread
     @JvmDefault
     fun onCheckFreeSpace(freeSpace: Long, fileSize: Long): Boolean {
         // default implementation
@@ -58,6 +62,7 @@ interface FileCallback {
      * @param progress   in percent
      * @param writeSpeed in bytes
      */
+    @WorkerThread
     @JvmDefault
     fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int) {
         // default implementation
@@ -66,11 +71,13 @@ interface FileCallback {
     /**
      * @param file newly moved/copied file. Can be [DocumentFile] or [MediaFile]
      */
+    @WorkerThread
     @JvmDefault
     fun onCompleted(file: Any) {
         // default implementation
     }
 
+    @WorkerThread
     @JvmDefault
     fun onFailed(errorCode: ErrorCode) {
         // default implementation

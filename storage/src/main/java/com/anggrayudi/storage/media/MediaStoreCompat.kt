@@ -29,32 +29,48 @@ object MediaStoreCompat {
         @SuppressLint("InlinedApi")
         get() = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) MediaStore.VOLUME_EXTERNAL else MediaStore.VOLUME_EXTERNAL_PRIMARY
 
-    @JvmStatic
     @RequiresApi(Build.VERSION_CODES.Q)
-    fun createDownload(context: Context, file: FileDescription): MediaFile? {
-        return createMedia(context, MediaType.DOWNLOADS, Environment.DIRECTORY_DOWNLOADS, file)
+    @JvmStatic
+    @JvmOverloads
+    fun createDownload(context: Context, file: FileDescription, forceCreate: Boolean = true): MediaFile? {
+        return createMedia(context, MediaType.DOWNLOADS, Environment.DIRECTORY_DOWNLOADS, file, forceCreate)
     }
 
     @JvmOverloads
     @JvmStatic
-    fun createImage(context: Context, file: FileDescription, relativeParentDirectory: ImageMediaDirectory = ImageMediaDirectory.PICTURES): MediaFile? {
-        return createMedia(context, MediaType.IMAGE, relativeParentDirectory.folderName, file)
+    fun createImage(
+        context: Context,
+        file: FileDescription,
+        relativeParentDirectory: ImageMediaDirectory = ImageMediaDirectory.PICTURES,
+        forceCreate: Boolean = true
+    ): MediaFile? {
+        return createMedia(context, MediaType.IMAGE, relativeParentDirectory.folderName, file, forceCreate)
     }
 
     @JvmOverloads
     @JvmStatic
-    fun createAudio(context: Context, file: FileDescription, relativeParentDirectory: AudioMediaDirectory = AudioMediaDirectory.MUSIC): MediaFile? {
-        return createMedia(context, MediaType.AUDIO, relativeParentDirectory.folderName, file)
+    fun createAudio(
+        context: Context,
+        file: FileDescription,
+        relativeParentDirectory: AudioMediaDirectory = AudioMediaDirectory.MUSIC,
+        forceCreate: Boolean = true
+    ): MediaFile? {
+        return createMedia(context, MediaType.AUDIO, relativeParentDirectory.folderName, file, forceCreate)
     }
 
     @JvmOverloads
     @JvmStatic
-    fun createVideo(context: Context, file: FileDescription, relativeParentDirectory: VideoMediaDirectory = VideoMediaDirectory.MOVIES): MediaFile? {
-        return createMedia(context, MediaType.VIDEO, relativeParentDirectory.folderName, file)
+    fun createVideo(
+        context: Context,
+        file: FileDescription,
+        relativeParentDirectory: VideoMediaDirectory = VideoMediaDirectory.MOVIES,
+        forceCreate: Boolean = true
+    ): MediaFile? {
+        return createMedia(context, MediaType.VIDEO, relativeParentDirectory.folderName, file, forceCreate)
     }
 
     @Suppress("DEPRECATION")
-    private fun createMedia(context: Context, mediaType: MediaType, folderName: String, file: FileDescription): MediaFile? {
+    private fun createMedia(context: Context, mediaType: MediaType, folderName: String, file: FileDescription, forceCreate: Boolean): MediaFile? {
         val dateCreated = System.currentTimeMillis()
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, file.name)
@@ -74,6 +90,17 @@ object MediaStoreCompat {
             when {
                 existingMedia?.isEmpty == true -> existingMedia
                 existingMedia?.exists == true -> {
+                    if (!forceCreate) {
+                        return existingMedia
+                    }
+                    /*
+                    We use this file duplicate handler because it is better than the system's.
+                    This handler also fixes Android 10's media file duplicate handler. Here's how to reproduce:
+                    1) Use Android 10. Let's say there's a file named Pictures/profile.png with media ID 25.
+                    2) Create an image file with ContentValues using the same name (profile) & mime type (image/png), under Pictures directory too.
+                    3) A new media file is created into the file database with ID 26, but it uses the old file,
+                       instead of creating a new file named profile (1).png. On Android 11, it will be profile (1).png.
+                     */
                     val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(file.mimeType) ?: file.name.substringAfterLast('.', "")
                     val baseName = file.name.substringBeforeLast('.')
                     val prefix = "$baseName ("
@@ -106,11 +133,10 @@ object MediaStoreCompat {
                 var media = File("$publicDirectory/${file.subFolder}", file.name)
                 val parentFile = media.parentFile ?: return null
                 parentFile.mkdirs()
-                if (media.exists()) {
-                    val filename = parentFile.autoIncrementFileName(file.name)
-                    contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
-                    media = File(parentFile, filename)
+                if (media.exists() && forceCreate) {
+                    media = File(parentFile, parentFile.autoIncrementFileName(file.name))
                 }
+                contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, media.name)
                 context.contentResolver.insert(mediaType.writeUri, contentValues)?.let {
                     media.createNewFile()
                     MediaFile(context, it)

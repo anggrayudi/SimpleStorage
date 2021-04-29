@@ -3,6 +3,7 @@
 package com.anggrayudi.storage.file
 
 import android.annotation.SuppressLint
+import android.annotation.TargetApi
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -21,6 +22,7 @@ import com.anggrayudi.storage.file.DocumentFileCompat.MIME_TYPE_UNKNOWN
 import com.anggrayudi.storage.file.DocumentFileCompat.PRIMARY
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import com.anggrayudi.storage.media.MediaFile
+import com.anggrayudi.storage.media.MediaStoreCompat
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -387,7 +389,7 @@ fun DocumentFile.makeFile(
 
     if (isRawFile) {
         // RawDocumentFile does not avoid duplicate file name, but TreeDocumentFile does.
-        return DocumentFile.fromFile(toRawFile()?.makeFile(cleanName, mimeType) ?: return null)
+        return DocumentFile.fromFile(toRawFile()?.makeFile(cleanName, mimeType, forceCreate) ?: return null)
     }
 
     val correctMimeType = DocumentFileCompat.getMimeTypeFromExtension(extension).let {
@@ -991,7 +993,8 @@ fun DocumentFile.copyFileTo(
 
     val cleanFileName = DocumentFileCompat.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), type)
         .removeForbiddenCharsFromFilename().trimFileSeparator()
-    if (handleFileConflict(context, writableTargetFolder, cleanFileName, callback)) {
+    val fileConflictResolution = handleFileConflict(context, writableTargetFolder, cleanFileName, callback)
+    if (fileConflictResolution == FileCallback.ConflictResolution.SKIP) {
         return
     }
 
@@ -999,7 +1002,10 @@ fun DocumentFile.copyFileTo(
     if (reportInterval < 0) return
     val watchProgress = reportInterval > 0
     try {
-        val targetFile = createTargetFile(context, writableTargetFolder, cleanFileName, callback) ?: return
+        val targetFile = createTargetFile(
+            context, writableTargetFolder, cleanFileName,
+            fileConflictResolution == FileCallback.ConflictResolution.CREATE_NEW, callback
+        ) ?: return
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
             copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, false, callback)
         }
@@ -1064,13 +1070,37 @@ private inline fun createFileStreams(
     onStreamsReady(inputStream, outputStream)
 }
 
+private inline fun createFileStreams(
+    context: Context,
+    sourceFile: DocumentFile,
+    targetFile: MediaFile,
+    callback: FileCallback,
+    onStreamsReady: (InputStream, OutputStream) -> Unit
+) {
+    val outputStream = targetFile.openOutputStream()
+    if (outputStream == null) {
+        callback.onFailed(FileCallback.ErrorCode.TARGET_FILE_NOT_FOUND)
+        return
+    }
+
+    val inputStream = sourceFile.openInputStream(context)
+    if (inputStream == null) {
+        callback.onFailed(FileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND)
+        outputStream.closeStream()
+        return
+    }
+
+    onStreamsReady(inputStream, outputStream)
+}
+
 private fun DocumentFile.createTargetFile(
     context: Context,
     targetFolder: DocumentFile,
-    newFilenameInTargetPath: String?,
+    newFilenameInTargetPath: String,
+    forceCreate: Boolean,
     callback: FileCallback
 ): DocumentFile? {
-    val targetFile = targetFolder.makeFile(context, newFilenameInTargetPath ?: name.orEmpty(), type)
+    val targetFile = targetFolder.makeFile(context, newFilenameInTargetPath, type, forceCreate)
     if (targetFile == null) {
         callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
     }
@@ -1100,10 +1130,13 @@ private inline fun createFileStreams(
     onStreamsReady(inputStream, outputStream)
 }
 
+/**
+ * @param targetFile can be [MediaFile] or [DocumentFile]
+ */
 private fun DocumentFile.copyFileStream(
     inputStream: InputStream,
     outputStream: OutputStream,
-    targetFile: DocumentFile,
+    targetFile: Any,
     watchProgress: Boolean,
     reportInterval: Long,
     deleteSourceFileWhenComplete: Boolean,
@@ -1175,7 +1208,8 @@ fun DocumentFile.moveFileTo(
 
     val cleanFileName = DocumentFileCompat.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), type)
         .removeForbiddenCharsFromFilename().trimFileSeparator()
-    if (handleFileConflict(context, writableTargetFolder, cleanFileName, callback)) {
+    val fileConflictResolution = handleFileConflict(context, writableTargetFolder, cleanFileName, callback)
+    if (fileConflictResolution == FileCallback.ConflictResolution.SKIP) {
         return
     }
 
@@ -1234,9 +1268,83 @@ fun DocumentFile.moveFileTo(
     val watchProgress = reportInterval > 0
 
     try {
-        val targetFile = createTargetFile(context, writableTargetFolder, cleanFileName, callback) ?: return
+        val targetFile = createTargetFile(
+            context, writableTargetFolder, cleanFileName,
+            fileConflictResolution == FileCallback.ConflictResolution.CREATE_NEW, callback
+        ) ?: return
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
             copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, true, callback)
+        }
+    } catch (e: SecurityException) {
+        callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
+    } catch (e: InterruptedIOException) {
+        callback.onFailed(FileCallback.ErrorCode.CANCELLED)
+    } catch (e: InterruptedException) {
+        callback.onFailed(FileCallback.ErrorCode.CANCELLED)
+    } catch (e: IOException) {
+        callback.onFailed(FileCallback.ErrorCode.UNKNOWN_IO_ERROR)
+    }
+}
+
+/**
+ * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
+ */
+@WorkerThread
+@TargetApi(Build.VERSION_CODES.Q)
+fun DocumentFile.moveFileTo(
+    context: Context,
+    targetFile: MediaFile,
+    callback: FileCallback
+) {
+    copyFileTo(context, targetFile, true, callback)
+}
+
+/**
+ * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
+ */
+@WorkerThread
+@TargetApi(Build.VERSION_CODES.Q)
+fun DocumentFile.copyFileTo(
+    context: Context,
+    targetFile: MediaFile,
+    callback: FileCallback
+) {
+    copyFileTo(context, targetFile, false, callback)
+}
+
+private fun DocumentFile.copyFileTo(
+    context: Context,
+    targetFile: MediaFile,
+    deleteSourceFileWhenComplete: Boolean,
+    callback: FileCallback
+) {
+    if (!isFile) {
+        callback.onFailed(FileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND)
+        return
+    }
+
+    if (!canRead()) {
+        callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
+        return
+    }
+
+    try {
+        if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, PRIMARY), length())) {
+            callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH)
+            return
+        }
+    } catch (e: Throwable) {
+        callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
+        return
+    }
+
+    val reportInterval = callback.onStart(this)
+    if (reportInterval < 0) return
+    val watchProgress = reportInterval > 0
+
+    try {
+        createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
+            copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, deleteSourceFileWhenComplete, callback)
         }
     } catch (e: SecurityException) {
         callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
@@ -1254,7 +1362,7 @@ private fun handleFileConflict(
     targetFolder: DocumentFile,
     targetFileName: String,
     callback: FileCallback
-): Boolean {
+): FileCallback.ConflictResolution {
     targetFolder.findFile(targetFileName)?.let { targetFile ->
         val resolution = runBlocking<FileCallback.ConflictResolution> {
             suspendCancellableCoroutine { continuation ->
@@ -1263,25 +1371,16 @@ private fun handleFileConflict(
                 }
             }
         }
-        when (resolution) {
-            FileCallback.ConflictResolution.REPLACE -> {
-                val deleteSuccess = targetFile.let { if (it.isDirectory) it.deleteRecursively(context) else it.delete() }
-                if (!deleteSuccess || targetFile.exists()) {
-                    callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
-                    return true
-                }
-            }
-
-            FileCallback.ConflictResolution.SKIP -> {
-                return true
-            }
-
-            FileCallback.ConflictResolution.CREATE_NEW -> {
-                // will be handled by makeFile()
+        if (resolution == FileCallback.ConflictResolution.REPLACE) {
+            val deleteSuccess = targetFile.let { if (it.isDirectory) it.deleteRecursively(context) else it.delete() }
+            if (!deleteSuccess || targetFile.exists()) {
+                callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
+                return FileCallback.ConflictResolution.SKIP
             }
         }
+        return resolution
     }
-    return false
+    return FileCallback.ConflictResolution.CREATE_NEW
 }
 
 private fun DocumentFile.handleFolderConflict(
