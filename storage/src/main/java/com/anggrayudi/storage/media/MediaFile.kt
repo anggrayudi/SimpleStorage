@@ -92,8 +92,16 @@ class MediaFile(context: Context, val uri: Uri) {
                 ?: DocumentFileCompat.getMimeTypeFromExtension(extension)
         } else null
 
-    val length: Long
+    var length: Long
         get() = toRawFile()?.length() ?: getColumnInfoLong(MediaStore.MediaColumns.SIZE)
+        set(value) {
+            try {
+                val contentValues = ContentValues(1).apply { put(MediaStore.MediaColumns.SIZE, value) }
+                context.contentResolver.update(uri, contentValues, null, null)
+            } catch (e: SecurityException) {
+                handleSecurityException(e)
+            }
+        }
 
     /**
      * Check if file exists
@@ -312,10 +320,10 @@ class MediaFile(context: Context, val uri: Uri) {
     }
 
     @WorkerThread
-    fun moveTo(targetFolder: DocumentFile, newFilenameInTargetPath: String? = null, callback: FileCallback) {
+    fun moveTo(targetFolder: DocumentFile, fileDescription: FileDescription? = null, callback: FileCallback) {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sourceFile.moveFileTo(context, targetFolder, newFilenameInTargetPath, callback)
+            sourceFile.moveFileTo(context, targetFolder, fileDescription, callback)
             return
         }
 
@@ -329,9 +337,22 @@ class MediaFile(context: Context, val uri: Uri) {
             return
         }
 
-        val cleanFileName = DocumentFileCompat.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), type)
+        val targetDirectory = if (fileDescription?.subFolder.isNullOrEmpty()) {
+            targetFolder
+        } else {
+            val directory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), false)
+            if (directory == null) {
+                callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
+                return
+            } else {
+                directory
+            }
+        }
+
+        val cleanFileName = DocumentFileCompat.getFullFileName(fileDescription?.name ?: name.orEmpty(), fileDescription?.mimeType ?: type)
             .removeForbiddenCharsFromFilename().trimFileSeparator()
-        if (handleFileConflict(targetFolder, cleanFileName, callback)) {
+        val conflictResolution = handleFileConflict(targetDirectory, cleanFileName, callback)
+        if (conflictResolution == FileCallback.ConflictResolution.SKIP) {
             return
         }
 
@@ -339,7 +360,10 @@ class MediaFile(context: Context, val uri: Uri) {
         val watchProgress = reportInterval > 0
 
         try {
-            val targetFile = createTargetFile(targetFolder, cleanFileName, callback) ?: return
+            val targetFile = createTargetFile(
+                targetDirectory, cleanFileName, fileDescription?.mimeType ?: type,
+                conflictResolution == FileCallback.ConflictResolution.CREATE_NEW, callback
+            ) ?: return
             createFileStreams(targetFile, callback) { inputStream, outputStream ->
                 copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, true, callback)
             }
@@ -355,10 +379,10 @@ class MediaFile(context: Context, val uri: Uri) {
     }
 
     @WorkerThread
-    fun copyTo(targetFolder: DocumentFile, newFilenameInTargetPath: String? = null, callback: FileCallback) {
+    fun copyTo(targetFolder: DocumentFile, fileDescription: FileDescription? = null, callback: FileCallback) {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sourceFile.copyFileTo(context, targetFolder, newFilenameInTargetPath, callback)
+            sourceFile.copyFileTo(context, targetFolder, fileDescription, callback)
             return
         }
 
@@ -372,16 +396,32 @@ class MediaFile(context: Context, val uri: Uri) {
             return
         }
 
-        val cleanFileName = DocumentFileCompat.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), type)
+        val targetDirectory = if (fileDescription?.subFolder.isNullOrEmpty()) {
+            targetFolder
+        } else {
+            val directory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), false)
+            if (directory == null) {
+                callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
+                return
+            } else {
+                directory
+            }
+        }
+
+        val cleanFileName = DocumentFileCompat.getFullFileName(fileDescription?.name ?: name.orEmpty(), fileDescription?.mimeType ?: type)
             .removeForbiddenCharsFromFilename().trimFileSeparator()
-        if (handleFileConflict(targetFolder, cleanFileName, callback)) {
+        val conflictResolution = handleFileConflict(targetDirectory, cleanFileName, callback)
+        if (conflictResolution == FileCallback.ConflictResolution.SKIP) {
             return
         }
 
         val reportInterval = callback.onStart(this)
         val watchProgress = reportInterval > 0
         try {
-            val targetFile = createTargetFile(targetFolder, cleanFileName, callback) ?: return
+            val targetFile = createTargetFile(
+                targetDirectory, cleanFileName, fileDescription?.mimeType ?: type,
+                conflictResolution == FileCallback.ConflictResolution.CREATE_NEW, callback
+            ) ?: return
             createFileStreams(targetFile, callback) { inputStream, outputStream ->
                 copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, false, callback)
             }
@@ -396,7 +436,13 @@ class MediaFile(context: Context, val uri: Uri) {
         }
     }
 
-    private fun createTargetFile(targetDirectory: DocumentFile, fileName: String, callback: FileCallback): DocumentFile? {
+    private fun createTargetFile(
+        targetDirectory: DocumentFile,
+        fileName: String,
+        mimeType: String?,
+        forceCreate: Boolean,
+        callback: FileCallback
+    ): DocumentFile? {
         try {
             val targetFolder =
                 DocumentFileCompat.mkdirs(context, DocumentFileCompat.buildAbsolutePath(targetDirectory.storageId, targetDirectory.basePath))
@@ -405,7 +451,7 @@ class MediaFile(context: Context, val uri: Uri) {
                 return null
             }
 
-            val targetFile = targetFolder.makeFile(context, fileName, type)
+            val targetFile = targetFolder.makeFile(context, fileName, mimeType, forceCreate)
             if (targetFile == null) {
                 callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
             } else {
@@ -485,7 +531,7 @@ class MediaFile(context: Context, val uri: Uri) {
         }
     }
 
-    private fun handleFileConflict(targetFolder: DocumentFile, fileName: String, callback: FileCallback): Boolean {
+    private fun handleFileConflict(targetFolder: DocumentFile, fileName: String, callback: FileCallback): FileCallback.ConflictResolution {
         targetFolder.findFile(fileName)?.let { targetFile ->
             val resolution = runBlocking<FileCallback.ConflictResolution> {
                 suspendCancellableCoroutine { continuation ->
@@ -494,25 +540,16 @@ class MediaFile(context: Context, val uri: Uri) {
                     }
                 }
             }
-            when (resolution) {
-                FileCallback.ConflictResolution.REPLACE -> {
-                    val deleteSuccess = if (targetFile.isDirectory) targetFile.deleteRecursively(context) else targetFile.delete()
-                    if (!deleteSuccess || targetFile.exists()) {
-                        callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
-                        return true
-                    }
-                }
-
-                FileCallback.ConflictResolution.SKIP -> {
-                    return true
-                }
-
-                FileCallback.ConflictResolution.CREATE_NEW -> {
-                    // will be handled by makeFile()
+            if (resolution == FileCallback.ConflictResolution.REPLACE) {
+                val deleteSuccess = if (targetFile.isDirectory) targetFile.deleteRecursively(context) else targetFile.delete()
+                if (!deleteSuccess || targetFile.exists()) {
+                    callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
+                    return FileCallback.ConflictResolution.SKIP
                 }
             }
+            return resolution
         }
-        return false
+        return FileCallback.ConflictResolution.CREATE_NEW
     }
 
     private fun getColumnInfoString(column: String): String? {

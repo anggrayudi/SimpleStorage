@@ -118,7 +118,8 @@ object MediaStoreCompat {
                         .toIntOrNull() ?: 0
 
                     existingMedia = fromFileName(context, mediaType, "$baseName ($count).$ext".trimEnd('.'))
-                    if (existingMedia != null) {
+                    // Check if file exists, but has zero length
+                    if (existingMedia?.openInputStream()?.use { it.available() == 0 } == true) {
                         existingMedia
                     } else {
                         contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, "$baseName (${++count}).$ext".trimEnd('.'))

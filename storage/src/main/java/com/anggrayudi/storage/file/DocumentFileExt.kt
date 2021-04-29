@@ -21,6 +21,7 @@ import com.anggrayudi.storage.file.DocumentFileCompat.MIME_TYPE_BINARY_FILE
 import com.anggrayudi.storage.file.DocumentFileCompat.MIME_TYPE_UNKNOWN
 import com.anggrayudi.storage.file.DocumentFileCompat.PRIMARY
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
+import com.anggrayudi.storage.media.FileDescription
 import com.anggrayudi.storage.media.MediaFile
 import com.anggrayudi.storage.media.MediaStoreCompat
 import kotlinx.coroutines.Job
@@ -141,6 +142,13 @@ val DocumentFile.extension: String
  */
 val DocumentFile.mimeType: String?
     get() = if (isFile) type ?: DocumentFileCompat.getMimeTypeFromExtension(extension) else null
+
+val DocumentFile.mimeTypeByFileName: String?
+    get() = if (isDirectory) null else {
+        val extension = name.orEmpty().substringAfterLast('.', "")
+        val mimeType = DocumentFileCompat.getMimeTypeFromExtension(extension)
+        if (mimeType == MIME_TYPE_UNKNOWN) type else mimeType
+    }
 
 /**
  * Please notice that accessing files with [File] only works on app private directory since Android 10. You had better to stay using [DocumentFile].
@@ -952,29 +960,55 @@ private fun DocumentFile.doesMeetCopyRequirements(context: Context, targetParent
     return targetParentFolder.let { if (it.isDownloadsDocument) it.toWritableDownloadsDocumentFile(context) else it }
 }
 
+/**
+ * @param fileDescription Use it if you want to change file name and type in the destination.
+ */
 @WorkerThread
-fun DocumentFile.copyFileTo(context: Context, targetFolder: File, newFilenameInTargetPath: String? = null, callback: FileCallback) {
-    copyFileTo(context, targetFolder.absolutePath, newFilenameInTargetPath, callback)
+fun DocumentFile.copyFileTo(context: Context, targetFolder: File, fileDescription: FileDescription? = null, callback: FileCallback) {
+    copyFileTo(context, targetFolder.absolutePath, fileDescription, callback)
 }
 
 /**
  * @param targetFolderAbsolutePath use [DocumentFileCompat.buildAbsolutePath] to construct the path
+ * @param fileDescription Use it if you want to change file name and type in the destination.
  */
 @WorkerThread
-fun DocumentFile.copyFileTo(context: Context, targetFolderAbsolutePath: String, newFilenameInTargetPath: String? = null, callback: FileCallback) {
+fun DocumentFile.copyFileTo(context: Context, targetFolderAbsolutePath: String, fileDescription: FileDescription? = null, callback: FileCallback) {
     val targetFolder = DocumentFileCompat.mkdirs(context, targetFolderAbsolutePath, true)
     if (targetFolder == null) {
         callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
     } else {
-        copyFileTo(context, targetFolder, newFilenameInTargetPath, callback)
+        copyFileTo(context, targetFolder, fileDescription, callback)
     }
 }
 
+/**
+ * @param fileDescription Use it if you want to change file name and type in the destination.
+ */
 @WorkerThread
 fun DocumentFile.copyFileTo(
     context: Context,
     targetFolder: DocumentFile,
-    newFilenameInTargetPath: String? = null,
+    fileDescription: FileDescription? = null,
+    callback: FileCallback
+) {
+    if (fileDescription?.subFolder.isNullOrEmpty()) {
+        copyFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, callback)
+    } else {
+        val targetDirectory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), false)
+        if (targetDirectory == null) {
+            callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
+        } else {
+            copyFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, callback)
+        }
+    }
+}
+
+private fun DocumentFile.copyFileTo(
+    context: Context,
+    targetFolder: DocumentFile,
+    newFilenameInTargetPath: String?,
+    newMimeTypeInTargetPath: String?,
     callback: FileCallback
 ) {
     val writableTargetFolder = doesMeetCopyRequirements(context, targetFolder, callback) ?: return
@@ -991,7 +1025,7 @@ fun DocumentFile.copyFileTo(
         return
     }
 
-    val cleanFileName = DocumentFileCompat.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), type)
+    val cleanFileName = DocumentFileCompat.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), newMimeTypeInTargetPath ?: mimeTypeByFileName)
         .removeForbiddenCharsFromFilename().trimFileSeparator()
     val fileConflictResolution = handleFileConflict(context, writableTargetFolder, cleanFileName, callback)
     if (fileConflictResolution == FileCallback.ConflictResolution.SKIP) {
@@ -1003,7 +1037,7 @@ fun DocumentFile.copyFileTo(
     val watchProgress = reportInterval > 0
     try {
         val targetFile = createTargetFile(
-            context, writableTargetFolder, cleanFileName,
+            context, writableTargetFolder, cleanFileName, newMimeTypeInTargetPath ?: mimeTypeByFileName,
             fileConflictResolution == FileCallback.ConflictResolution.CREATE_NEW, callback
         ) ?: return
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
@@ -1093,14 +1127,15 @@ private inline fun createFileStreams(
     onStreamsReady(inputStream, outputStream)
 }
 
-private fun DocumentFile.createTargetFile(
+private fun createTargetFile(
     context: Context,
     targetFolder: DocumentFile,
     newFilenameInTargetPath: String,
+    mimeType: String?,
     forceCreate: Boolean,
     callback: FileCallback
 ): DocumentFile? {
-    val targetFile = targetFolder.makeFile(context, newFilenameInTargetPath, type, forceCreate)
+    val targetFile = targetFolder.makeFile(context, newFilenameInTargetPath, mimeType, forceCreate)
     if (targetFile == null) {
         callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
     }
@@ -1166,6 +1201,9 @@ private fun DocumentFile.copyFileStream(
         if (deleteSourceFileWhenComplete) {
             delete()
         }
+        if (targetFile is MediaFile) {
+            targetFile.length = srcSize
+        }
         callback.onCompleted(targetFile)
     } finally {
         timer?.cancel()
@@ -1174,39 +1212,62 @@ private fun DocumentFile.copyFileStream(
     }
 }
 
+/**
+ * @param fileDescription Use it if you want to change file name and type in the destination.
+ */
 @WorkerThread
-fun DocumentFile.moveFileTo(context: Context, targetFolder: File, newFilenameInTargetPath: String? = null, callback: FileCallback) {
-    moveFileTo(context, targetFolder.absolutePath, newFilenameInTargetPath, callback)
+fun DocumentFile.moveFileTo(context: Context, targetFolder: File, fileDescription: FileDescription? = null, callback: FileCallback) {
+    moveFileTo(context, targetFolder.absolutePath, fileDescription, callback)
 }
 
 /**
  * @param targetFolderAbsolutePath use [DocumentFileCompat.buildAbsolutePath] to construct the path
+ * @param fileDescription Use it if you want to change file name and type in the destination.
  */
 @WorkerThread
-fun DocumentFile.moveFileTo(context: Context, targetFolderAbsolutePath: String, newFilenameInTargetPath: String? = null, callback: FileCallback) {
+fun DocumentFile.moveFileTo(context: Context, targetFolderAbsolutePath: String, fileDescription: FileDescription? = null, callback: FileCallback) {
     val targetFolder = DocumentFileCompat.mkdirs(context, targetFolderAbsolutePath, true)
     if (targetFolder == null) {
         callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
     } else {
-        moveFileTo(context, targetFolder, newFilenameInTargetPath, callback)
+        moveFileTo(context, targetFolder, fileDescription, callback)
     }
 }
 
 /**
- * @param newFilenameInTargetPath change filename in target path
+ * @param fileDescription Use it if you want to change file name and type in the destination.
  */
 @WorkerThread
 fun DocumentFile.moveFileTo(
     context: Context,
     targetFolder: DocumentFile,
-    newFilenameInTargetPath: String? = null,
+    fileDescription: FileDescription? = null,
+    callback: FileCallback
+) {
+    if (fileDescription?.subFolder.isNullOrEmpty()) {
+        moveFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, callback)
+    } else {
+        val targetDirectory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), false)
+        if (targetDirectory == null) {
+            callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
+        } else {
+            moveFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, callback)
+        }
+    }
+}
+
+private fun DocumentFile.moveFileTo(
+    context: Context,
+    targetFolder: DocumentFile,
+    newFilenameInTargetPath: String?,
+    newMimeTypeInTargetPath: String?,
     callback: FileCallback
 ) {
     val writableTargetFolder = doesMeetCopyRequirements(context, targetFolder, callback) ?: return
 
     callback.onPrepare()
 
-    val cleanFileName = DocumentFileCompat.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), type)
+    val cleanFileName = DocumentFileCompat.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), newMimeTypeInTargetPath ?: mimeTypeByFileName)
         .removeForbiddenCharsFromFilename().trimFileSeparator()
     val fileConflictResolution = handleFileConflict(context, writableTargetFolder, cleanFileName, callback)
     if (fileConflictResolution == FileCallback.ConflictResolution.SKIP) {
@@ -1269,7 +1330,7 @@ fun DocumentFile.moveFileTo(
 
     try {
         val targetFile = createTargetFile(
-            context, writableTargetFolder, cleanFileName,
+            context, writableTargetFolder, cleanFileName, newMimeTypeInTargetPath ?: mimeTypeByFileName,
             fileConflictResolution == FileCallback.ConflictResolution.CREATE_NEW, callback
         ) ?: return
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
