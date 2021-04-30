@@ -408,8 +408,8 @@ object DocumentFileCompat {
      * @see getExtensionFromMimeType
      */
     @JvmStatic
-    fun getExtensionFromMimeTypeOrFileName(filename: String, mimeType: String?): String {
-        return if (mimeType == null) filename.substringAfterLast('.', "") else getExtensionFromMimeType(mimeType)
+    fun getExtensionFromMimeTypeOrFileName(mimeType: String?, filename: String): String {
+        return if (mimeType == null || mimeType == MIME_TYPE_UNKNOWN) filename.substringAfterLast('.', "") else getExtensionFromMimeType(mimeType)
     }
 
     /**

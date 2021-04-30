@@ -370,6 +370,7 @@ fun DocumentFile.createBinaryFile(context: Context, name: String, forceCreate: B
  * Creating files in API 28- with `createFile("my video.mp4", "video/mp4")` will create `my video.mp4`,
  * whereas API 29+ will create `my video.mp4.mp4`. This function helps you to fix this kind of bug.
  *
+ * @param mimeType use [MIME_TYPE_UNKNOWN] if you're not sure about the file type
  * @param name you can input `My Video`, `My Video.mp4` or `My Folder/Sub Folder/My Video.mp4`
  * @param forceCreate if `true` and the file with this name already exists, create new file with a name that has suffix `(1)`, e.g. `My Movie (1).mp4`.
  *                    Otherwise use existed file.
@@ -393,7 +394,12 @@ fun DocumentFile.makeFile(
     }
 
     val filename = cleanName.substringAfterLast('/')
-    val extension = DocumentFileCompat.getExtensionFromMimeTypeOrFileName(cleanName, mimeType)
+    val extensionByName = cleanName.substringAfterLast('.', "")
+    val extension = if (extensionByName.isNotEmpty() && (mimeType == null || mimeType == MIME_TYPE_UNKNOWN || mimeType == MIME_TYPE_BINARY_FILE)) {
+        extensionByName
+    } else {
+        DocumentFileCompat.getExtensionFromMimeTypeOrFileName(mimeType, cleanName)
+    }
     val baseFileName = filename.removeSuffix(".$extension")
     val fullFileName = "$baseFileName.$extension".trimEnd('.')
 
@@ -408,11 +414,14 @@ fun DocumentFile.makeFile(
     }
 
     val correctMimeType = DocumentFileCompat.getMimeTypeFromExtension(extension).let {
-        if (mimeType != null && it == MIME_TYPE_UNKNOWN) mimeType else it
+        if (it == MIME_TYPE_UNKNOWN) MIME_TYPE_BINARY_FILE else it
     }
 
     return if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
-        parent.createFile(correctMimeType, baseFileName)
+        parent.createFile(correctMimeType, baseFileName)?.also {
+            if (correctMimeType == MIME_TYPE_BINARY_FILE && it.name != fullFileName)
+                it.renameTo(fullFileName)
+        }
     } else {
         parent.createFile(correctMimeType, fullFileName)
     }
@@ -884,10 +893,8 @@ private fun DocumentFile.copyFolderTo(
                 continue
             }
 
-            // TODO: 4/30/21 Test if file.php successfully copied as file.php, instead of file.php.bin
-
             val targetFile = targetFolder.makeFile(context, filename, type, false)
-            if (conflictResolution == FolderCallback.ConflictResolution.MERGE && targetFile != null && targetFile.length() > 0) {
+            if (targetFile != null && targetFile.length() > 0 && conflictResolution == FolderCallback.ConflictResolution.MERGE) {
                 continue
             }
 

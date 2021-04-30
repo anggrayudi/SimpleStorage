@@ -8,6 +8,7 @@ import android.os.Environment
 import androidx.annotation.WorkerThread
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.extension.trimFileSeparator
+import com.anggrayudi.storage.file.DocumentFileCompat.MIME_TYPE_BINARY_FILE
 import com.anggrayudi.storage.file.DocumentFileCompat.MIME_TYPE_UNKNOWN
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import java.io.File
@@ -119,7 +120,12 @@ fun File.makeFile(name: String, mimeType: String? = MIME_TYPE_UNKNOWN, forceCrea
     }
 
     val filename = cleanName.substringAfterLast('/')
-    val extension = DocumentFileCompat.getExtensionFromMimeTypeOrFileName(filename, mimeType)
+    val extensionByName = cleanName.substringAfterLast('.', "")
+    val extension = if (extensionByName.isNotEmpty() && (mimeType == null || mimeType == MIME_TYPE_UNKNOWN || mimeType == MIME_TYPE_BINARY_FILE)) {
+        extensionByName
+    } else {
+        DocumentFileCompat.getExtensionFromMimeTypeOrFileName(mimeType, cleanName)
+    }
     val baseFileName = filename.removeSuffix(".$extension")
     val fullFileName = "$baseFileName.$extension".trimEnd('.')
 
