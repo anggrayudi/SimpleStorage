@@ -205,7 +205,7 @@ object DocumentFileCompat {
         if (subFile.isNotEmpty()) {
             rawFile = File("$rawFile/$subFile".trimEnd('/'))
         }
-        if (considerRawFile && rawFile.canRead() && (requiresWriteAccess && rawFile.canWrite() || !requiresWriteAccess)) {
+        if (considerRawFile && rawFile.canRead() && (requiresWriteAccess && rawFile.isWritable || !requiresWriteAccess)) {
             return DocumentFile.fromFile(rawFile)
         }
 
@@ -239,7 +239,7 @@ object DocumentFileCompat {
         } else {
             fromFullPath(context, rawFile.absolutePath, considerRawFile = false)
         }
-        return folder?.takeIf { it.canRead() && (requiresWriteAccess && folder.canWrite() || !requiresWriteAccess) }
+        return folder?.takeIf { it.canRead() && (requiresWriteAccess && folder.isWritable || !requiresWriteAccess) }
     }
 
     /**
@@ -332,7 +332,7 @@ object DocumentFileCompat {
         } else {
             File("/storage/$storageId")
         }
-        return rootFile.takeIf { rootFile.canRead() && (requiresWriteAccess && rootFile.canWrite() || !requiresWriteAccess) }
+        return rootFile.takeIf { rootFile.canRead() && (requiresWriteAccess && rootFile.isWritable || !requiresWriteAccess) }
     }
 
     @JvmStatic
@@ -490,7 +490,7 @@ object DocumentFileCompat {
     ): DocumentFile? {
         if (considerRawFile && fullPath.startsWith('/')) {
             val folder = File(fullPath.removeForbiddenCharsFromFilename()).apply { mkdirs() }
-            if (folder.isDirectory && folder.canRead() && (requiresWriteAccess && folder.canWrite() || !requiresWriteAccess)) {
+            if (folder.isDirectory && folder.canRead() && (requiresWriteAccess && folder.isWritable || !requiresWriteAccess)) {
                 // Consider java.io.File for faster performance
                 return DocumentFile.fromFile(folder)
             }
@@ -508,7 +508,7 @@ object DocumentFileCompat {
                 return null
             }
         }
-        return currentDirectory.takeIf { requiresWriteAccess && it.canWrite() || !requiresWriteAccess }
+        return currentDirectory.takeIf { requiresWriteAccess && it.isWritable || !requiresWriteAccess }
     }
 
     /**
@@ -566,7 +566,7 @@ object DocumentFileCompat {
             }
         }
         results.indices.forEach { index ->
-            results[index] = results[index]?.takeIf { requiresWriteAccess && it.canWrite() || !requiresWriteAccess }
+            results[index] = results[index]?.takeIf { requiresWriteAccess && it.isWritable || !requiresWriteAccess }
         }
         return results
     }

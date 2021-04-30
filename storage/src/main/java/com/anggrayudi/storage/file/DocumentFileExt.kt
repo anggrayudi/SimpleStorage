@@ -55,7 +55,7 @@ val DocumentFile.isMediaDocument: Boolean
     get() = uri.isMediaDocument
 
 val DocumentFile.isReadOnly: Boolean
-    get() = canRead() && !canWrite()
+    get() = canRead() && !isWritable
 
 val DocumentFile.id: String
     get() = DocumentsContract.getDocumentId(uri)
@@ -297,7 +297,7 @@ fun DocumentFile.recreateFile(context: Context): DocumentFile? {
     return if (exists() && (isRawFile || isExternalStorageDocument)) {
         val filename = name.orEmpty()
         val parentFile = parentFile
-        if (parentFile?.canWrite() == true) {
+        if (parentFile?.isWritable == true) {
             delete()
             parentFile.makeFile(context, filename, type)
         } else null
@@ -315,7 +315,14 @@ fun DocumentFile.getRootDocumentFile(context: Context, requiresWriteAccess: Bool
  * @return `true` if this file exists and writeable. [DocumentFile.canWrite] may return false if you have no URI permission for read & write access.
  */
 val DocumentFile.canModify: Boolean
-    get() = canRead() && canWrite()
+    get() = canRead() && isWritable
+
+/**
+ * Use it, because [DocumentFile.canWrite] is not reliable on Android 10.
+ * Read [this issue](https://github.com/anggrayudi/SimpleStorage/issues/24#issuecomment-830000378)
+ */
+val DocumentFile.isWritable: Boolean
+    get() = if (isRawFile) toRawFile()!!.isWritable else canWrite()
 
 fun DocumentFile.isRootUriPermissionGranted(context: Context): Boolean {
     return isExternalStorageDocument && DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)
@@ -375,7 +382,7 @@ fun DocumentFile.makeFile(
     mimeType: String? = MIME_TYPE_UNKNOWN,
     forceCreate: Boolean = true
 ): DocumentFile? {
-    if (!isDirectory || !canWrite()) {
+    if (!isDirectory || !isWritable) {
         return null
     }
 
@@ -427,7 +434,7 @@ fun DocumentFile.makeFile(
 @WorkerThread
 @JvmOverloads
 fun DocumentFile.makeFolder(context: Context, name: String, forceCreate: Boolean = true): DocumentFile? {
-    if (!isDirectory || !canWrite()) {
+    if (!isDirectory || !isWritable) {
         return null
     }
 
@@ -476,7 +483,7 @@ fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile
     return if (isDownloadsDocument) {
         val path = uri.path.orEmpty()
         when {
-            uri.toString() == "${DocumentFileCompat.DOWNLOADS_TREE_URI}/document/downloads" -> takeIf { it.canWrite() }
+            uri.toString() == "${DocumentFileCompat.DOWNLOADS_TREE_URI}/document/downloads" -> takeIf { it.isWritable }
             // content://com.android.providers.downloads.documents/tree/downloads/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2FIKO5
             // raw:/storage/emulated/0/Download/IKO5
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && path.startsWith("/tree/downloads/document/raw") -> {
@@ -490,7 +497,7 @@ fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile
                         return null
                     }
                 }
-                currentDirectory.takeIf { it.canWrite() }
+                currentDirectory.takeIf { it.isWritable }
             }
 
             // msd for directories and msf for files
@@ -509,7 +516,7 @@ fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile
                             // e.g. content://com.android.providers.downloads.documents/tree/downloads/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2FDenai
                             || path.startsWith("/tree/downloads/document/raw")
                     )
-            -> takeIf { it.canWrite() }
+            -> takeIf { it.isWritable }
 
             else -> null
         }
@@ -643,7 +650,7 @@ private fun DocumentFile.walkFileTreeForDeletion(): List<DocumentFile> {
 fun DocumentFile.deleteEmptyFolders() {
     if (isRawFile) {
         toRawFile()?.deleteEmptyFolders()
-    } else if (isDirectory && canWrite()) {
+    } else if (isDirectory && isWritable) {
         walkFileTreeAndDeleteEmptyFolders().reversed().forEach { it.delete() }
     }
 }
@@ -877,6 +884,8 @@ private fun DocumentFile.copyFolderTo(
                 continue
             }
 
+            // TODO: 4/30/21 Test if file.php successfully copied as file.php, instead of file.php.bin
+
             val targetFile = targetFolder.makeFile(context, filename, type, false)
             if (conflictResolution == FolderCallback.ConflictResolution.MERGE && targetFile != null && targetFile.length() > 0) {
                 continue
@@ -947,7 +956,7 @@ private fun DocumentFile.doesMeetCopyRequirements(context: Context, targetParent
         return null
     }
 
-    if (!canRead() || !targetParentFolder.canWrite()) {
+    if (!canRead() || !targetParentFolder.isWritable) {
         callback.onFailed(FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
         return null
     }
@@ -1068,7 +1077,7 @@ private fun DocumentFile.doesMeetCopyRequirements(context: Context, targetFolder
         return null
     }
 
-    if (!canRead() || !targetFolder.canWrite()) {
+    if (!canRead() || !targetFolder.isWritable) {
         callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
         return null
     }

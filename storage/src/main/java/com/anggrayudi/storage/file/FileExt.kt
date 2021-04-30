@@ -3,6 +3,8 @@
 package com.anggrayudi.storage.file
 
 import android.content.Context
+import android.os.Build
+import android.os.Environment
 import androidx.annotation.WorkerThread
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.extension.trimFileSeparator
@@ -75,15 +77,15 @@ val File.mimeType: String?
 @JvmOverloads
 fun File.getRootRawFile(requiresWriteAccess: Boolean = false) = rootPath.let {
     if (it.isEmpty()) null else File(it).run {
-        if (canRead() && (requiresWriteAccess && canWrite() || !requiresWriteAccess)) this else null
+        if (canRead() && (requiresWriteAccess && isWritable || !requiresWriteAccess)) this else null
     }
 }
 
 val File.isReadOnly: Boolean
-    get() = canRead() && !canWrite()
+    get() = canRead() && !isWritable
 
 val File.canModify: Boolean
-    get() = canRead() && canWrite()
+    get() = canRead() && isWritable
 
 val File.isEmpty: Boolean
     get() = isFile && length() == 0L || isDirectory && list().isNullOrEmpty()
@@ -95,11 +97,18 @@ fun File.createNewFileIfPossible(): Boolean = try {
 }
 
 /**
+ * Use it, because [File.canWrite] is not reliable on Android 10.
+ * Read [this issue](https://github.com/anggrayudi/SimpleStorage/issues/24#issuecomment-830000378)
+ */
+val File.isWritable: Boolean
+    get() = canWrite() && (isFile || (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || Environment.isExternalStorageManager(this)))
+
+/**
  * Create file and if exists, increment file name.
  */
 @WorkerThread
 fun File.makeFile(name: String, mimeType: String? = MIME_TYPE_UNKNOWN, forceCreate: Boolean = true): File? {
-    if (!isDirectory || !canWrite()) {
+    if (!isDirectory || !isWritable) {
         return null
     }
 
@@ -132,7 +141,7 @@ fun File.makeFile(name: String, mimeType: String? = MIME_TYPE_UNKNOWN, forceCrea
 @WorkerThread
 @JvmOverloads
 fun File.makeFolder(name: String, forceCreate: Boolean = true): File? {
-    if (!isDirectory || !canWrite()) {
+    if (!isDirectory || !isWritable) {
         return null
     }
 
@@ -154,7 +163,7 @@ fun File.makeFolder(name: String, forceCreate: Boolean = true): File? {
 fun File.toDocumentFile(context: Context) = if (canRead()) DocumentFileCompat.fromFile(context, this) else null
 
 fun File.deleteEmptyFolders() {
-    if (isDirectory && canWrite()) {
+    if (isDirectory && isWritable) {
         walkFileTreeAndDeleteEmptyFolders().reversed().forEach { it.delete() }
     }
 }
@@ -172,6 +181,7 @@ private fun File.walkFileTreeAndDeleteEmptyFolders(): List<File> {
 
 /**
  * Avoid duplicate file name.
+ * It doesn't work if you are outside [Context.getExternalFilesDir] and don't have full disk access for Android 10+.
  */
 fun File.autoIncrementFileName(filename: String): String {
     return if (File(absolutePath, filename).exists()) {
