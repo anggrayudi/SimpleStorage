@@ -132,9 +132,10 @@ For media files, you can have similar capabilities to `DocumentFile`, i.e.:
 
 ## Request Storage Access
 
-Although user has granted read and write permissions during runtime, your app may still does not
-have full access to the storage, thus you cannot search, move and copy files. To enable full disk access,
-you need to open SAF and let user grant URI permissions for read and write access. This library provides you
+Although user has granted read and write permissions during runtime, your app may still does not have full access to the storage,
+thus you cannot search, move and copy files. You can check whether you have the storage access via `SimpleStorage.hasStorageAccess()`.
+
+To enable full storage access, you need to open SAF and let user grant URI permissions for read and write access. This library provides you
 an helper class named `SimpleStorage` to ease the request process:
 
 ```kotlin

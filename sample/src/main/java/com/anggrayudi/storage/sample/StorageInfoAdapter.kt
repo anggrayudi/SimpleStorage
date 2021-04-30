@@ -63,26 +63,31 @@ class StorageInfoAdapter(
      * A storageId may contains more than one granted URIs
      */
     @Suppress("DEPRECATION")
-    private fun showGrantedUris(context: Context, storageId: String) {
+    private fun showGrantedUris(context: Context, filterStorageId: String) {
         val grantedUris = context.contentResolver.persistedUriPermissions
             .filter { it.isReadPermission && it.isWritePermission && it.uri.isTreeDocumentFile }
             .map {
                 if (it.uri.isDownloadsDocument) {
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
+                    if (filterStorageId == DocumentFileCompat.PRIMARY) {
+                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
+                    } else ""
                 } else {
                     val uriPath = it.uri.path!! // e.g. /tree/primary:Music
                     val storageId = uriPath.substringBefore(':').substringAfterLast('/')
-                    val rootFolder = uriPath.substringAfter(':', "")
-                    if (storageId == DocumentFileCompat.PRIMARY) {
-                        "${Environment.getExternalStorageDirectory()}/$rootFolder"
-                    } else {
-                        "/storage/$storageId/$rootFolder"
-                    }
+                    if (filterStorageId == storageId) {
+                        val rootFolder = uriPath.substringAfter(':', "")
+                        if (storageId == DocumentFileCompat.PRIMARY) {
+                            "${Environment.getExternalStorageDirectory()}/$rootFolder"
+                        } else {
+                            "/storage/$storageId/$rootFolder"
+                        }
+                    } else ""
                 }
             }
+            .filter { it.isNotEmpty() }
         if (grantedUris.isEmpty()) {
             MaterialDialog(context)
-                .message(text = "No URI permission granted on \"$storageId\"")
+                .message(text = "No URI permission granted on \"$filterStorageId\"")
                 .positiveButton()
                 .show()
         } else {

@@ -336,11 +336,23 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
         @JvmStatic
         fun hasFullDiskAccess(context: Context, storageId: String): Boolean {
-            return hasStoragePermission(context) && DocumentFileCompat.getAccessibleRootDocumentFile(
-                context,
-                DocumentFileCompat.buildAbsolutePath(storageId, ""),
-                requiresWriteAccess = true
-            ) != null
+            return hasStorageAccess(context, DocumentFileCompat.buildAbsolutePath(storageId, ""))
+        }
+
+        /**
+         * In API 29+, `/storage/emulated/0` may not be granted for URI permission,
+         * but all directories under `/storage/emulated/0/Download` are granted and accessible.
+         *
+         * @param requiresWriteAccess `true` if you expect this path should be writable
+         * @return `true` if you have URI access to this path
+         * @see [DocumentFileCompat.buildAbsolutePath]
+         * @see [DocumentFileCompat.buildSimplePath]
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun hasStorageAccess(context: Context, fullPath: String, requiresWriteAccess: Boolean = true): Boolean {
+            return (requiresWriteAccess && hasStoragePermission(context) || !requiresWriteAccess && hasStorageReadPermission(context))
+                    && DocumentFileCompat.getAccessibleRootDocumentFile(context, fullPath, requiresWriteAccess) != null
         }
 
         /**
