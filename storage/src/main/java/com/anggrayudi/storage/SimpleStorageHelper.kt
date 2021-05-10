@@ -84,7 +84,7 @@ class SimpleStorageHelper {
                 requestStoragePermission(storage.context) { storage.openFolderPicker(requestCodeFolderPicker) }
             }
 
-            override fun onCancelledByUser(requestCode: Int) {
+            override fun onCanceledByUser(requestCode: Int) {
                 openFolderPickerOnceGranted = false
             }
         }
@@ -112,7 +112,7 @@ class SimpleStorageHelper {
                 requestStoragePermission(storage.context) { storage.openFolderPicker(requestCode) }
             }
 
-            override fun onCancelledByUser(requestCode: Int) {
+            override fun onCanceledByUser(requestCode: Int) {
                 openFolderPickerOnceGranted = false
             }
         }

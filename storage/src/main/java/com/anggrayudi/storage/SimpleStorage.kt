@@ -169,7 +169,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         when (requestCode) {
             requestCodeStorageAccess -> {
                 if (resultCode != Activity.RESULT_OK) {
-                    storageAccessCallback?.onCancelledByUser(requestCode)
+                    storageAccessCallback?.onCanceledByUser(requestCode)
                     return
                 }
                 val uri = data?.data ?: return
@@ -221,7 +221,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
             requestCodeFolderPicker -> {
                 if (resultCode != Activity.RESULT_OK) {
-                    folderPickerCallback?.onCancelledByUser(requestCode)
+                    folderPickerCallback?.onCanceledByUser(requestCode)
                     return
                 }
                 val uri = data?.data ?: return
@@ -258,7 +258,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
             requestCodeFilePicker -> {
                 if (resultCode != Activity.RESULT_OK) {
-                    filePickerCallback?.onCancelledByUser(requestCode)
+                    filePickerCallback?.onCanceledByUser(requestCode)
                     return
                 }
                 val file = wrapper.context.fromSingleUri(data?.data ?: return)

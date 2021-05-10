@@ -14,7 +14,6 @@ import kotlinx.coroutines.CancellableContinuation
 interface FileCallback {
 
     @WorkerThread
-    @JvmDefault
     fun onPrepare() {
         // default implementation
     }
@@ -25,7 +24,6 @@ interface FileCallback {
      * Setting negative value will cancel the operation.
      */
     @WorkerThread
-    @JvmDefault
     fun onStart(file: Any): Long = 0
 
     /**
@@ -37,7 +35,6 @@ interface FileCallback {
      * If the worker thread is suspended for too long, it may be interrupted by the system.
      */
     @UiThread
-    @JvmDefault
     fun onConflict(destinationFile: DocumentFile, action: FileConflictAction) {
         action.confirmResolution(ConflictResolution.CREATE_NEW)
     }
@@ -50,7 +47,6 @@ interface FileCallback {
      * @return `true` to continue process
      */
     @WorkerThread
-    @JvmDefault
     fun onCheckFreeSpace(freeSpace: Long, fileSize: Long): Boolean {
         // default implementation
         return true
@@ -63,7 +59,6 @@ interface FileCallback {
      * @param writeSpeed in bytes
      */
     @WorkerThread
-    @JvmDefault
     fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int) {
         // default implementation
     }
@@ -72,13 +67,11 @@ interface FileCallback {
      * @param file newly moved/copied file. Can be [DocumentFile] or [MediaFile]
      */
     @WorkerThread
-    @JvmDefault
     fun onCompleted(file: Any) {
         // default implementation
     }
 
     @WorkerThread
-    @JvmDefault
     fun onFailed(errorCode: ErrorCode) {
         // default implementation
     }

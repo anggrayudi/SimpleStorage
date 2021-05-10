@@ -6,7 +6,6 @@ package com.anggrayudi.storage.permission
  */
 interface PermissionCallback {
 
-    @JvmDefault
     fun onDisplayConsentDialog(request: PermissionRequest) {
         request.continueToPermissionRequest()
     }
@@ -16,7 +15,6 @@ interface PermissionCallback {
      */
     fun onPermissionsChecked(result: PermissionResult, fromSystemDialog: Boolean)
 
-    @JvmDefault
     fun onShouldRedirectToSystemSettings(blockedPermissions: List<PermissionReport>) {
         // default implementation
     }

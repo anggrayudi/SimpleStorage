@@ -10,8 +10,7 @@ import com.anggrayudi.storage.file.StorageType
  */
 interface FolderPickerCallback {
 
-    @JvmDefault
-    fun onCancelledByUser(requestCode: Int) {
+    fun onCanceledByUser(requestCode: Int) {
         // default implementation
     }
 

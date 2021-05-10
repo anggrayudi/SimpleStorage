@@ -165,8 +165,8 @@ class MainActivity : AppCompatActivity() {
                     }.show()
             }
 
-            override fun onCancelledByUser() {
-                Toast.makeText(baseContext, "Cancelled by user", Toast.LENGTH_SHORT).show()
+            override fun onCanceledByUser() {
+                Toast.makeText(baseContext, "Canceled by user", Toast.LENGTH_SHORT).show()
             }
 
             override fun onStoragePermissionDenied() {
@@ -235,8 +235,8 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(baseContext, folder.absolutePath, Toast.LENGTH_SHORT).show()
             }
 
-            override fun onCancelledByUser(requestCode: Int) {
-                Toast.makeText(baseContext, "Folder picker cancelled by user", Toast.LENGTH_SHORT).show()
+            override fun onCanceledByUser(requestCode: Int) {
+                Toast.makeText(baseContext, "Folder picker canceled by user", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -247,8 +247,8 @@ class MainActivity : AppCompatActivity() {
 ```kotlin
     private fun setupFilePickerCallback() {
         storage.filePickerCallback = object : FilePickerCallback {
-            override fun onCancelledByUser(requestCode: Int) {
-                Toast.makeText(baseContext, "File picker cancelled by user", Toast.LENGTH_SHORT).show()
+            override fun onCanceledByUser(requestCode: Int) {
+                Toast.makeText(baseContext, "File picker canceled by user", Toast.LENGTH_SHORT).show()
             }
 
             override fun onStoragePermissionDenied(requestCode: Int, file: DocumentFile?) {

@@ -115,8 +115,8 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onCancelledByUser(int requestCode) {
-                Toast.makeText(getBaseContext(), "Cancelled by user", Toast.LENGTH_SHORT).show();
+            public void onCanceledByUser(int requestCode) {
+                Toast.makeText(getBaseContext(), "Canceled by user", Toast.LENGTH_SHORT).show();
             }
         });
     }
