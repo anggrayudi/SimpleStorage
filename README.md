@@ -40,8 +40,8 @@ implementation "com.anggrayudi:storage:X.Y.Z"
 
 Where `X.Y.Z` is the library version: ![Maven Central](https://img.shields.io/maven-central/v/com.anggrayudi/storage.svg)
 
-Snapshots can be found [here](https://oss.sonatype.org/#nexus-search;gav~com.anggrayudi~storage~~~~kw,versionexpand).
-To use SNAPSHOT version, you need to add this URL to the root Gradle:
+All versions can be found [here](https://oss.sonatype.org/#nexus-search;gav~com.anggrayudi~storage~~~~kw,versionexpand).
+To use `SNAPSHOT` version, you need to add this URL to the root Gradle:
 
 ```groovy
 allprojects {
@@ -336,19 +336,16 @@ folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, ca
         return 1000 // update progress every 1 second
     }
 
-    override fun onConflict(destinationFolder: DocumentFile, action: FolderCallback.FolderConflictAction, canMerge: Boolean) {
-        MaterialDialog(this)
-            .cancelable(false)
-            .title(text = "Conflict Found")
-            .message(text = "What do you want to do with the folder already exists in destination?")
-            .listItems(items = mutableListOf("Replace", "Merge", "Create New", "Skip Duplicate").apply { if (!canMerge) remove("Merge") }) { _, index, _ ->
-                val resolution = FolderCallback.ConflictResolution.values()[if (!canMerge && index > 0) index + 1 else index]
-                action.confirmResolution(resolution)
-                if (resolution == FolderCallback.ConflictResolution.SKIP) {
-                    Toast.makeText(this, "Skipped duplicate folders & files", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .show()
+    override fun onParentConflict(destinationFolder: DocumentFile, action: FolderCallback.ParentFolderConflictAction, canMerge: Boolean) {
+        handleParentFolderConflict(destinationFolder, action, canMerge)
+    }
+
+    override fun onContentConflict(
+        destinationFolder: DocumentFile,
+        conflictedFiles: MutableList<FolderCallback.FileConflict>,
+        action: FolderCallback.FolderContentConflictAction
+    ) {
+        handleFolderContentConflict(action, conflictedFiles)
     }
 
     override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int, fileCount: Int) {
@@ -366,7 +363,12 @@ folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, ca
 ```
 
 The coolest thing of this library is you can ask users to choose Merge, Replace, Create New, or Skip Duplicate folders & files
-whenever a conflict is found via `onConflict()`.
+whenever a conflict is found via `onConflict()`. Here're screenshots of the sample code when dealing with conflicts:
+
+![Alt text](art/parent-folder-conflict.png?raw=true "Parent Folder Conflict")
+![Alt text](art/folder-content-conflict.png?raw=true "Folder Content Conflict")
+
+Read `MainActivity` from the sample code if you want to mimic above dialogs.
 
 ## License
 
