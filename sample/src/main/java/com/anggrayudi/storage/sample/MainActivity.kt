@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
 import com.afollestad.materialdialogs.MaterialDialog
+import com.afollestad.materialdialogs.checkbox.checkBoxPrompt
 import com.afollestad.materialdialogs.customview.customView
 import com.afollestad.materialdialogs.customview.getCustomView
 import com.afollestad.materialdialogs.list.listItems
@@ -152,8 +153,16 @@ class MainActivity : AppCompatActivity() {
                         return 1000 // update progress every 1 second
                     }
 
-                    override fun onConflict(destinationFolder: DocumentFile, action: FolderCallback.FolderConflictAction, canMerge: Boolean) {
-                        handleFolderConflict(action, canMerge)
+                    override fun onParentConflict(destinationFolder: DocumentFile, action: FolderCallback.ParentFolderConflictAction, canMerge: Boolean) {
+                        handleParentFolderConflict(destinationFolder, action, canMerge)
+                    }
+
+                    override fun onContentConflict(
+                        destinationFolder: DocumentFile,
+                        conflictedFiles: MutableList<FolderCallback.FileConflict>,
+                        action: FolderCallback.FolderContentConflictAction
+                    ) {
+                        handleFolderContentConflict(action, conflictedFiles)
                     }
 
                     override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int, fileCount: Int) {
@@ -208,8 +217,16 @@ class MainActivity : AppCompatActivity() {
                         return 1000 // update progress every 1 second
                     }
 
-                    override fun onConflict(destinationFolder: DocumentFile, action: FolderCallback.FolderConflictAction, canMerge: Boolean) {
-                        handleFolderConflict(action, canMerge)
+                    override fun onParentConflict(destinationFolder: DocumentFile, action: FolderCallback.ParentFolderConflictAction, canMerge: Boolean) {
+                        handleParentFolderConflict(destinationFolder, action, canMerge)
+                    }
+
+                    override fun onContentConflict(
+                        destinationFolder: DocumentFile,
+                        conflictedFiles: MutableList<FolderCallback.FileConflict>,
+                        action: FolderCallback.FolderContentConflictAction
+                    ) {
+                        handleFolderContentConflict(action, conflictedFiles)
                     }
 
                     override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int, fileCount: Int) {
@@ -403,16 +420,51 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun handleFolderConflict(action: FolderCallback.FolderConflictAction, canMerge: Boolean) {
+    private fun handleParentFolderConflict(destinationFolder: DocumentFile, action: FolderCallback.ParentFolderConflictAction, canMerge: Boolean) {
         MaterialDialog(this)
             .cancelable(false)
             .title(text = "Conflict Found")
-            .message(text = "What do you want to do with the folder already exists in destination?")
+            .message(text = "Folder \"${destinationFolder.name}\" already exists in destination. What's your action?")
             .listItems(items = mutableListOf("Replace", "Merge", "Create New", "Skip Duplicate").apply { if (!canMerge) remove("Merge") }) { _, index, _ ->
                 val resolution = FolderCallback.ConflictResolution.values()[if (!canMerge && index > 0) index + 1 else index]
                 action.confirmResolution(resolution)
                 if (resolution == FolderCallback.ConflictResolution.SKIP) {
                     Toast.makeText(this, "Skipped duplicate folders & files", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .show()
+    }
+
+    private fun handleFolderContentConflict(action: FolderCallback.FolderContentConflictAction, conflictedFiles: MutableList<FolderCallback.FileConflict>) {
+        val newSolution = ArrayList<FolderCallback.FileConflict>(conflictedFiles.size)
+        askSolution(action, conflictedFiles, newSolution)
+    }
+
+    private fun askSolution(
+        action: FolderCallback.FolderContentConflictAction,
+        conflictedFiles: MutableList<FolderCallback.FileConflict>,
+        newSolution: MutableList<FolderCallback.FileConflict>
+    ) {
+        val currentSolution = conflictedFiles.removeFirstOrNull()
+        if (currentSolution == null) {
+            action.confirmResolution(newSolution)
+            return
+        }
+        var doForAll = false
+        MaterialDialog(this)
+            .cancelable(false)
+            .title(text = "Conflict Found")
+            .message(text = "File \"${currentSolution.target.name}\" already exists in destination. What's your action?")
+            .checkBoxPrompt(text = "Do this for all conflicts") { doForAll = it }
+            .listItems(items = listOf("Accept Source", "Accept Destination", "Create New")) { _, index, _ ->
+                currentSolution.solution = FolderCallback.FileConflict.Solution.values()[index]
+                newSolution.add(currentSolution)
+                if (doForAll) {
+                    conflictedFiles.forEach { it.solution = currentSolution.solution }
+                    newSolution.addAll(conflictedFiles)
+                    action.confirmResolution(newSolution)
+                } else {
+                    askSolution(action, conflictedFiles, newSolution)
                 }
             }
             .show()

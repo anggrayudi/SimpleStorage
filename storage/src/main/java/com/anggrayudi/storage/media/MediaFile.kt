@@ -370,9 +370,9 @@ class MediaFile(context: Context, val uri: Uri) {
         } catch (e: SecurityException) {
             handleSecurityException(e, callback)
         } catch (e: InterruptedIOException) {
-            callback.onFailed(FileCallback.ErrorCode.CANCELLED)
+            callback.onFailed(FileCallback.ErrorCode.CANCELED)
         } catch (e: InterruptedException) {
-            callback.onFailed(FileCallback.ErrorCode.CANCELLED)
+            callback.onFailed(FileCallback.ErrorCode.CANCELED)
         } catch (e: IOException) {
             callback.onFailed(FileCallback.ErrorCode.UNKNOWN_IO_ERROR)
         }
@@ -428,9 +428,9 @@ class MediaFile(context: Context, val uri: Uri) {
         } catch (e: SecurityException) {
             handleSecurityException(e, callback)
         } catch (e: InterruptedIOException) {
-            callback.onFailed(FileCallback.ErrorCode.CANCELLED)
+            callback.onFailed(FileCallback.ErrorCode.CANCELED)
         } catch (e: InterruptedException) {
-            callback.onFailed(FileCallback.ErrorCode.CANCELLED)
+            callback.onFailed(FileCallback.ErrorCode.CANCELED)
         } catch (e: IOException) {
             callback.onFailed(FileCallback.ErrorCode.UNKNOWN_IO_ERROR)
         }
@@ -460,9 +460,9 @@ class MediaFile(context: Context, val uri: Uri) {
         } catch (e: SecurityException) {
             handleSecurityException(e, callback)
         } catch (e: InterruptedIOException) {
-            callback.onFailed(FileCallback.ErrorCode.CANCELLED)
+            callback.onFailed(FileCallback.ErrorCode.CANCELED)
         } catch (e: InterruptedException) {
-            callback.onFailed(FileCallback.ErrorCode.CANCELLED)
+            callback.onFailed(FileCallback.ErrorCode.CANCELED)
         } catch (e: IOException) {
             callback.onFailed(FileCallback.ErrorCode.UNKNOWN_IO_ERROR)
         }

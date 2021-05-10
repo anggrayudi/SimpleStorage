@@ -43,12 +43,17 @@ interface FolderCallback {
      * If the worker thread is suspended for too long, it may be interrupted by the system.
      *
      * @param canMerge when conflict found, action `MERGE` may not exists.
-     *                 This happens if the destination is a file, an empty folder, or a folder without content conflicts.
+     *                 This happens if the destination is a file.
      */
     @UiThread
     @JvmDefault
-    fun onConflict(destinationFolder: DocumentFile, action: FolderConflictAction, canMerge: Boolean) {
+    fun onParentConflict(destinationFolder: DocumentFile, action: ParentFolderConflictAction, canMerge: Boolean) {
         action.confirmResolution(ConflictResolution.CREATE_NEW)
+    }
+
+    @UiThread
+    fun onContentConflict(destinationFolder: DocumentFile, conflictedFiles: MutableList<FileConflict>, action: FolderContentConflictAction) {
+        action.confirmResolution(conflictedFiles)
     }
 
     /**
@@ -97,11 +102,17 @@ interface FolderCallback {
         // default implementation
     }
 
-
-    class FolderConflictAction(private val continuation: CancellableContinuation<ConflictResolution>) {
+    class ParentFolderConflictAction(private val continuation: CancellableContinuation<ConflictResolution>) {
 
         fun confirmResolution(resolution: ConflictResolution) {
             continuation.resumeWith(Result.success(resolution))
+        }
+    }
+
+    class FolderContentConflictAction(private val continuation: CancellableContinuation<List<FileConflict>>) {
+
+        fun confirmResolution(resolutions: List<FileConflict>) {
+            continuation.resumeWith(Result.success(resolutions))
         }
     }
 
@@ -128,6 +139,18 @@ interface FolderCallback {
         SKIP
     }
 
+    class FileConflict(
+        val source: DocumentFile,
+        val target: DocumentFile,
+        var solution: Solution = Solution.CREATE_NEW
+    ) {
+        enum class Solution {
+            ACCEPT_SOURCE,
+            ACCEPT_TARGET,
+            CREATE_NEW
+        }
+    }
+
     enum class ErrorCode {
         STORAGE_PERMISSION_DENIED,
         CANNOT_CREATE_FILE_IN_TARGET,
@@ -135,7 +158,7 @@ interface FolderCallback {
         SOURCE_FILE_NOT_FOUND,
         INVALID_TARGET_FOLDER,
         UNKNOWN_IO_ERROR,
-        CANCELLED,
+        CANCELED,
         TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER,
         NO_SPACE_LEFT_ON_TARGET_PATH
     }
