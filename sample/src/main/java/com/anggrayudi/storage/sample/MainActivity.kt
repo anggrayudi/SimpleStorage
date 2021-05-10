@@ -456,8 +456,8 @@ class MainActivity : AppCompatActivity() {
             .title(text = "Conflict Found")
             .message(text = "File \"${currentSolution.target.name}\" already exists in destination. What's your action?")
             .checkBoxPrompt(text = "Apply to all") { doForAll = it }
-            .listItems(items = listOf("Accept Source", "Accept Destination", "Create New")) { _, index, _ ->
-                currentSolution.solution = FolderCallback.FileConflict.Solution.values()[index]
+            .listItems(items = listOf("Replace", "Create New", "Skip")) { _, index, _ ->
+                currentSolution.solution = FileCallback.ConflictResolution.values()[index]
                 newSolution.add(currentSolution)
                 if (doForAll) {
                     conflictedFiles.forEach { it.solution = currentSolution.solution }

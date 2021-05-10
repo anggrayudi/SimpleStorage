@@ -970,11 +970,11 @@ private fun DocumentFile.copyFolderTo(
         }
     }.filter {
         // free up space first, by deleting some files
-        if (it.solution == FolderCallback.FileConflict.Solution.ACCEPT_TARGET) {
+        if (it.solution == FileCallback.ConflictResolution.SKIP) {
             if (deleteSourceWhenComplete) it.source.delete()
             totalCopiedFiles++
         }
-        it.solution != FolderCallback.FileConflict.Solution.ACCEPT_TARGET
+        it.solution != FileCallback.ConflictResolution.SKIP
     }
     val sizeOfConflictedFiles = solutions.sumOf { it.source.length() }
     if (reportInterval > 0 && sizeOfConflictedFiles > 10 * FileSize.MB) {
@@ -993,7 +993,7 @@ private fun DocumentFile.copyFolderTo(
             continue
         }
         val filename = conflict.target.name.orEmpty()
-        if (conflict.solution == FolderCallback.FileConflict.Solution.ACCEPT_SOURCE && conflict.target.let { !it.delete() || it.exists() }) {
+        if (conflict.solution == FileCallback.ConflictResolution.REPLACE && conflict.target.let { !it.delete() || it.exists() }) {
             continue
         }
 

@@ -134,14 +134,8 @@ interface FolderCallback {
     class FileConflict(
         val source: DocumentFile,
         val target: DocumentFile,
-        var solution: Solution = Solution.CREATE_NEW
-    ) {
-        enum class Solution {
-            ACCEPT_SOURCE,
-            ACCEPT_TARGET,
-            CREATE_NEW
-        }
-    }
+        var solution: FileCallback.ConflictResolution = FileCallback.ConflictResolution.CREATE_NEW
+    )
 
     enum class ErrorCode {
         STORAGE_PERMISSION_DENIED,
