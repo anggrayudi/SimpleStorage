@@ -42,7 +42,7 @@ dependencies {
     androidTestImplementation deps.atsl.ext_junit
     androidTestImplementation deps.espresso
 
-    // TODO: Replace with MockK after feature "mock a constructor with defined values" has been released: https://github.com/mockk/mockk/issues/209
+    // TODO: Replace with MockK after feature "mock java.io.File" has been fixed: https://github.com/mockk/mockk/issues/603
     testImplementation "org.mockito:mockito-core:3.3.3"
     testImplementation "org.mockito:mockito-inline:3.3.3"
     testImplementation "org.mockito:mockito-all:1.10.19"

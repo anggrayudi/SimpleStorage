@@ -64,7 +64,6 @@ ext.deps = deps
 
 def addRepos(RepositoryHandler handler) {
     handler.google()
-    handler.jcenter()
     handler.mavenCentral()
     handler.maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
 }

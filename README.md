@@ -47,7 +47,6 @@ To use `SNAPSHOT` version, you need to add this URL to the root Gradle:
 allprojects {
     repositories {
         google()
-        jcenter()
         mavenCentral()
         // add this line
         maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
