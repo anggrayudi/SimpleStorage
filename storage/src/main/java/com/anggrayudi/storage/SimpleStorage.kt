@@ -41,6 +41,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
     constructor(fragment: Fragment, savedState: Bundle? = null) : this(FragmentWrapper(fragment)) {
         savedState?.let { onRestoreInstanceState(it) }
+        (wrapper as FragmentWrapper).storage = this
     }
 
     var storageAccessCallback: StorageAccessCallback? = null
@@ -275,12 +276,18 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         outState.putInt(KEY_REQUEST_CODE_STORAGE_ACCESS, requestCodeStorageAccess)
         outState.putInt(KEY_REQUEST_CODE_FOLDER_PICKER, requestCodeFolderPicker)
         outState.putInt(KEY_REQUEST_CODE_FILE_PICKER, requestCodeFilePicker)
+        if (wrapper is FragmentWrapper) {
+            wrapper.requestCode?.let { outState.putInt(KEY_REQUEST_CODE_FRAGMENT_PICKER, it) }
+        }
     }
 
     fun onRestoreInstanceState(savedInstanceState: Bundle) {
         requestCodeStorageAccess = savedInstanceState.getInt(KEY_REQUEST_CODE_STORAGE_ACCESS)
         requestCodeFolderPicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FOLDER_PICKER)
         requestCodeFilePicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FILE_PICKER)
+        if (wrapper is FragmentWrapper && savedInstanceState.containsKey(KEY_REQUEST_CODE_FRAGMENT_PICKER)) {
+            wrapper.requestCode = savedInstanceState.getInt(KEY_REQUEST_CODE_FRAGMENT_PICKER)
+        }
     }
 
     private fun saveUriPermission(root: Uri) = try {
@@ -298,6 +305,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         private const val KEY_REQUEST_CODE_STORAGE_ACCESS = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeStorageAccess"
         private const val KEY_REQUEST_CODE_FOLDER_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFolderPicker"
         private const val KEY_REQUEST_CODE_FILE_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFilePicker"
+        private const val KEY_REQUEST_CODE_FRAGMENT_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFragmentPicker"
 
         @JvmStatic
         @Suppress("DEPRECATION")

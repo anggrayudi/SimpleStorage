@@ -5,7 +5,7 @@
     android:id="@+id/scrollView"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity"
+    tools:context=".activity.MainActivity"
     tools:ignore="HardcodedText">
 
     <LinearLayout
@@ -32,35 +32,7 @@
 
         <include layout="@layout/view_divider" />
 
-        <Button
-            android:id="@+id/btnRequestStoragePermission"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Request Storage Permission" />
-
-        <Button
-            android:id="@+id/btnRequestStorageAccess"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Request Storage Access" />
-
-        <Button
-            android:id="@+id/btnRequestFullStorageAccess"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Request Full Storage Access (API 30)" />
-
-        <Button
-            android:id="@+id/btnSelectFolder"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Select Folder" />
-
-        <Button
-            android:id="@+id/btnSelectFile"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Select File" />
+        <include layout="@layout/incl_base_operation" />
 
         <include layout="@layout/view_divider" />
 

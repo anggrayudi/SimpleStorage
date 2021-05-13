@@ -2,6 +2,7 @@ package com.anggrayudi.storage
 
 import android.content.Context
 import android.content.Intent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 
@@ -11,6 +12,14 @@ import androidx.fragment.app.FragmentActivity
  */
 internal class FragmentWrapper(private val fragment: Fragment) : ComponentWrapper {
 
+    lateinit var storage: SimpleStorage
+    var requestCode: Int? = null
+
+    private val activityResultLauncher = fragment.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        requestCode?.run { storage.onActivityResult(this, it.resultCode, it.data) }
+        requestCode = null
+    }
+
     override val context: Context
         get() = fragment.requireContext()
 
@@ -18,10 +27,7 @@ internal class FragmentWrapper(private val fragment: Fragment) : ComponentWrappe
         get() = fragment.requireActivity()
 
     override fun startActivityForResult(intent: Intent, requestCode: Int) {
-        fragment.startActivityForResult(intent, requestCode)
-    }
-
-    override fun checkPermissions(permissions: Array<String>, requestCode: Int) {
-        fragment.requestPermissions(permissions, requestCode)
+        this.requestCode = requestCode
+        activityResultLauncher.launch(intent)
     }
 }

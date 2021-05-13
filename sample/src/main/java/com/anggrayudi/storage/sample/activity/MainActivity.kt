@@ -1,10 +1,12 @@
-package com.anggrayudi.storage.sample
+package com.anggrayudi.storage.sample.activity
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.Menu
 import android.view.View
 import android.widget.ProgressBar
@@ -20,10 +22,14 @@ import com.afollestad.materialdialogs.list.listItems
 import com.anggrayudi.storage.SimpleStorageHelper
 import com.anggrayudi.storage.callback.*
 import com.anggrayudi.storage.file.*
-import com.karumi.dexter.Dexter
-import com.karumi.dexter.MultiplePermissionsReport
-import com.karumi.dexter.listener.multi.BaseMultiplePermissionsListener
+import com.anggrayudi.storage.permission.ActivityPermissionRequest
+import com.anggrayudi.storage.permission.PermissionCallback
+import com.anggrayudi.storage.permission.PermissionReport
+import com.anggrayudi.storage.permission.PermissionResult
+import com.anggrayudi.storage.sample.R
+import com.anggrayudi.storage.sample.StorageInfoAdapter
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.incl_base_operation.*
 import kotlinx.android.synthetic.main.view_file_picked.view.*
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -33,6 +39,22 @@ class MainActivity : AppCompatActivity() {
     private val job = Job()
     private val ioScope = CoroutineScope(Dispatchers.IO + job)
     private val uiScope = CoroutineScope(Dispatchers.Main + job)
+
+    private val permissionRequest by lazy {
+        ActivityPermissionRequest.Builder(this, REQUEST_CODE_ASK_PERMISSIONS)
+            .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
+            .withCallback(object : PermissionCallback {
+                override fun onPermissionsChecked(result: PermissionResult, fromSystemDialog: Boolean) {
+                    val grantStatus = if (result.areAllPermissionsGranted) "granted" else "denied"
+                    Toast.makeText(baseContext, "Storage permissions are $grantStatus", Toast.LENGTH_SHORT).show()
+                }
+
+                override fun onShouldRedirectToSystemSettings(blockedPermissions: List<PermissionReport>) {
+                    openSystemSettings(this@MainActivity)
+                }
+            })
+            .build()
+    }
 
     private lateinit var storageHelper: SimpleStorageHelper
 
@@ -51,16 +73,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupButtonActions() {
-        btnRequestStoragePermission.setOnClickListener {
-            Dexter.withContext(this)
-                .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
-                .withListener(object : BaseMultiplePermissionsListener() {
-                    override fun onPermissionsChecked(report: MultiplePermissionsReport) {
-                        val grantStatus = if (report.areAllPermissionsGranted()) "granted" else "denied"
-                        Toast.makeText(baseContext, "Storage permissions are $grantStatus", Toast.LENGTH_SHORT).show()
-                    }
-                }).check()
-        }
+        btnRequestStoragePermission.setOnClickListener { permissionRequest.check() }
 
         btnRequestStorageAccess.setOnClickListener {
             storageHelper.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS)
@@ -487,6 +500,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main, menu)
+        menu.findItem(R.id.action_open_fragment).intent = Intent(this, SampleFragmentActivity::class.java)
         menu.findItem(R.id.action_donate).intent = Intent(
             Intent.ACTION_VIEW,
             Uri.parse("https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=TGPGSY66LKUMN&source=url")
@@ -496,6 +510,11 @@ class MainActivity : AppCompatActivity() {
             Uri.parse("https://github.com/anggrayudi/SimpleStorage")
         ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        permissionRequest.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     override fun onDestroy() {
@@ -519,5 +538,20 @@ class MainActivity : AppCompatActivity() {
 
         const val REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MOVE = 10
         const val REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_MOVE = 11
+
+        const val REQUEST_CODE_ASK_PERMISSIONS = 12
+
+        fun openSystemSettings(context: Context) {
+            MaterialDialog(context)
+                .message(text = "Permission was disabled permanently. Do you want to enable it from system settings?")
+                .positiveButton {
+                    val intentSetting = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                        .addCategory(Intent.CATEGORY_DEFAULT)
+                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intentSetting)
+                }
+                .negativeButton()
+                .show()
+        }
     }
 }

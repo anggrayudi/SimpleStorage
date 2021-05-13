@@ -5,6 +5,11 @@
     tools:ignore="HardcodedText">
 
     <item
+        android:id="@+id/action_open_fragment"
+        android:title="Open sample fragment"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/action_donate"
         android:title="Donation"
         app:showAsAction="never" />
