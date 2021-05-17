@@ -154,6 +154,11 @@ object MediaStoreCompat {
     }
 
     @JvmStatic
+    fun fromMediaId(context: Context, mediaType: MediaType, id: Long): MediaFile {
+        return fromMediaId(context, mediaType, id.toString())
+    }
+
+    @JvmStatic
     fun fromFileName(context: Context, mediaType: MediaType, name: String): MediaFile? {
         val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
         return context.contentResolver.query(mediaType.readUri, arrayOf(BaseColumns._ID), selection, arrayOf(name), null)?.use {

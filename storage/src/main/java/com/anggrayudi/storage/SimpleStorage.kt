@@ -17,6 +17,7 @@ import android.provider.Settings
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat.checkSelfPermission
+import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import com.anggrayudi.storage.callback.FilePickerCallback
@@ -27,6 +28,7 @@ import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.StorageType
 import com.anggrayudi.storage.file.canModify
 import timber.log.Timber
+import java.io.File
 import kotlin.concurrent.thread
 
 /**
@@ -234,7 +236,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                     else -> StorageType.SD_CARD
                 }
                 if (folder == null || !folder.canModify) {
-                    folderPickerCallback?.onStorageAccessDenied(requestCode, null, storageType)
+                    folderPickerCallback?.onStorageAccessDenied(requestCode, folder, storageType)
                     return
                 }
                 if (uri.toString() == DocumentFileCompat.DOWNLOADS_TREE_URI
@@ -262,7 +264,13 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                     filePickerCallback?.onCanceledByUser(requestCode)
                     return
                 }
-                val file = wrapper.context.fromSingleUri(data?.data ?: return)
+                val uri = data?.data ?: return
+                val file = if (uri.isDownloadsDocument && Build.VERSION.SDK_INT < 28 && uri.path?.startsWith("/document/raw:") == true) {
+                    val fullPath = uri.path.orEmpty().substringAfterLast("/document/raw:")
+                    DocumentFile.fromFile(File(fullPath))
+                } else {
+                    wrapper.context.fromSingleUri(uri)
+                }
                 if (file == null || !file.canRead()) {
                     filePickerCallback?.onStoragePermissionDenied(requestCode, file)
                 } else {

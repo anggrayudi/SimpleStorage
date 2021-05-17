@@ -35,6 +35,12 @@ object DocumentFileCompat {
 
     const val EXTERNAL_STORAGE_AUTHORITY = "com.android.externalstorage.documents"
 
+    /*
+     * File picker for each API version gives the following URIs:
+     * * API 26 - 27 => `content://com.android.providers.downloads.documents/document/22`
+     * * API 28 - 29 => `content://com.android.providers.downloads.documents/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2Fscreenshot.jpeg`
+     * * API 30+     => `content://com.android.providers.downloads.documents/document/msf%3A42`
+     */
     const val DOWNLOADS_FOLDER_AUTHORITY = "com.android.providers.downloads.documents"
 
     const val MEDIA_FOLDER_AUTHORITY = "com.android.providers.media.documents"
@@ -137,7 +143,7 @@ object DocumentFileCompat {
      * * For file in external storage => `/storage/emulated/0/Downloads/MyMovie.mp4`.
      * * For file in SD card => `/storage/9016-4EF8/Downloads/MyMovie.mp4` or you can input simple path like this `9016-4EF8:Downloads/MyMovie.mp4`.
      *                          You can input `9016-4EF8:` or `/storage/9016-4EF8` for SD card's root path.
-     * @see DocumentFile.absolutePath
+     * @see DocumentFile.getAbsolutePath
      */
     @JvmOverloads
     @JvmStatic
@@ -544,7 +550,7 @@ object DocumentFileCompat {
                         val directory = currentDirectory.findFile(it)
                         if (directory == null) {
                             currentDirectory = currentDirectory.createDirectory(it) ?: return@forEach
-                            val fullPath = currentDirectory.absolutePath
+                            val fullPath = currentDirectory.getAbsolutePath(context)
                             cleanedFullPaths.forEachIndexed { index, s ->
                                 if (fullPath == s) {
                                     results[index] = currentDirectory
@@ -552,7 +558,7 @@ object DocumentFileCompat {
                             }
                         } else if (directory.isDirectory && directory.canRead()) {
                             currentDirectory = directory
-                            val fullPath = directory.absolutePath
+                            val fullPath = directory.getAbsolutePath(context)
                             cleanedFullPaths.forEachIndexed { index, s ->
                                 if (fullPath == s) {
                                     results[index] = directory

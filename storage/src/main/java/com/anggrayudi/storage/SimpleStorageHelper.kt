@@ -14,7 +14,7 @@ import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
 import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.StorageType
-import com.anggrayudi.storage.file.absolutePath
+import com.anggrayudi.storage.file.getAbsolutePath
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.listener.multi.BaseMultiplePermissionsListener
@@ -63,17 +63,18 @@ class SimpleStorageHelper {
             }
 
             override fun onRootPathPermissionGranted(requestCode: Int, root: DocumentFile) {
+                val context = storage.context
                 if (openFolderPickerOnceGranted) {
                     storage.openFolderPicker(requestCodeFolderPicker)
                     Toast.makeText(
-                        storage.context,
-                        storage.context.getString(R.string.ss_selecting_root_path_success_with_open_folder_picker, root.absolutePath),
+                        context,
+                        context.getString(R.string.ss_selecting_root_path_success_with_open_folder_picker, root.getAbsolutePath(context)),
                         Toast.LENGTH_LONG
                     ).show()
                 } else {
                     Toast.makeText(
-                        storage.context,
-                        storage.context.getString(R.string.ss_selecting_root_path_success_without_open_folder_picker, root.absolutePath),
+                        context,
+                        context.getString(R.string.ss_selecting_root_path_success_without_open_folder_picker, root.getAbsolutePath(context)),
                         Toast.LENGTH_SHORT
                     ).show()
                 }

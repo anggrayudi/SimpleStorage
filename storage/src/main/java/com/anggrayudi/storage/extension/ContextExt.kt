@@ -3,11 +3,11 @@
 package com.anggrayudi.storage.extension
 
 import android.app.Activity
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
-import androidx.fragment.app.Fragment
 
 /**
  * Created on 17/08/20
@@ -30,9 +30,11 @@ fun Activity.startActivityForResultSafely(requestCode: Int, intent: Intent) {
     }
 }
 
-fun Fragment.startActivityForResultSafely(requestCode: Int, intent: Intent) {
-    if (intent.hasActivityHandler(requireContext())) {
-        startActivityForResult(intent, requestCode)
+fun Context.unregisterReceiverSafely(receiver: BroadcastReceiver) {
+    try {
+        unregisterReceiver(receiver)
+    } catch (e: IllegalArgumentException) {
+        // ignore
     }
 }
 

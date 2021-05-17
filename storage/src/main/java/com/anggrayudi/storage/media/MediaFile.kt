@@ -445,7 +445,7 @@ class MediaFile(context: Context, val uri: Uri) {
     ): DocumentFile? {
         try {
             val targetFolder =
-                DocumentFileCompat.mkdirs(context, DocumentFileCompat.buildAbsolutePath(targetDirectory.storageId, targetDirectory.basePath))
+                DocumentFileCompat.mkdirs(context, DocumentFileCompat.buildAbsolutePath(targetDirectory.storageId, targetDirectory.getBasePath(context)))
             if (targetFolder == null) {
                 callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
                 return null

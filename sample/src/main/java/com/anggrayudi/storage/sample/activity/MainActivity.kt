@@ -119,14 +119,14 @@ class MainActivity : AppCompatActivity() {
                 REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_COPY -> layoutCopyFolderToFolder.updateFolderSelectionView(folder)
                 REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MOVE -> layoutMoveFolderFromFolder.updateFolderSelectionView(folder)
                 REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_MOVE -> layoutMoveFolderToFolder.updateFolderSelectionView(folder)
-                else -> Toast.makeText(baseContext, folder.absolutePath, Toast.LENGTH_SHORT).show()
+                else -> Toast.makeText(baseContext, folder.getAbsolutePath(this), Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun View.updateFolderSelectionView(folder: DocumentFile) {
         tag = folder
-        tvFilePath.text = folder.absolutePath
+        tvFilePath.text = folder.getAbsolutePath(context)
     }
 
     private fun View.updateFileSelectionView(file: DocumentFile) {

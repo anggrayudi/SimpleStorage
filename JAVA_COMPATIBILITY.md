@@ -15,7 +15,7 @@ You can learn it [here](https://www.raywenderlich.com/10986797-extension-functio
 Common extension functions are stored in package `com.anggrayudi.storage.extension`. The others are in `com.anggrayudi.storage.file`.
 You'll find that the most useful extension functions come from `DocumentFileExtKt` and `FileExtKt`. They are:
 * `DocumentFile.storageId` and `File.storageId` → Get storage ID. Returns `primary` for external storage and something like `AAAA-BBBB` for SD card.
-* `DocumentFile.absolutePath` → Get file's absolute path. Returns something like `/storage/AAAA-BBBB/Music/My Love.mp3`.
+* `DocumentFile.getAbsolutePath()` → Get file's absolute path. Returns something like `/storage/AAAA-BBBB/Music/My Love.mp3`.
 * `DocumentFile.copyFileTo()` and `File.copyFileTo()`
 * `DocumentFile.search()` and `File.search()`, etc.
 

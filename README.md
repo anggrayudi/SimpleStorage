@@ -109,7 +109,7 @@ Since `java.io.File` has been deprecated in Android 10, thus you have to use `Do
 Simple Storage adds Kotlin extension functions to `DocumentFile`, so you can manage files like this:
 * `DocumentFile.storageId`
 * `DocumentFile.storageType`
-* `DocumentFile.basePath`
+* `DocumentFile.getBasePath()`
 * `DocumentFile.copyFileTo()`
 * `DocumentFile.moveFolderTo()`
 * `DocumentFile.search()`
@@ -231,7 +231,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onFolderSelected(requestCode: Int, folder: DocumentFile) {
-                Toast.makeText(baseContext, folder.absolutePath, Toast.LENGTH_SHORT).show()
+                Toast.makeText(baseContext, folder.getAbsolutePath(baseContext), Toast.LENGTH_SHORT).show()
             }
 
             override fun onCanceledByUser(requestCode: Int) {

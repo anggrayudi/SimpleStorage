@@ -10,8 +10,8 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.afollestad.materialdialogs.MaterialDialog
 import com.anggrayudi.storage.SimpleStorageHelper
-import com.anggrayudi.storage.file.absolutePath
 import com.anggrayudi.storage.file.fullName
+import com.anggrayudi.storage.file.getAbsolutePath
 import com.anggrayudi.storage.permission.*
 import com.anggrayudi.storage.sample.R
 import com.anggrayudi.storage.sample.activity.MainActivity
@@ -91,7 +91,7 @@ class SampleFragment : Fragment() {
             Toast.makeText(requireContext(), "File selected: ${file.fullName}", Toast.LENGTH_SHORT).show()
         }
         storageHelper.onFolderSelected = { requestCode, folder ->
-            Toast.makeText(requireContext(), folder.absolutePath, Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), folder.getAbsolutePath(requireContext()), Toast.LENGTH_SHORT).show()
         }
     }
 }

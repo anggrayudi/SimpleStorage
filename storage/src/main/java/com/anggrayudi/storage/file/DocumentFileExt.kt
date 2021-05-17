@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.core.content.FileProvider
@@ -79,7 +80,7 @@ fun DocumentFile.isInSameMountPointWith(file: DocumentFile) = storageId == file.
 fun DocumentFile.isEmpty(context: Context): Boolean {
     return isFile && length() == 0L || isDirectory && kotlin.run {
         if (isRawFile) {
-            toRawFile()?.list().isNullOrEmpty()
+            toRawFile(context)?.list().isNullOrEmpty()
         } else {
             try {
                 val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, id)
@@ -157,22 +158,22 @@ val DocumentFile.mimeTypeByFileName: String?
  * from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT].
  * @see toDocumentFile
  */
-fun DocumentFile.toRawFile(): File? {
+fun DocumentFile.toRawFile(context: Context): File? {
     return when {
         isRawFile -> File(uri.path ?: return null)
-        inPrimaryStorage -> File("${SimpleStorage.externalStoragePath}/$basePath")
-        storageId.isNotEmpty() -> File("/storage/$storageId/$basePath")
+        inPrimaryStorage -> File("${SimpleStorage.externalStoragePath}/${getBasePath(context)}")
+        storageId.isNotEmpty() -> File("/storage/$storageId/${getBasePath(context)}")
         else -> null
     }
 }
 
-fun DocumentFile.toRawDocumentFile(): DocumentFile? {
-    return if (isRawFile) this else DocumentFile.fromFile(toRawFile() ?: return null)
+fun DocumentFile.toRawDocumentFile(context: Context): DocumentFile? {
+    return if (isRawFile) this else DocumentFile.fromFile(toRawFile(context) ?: return null)
 }
 
 fun DocumentFile.toTreeDocumentFile(context: Context): DocumentFile? {
     return if (isRawFile) {
-        DocumentFileCompat.fromFile(context, toRawFile() ?: return null, considerRawFile = false)
+        DocumentFileCompat.fromFile(context, toRawFile(context) ?: return null, considerRawFile = false)
     } else {
         this
     }
@@ -181,31 +182,52 @@ fun DocumentFile.toTreeDocumentFile(context: Context): DocumentFile? {
 fun DocumentFile.toMediaFile(context: Context) = if (isTreeDocumentFile) null else MediaFile(context, uri)
 
 /**
- * @return File path without storage ID, otherwise return empty `String` if this is the root path or if this [DocumentFile] is picked
- * from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT]
+ * @return File path without storage ID. Returns empty `String` if:
+ * * It is the root path
+ * * It is not a raw file and the authority is neither [DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY] nor [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY]
+ * * The authority is [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY], but [isTreeDocumentFile] returns `false` and column [MediaStore.MediaColumns.RELATIVE_PATH] is empty
  */
 @Suppress("DEPRECATION")
-val DocumentFile.basePath: String
-    get() = when {
-        isRawFile -> uri.path?.let { File(it).basePath }.orEmpty()
-        isExternalStorageDocument -> uri.path.orEmpty().substringAfterLast("/document/$storageId:", "").trimFileSeparator()
-        isDownloadsDocument && isTreeDocumentFile -> {
+fun DocumentFile.getBasePath(context: Context): String {
+    val path = uri.path.orEmpty()
+    val storageID = storageId
+    return when {
+        isRawFile -> File(path).basePath
+
+        isExternalStorageDocument && path.contains("/document/$storageID:") -> {
+            path.substringAfterLast("/document/$storageID:", "").trimFileSeparator()
+        }
+
+        isDownloadsDocument -> {
             // content://com.android.providers.downloads.documents/tree/raw:/storage/emulated/0/Download/Denai/document/raw:/storage/emulated/0/Download/Denai
             // content://com.android.providers.downloads.documents/tree/downloads/document/raw:/storage/emulated/0/Download/Denai
-            val path = uri.path.orEmpty()
-            if (!path.contains("/document/raw:") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val parentTree = mutableListOf(name.orEmpty())
-                var parent = this
-                while (parent.parentFile?.also { parent = it } != null) {
-                    parentTree.add(parent.name.orEmpty())
+            when {
+                // API 26 - 27 => content://com.android.providers.downloads.documents/document/22
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.P && path.matches(Regex("/document/\\d+")) -> {
+                    val fileName = MediaFile(context, uri).name ?: return ""
+                    "${Environment.DIRECTORY_DOWNLOADS}/$fileName"
                 }
-                parentTree.reversed().joinToString("/")
-            } else {
-                path.substringAfterLast(SimpleStorage.externalStoragePath, "").trimFileSeparator()
+
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && path.matches(Regex("(.*?)/ms[f,d]:\\d+(.*?)")) -> {
+                    if (isTreeDocumentFile) {
+                        val parentTree = mutableListOf(name.orEmpty())
+                        var parent = this
+                        while (parent.parentFile?.also { parent = it } != null) {
+                            parentTree.add(parent.name.orEmpty())
+                        }
+                        parentTree.reversed().joinToString("/")
+                    } else {
+                        // we can't use msf/msd ID as MediaFile ID to fetch relative path, so just return empty String
+                        ""
+                    }
+                }
+
+                else -> path.substringAfterLast(SimpleStorage.externalStoragePath, "").trimFileSeparator()
             }
         }
         else -> ""
     }
+}
 
 /**
  * **Case 1**: Should return `Pop/Albums` from the following folders:
@@ -224,8 +246,8 @@ val DocumentFile.basePath: String
  * * `/storage/AAAA-BBBB/Music/Metal`
  * * `/storage/AAAA-BBBB/Music/Pop/Albums`
  */
-private fun DocumentFile.getSubPath(otherFolderAbsolutePath: String): String {
-    val a = absolutePath
+private fun DocumentFile.getSubPath(context: Context, otherFolderAbsolutePath: String): String {
+    val a = getAbsolutePath(context)
     return when {
         a.length > otherFolderAbsolutePath.length -> a.substringAfter(otherFolderAbsolutePath.substringAfterLast('/'), "").trimFileSeparator()
         otherFolderAbsolutePath.length > a.length -> otherFolderAbsolutePath.substringAfter(a.substringAfterLast('/'), "").trimFileSeparator()
@@ -247,8 +269,7 @@ val DocumentFile.rootPath: String
         else -> SimpleStorage.externalStoragePath
     }
 
-val DocumentFile.relativePath: String
-    get() = basePath.substringBeforeLast('/', "")
+fun DocumentFile.getRelativePath(context: Context) = getBasePath(context).substringBeforeLast('/', "")
 
 /**
  * * For file in SD Card => `/storage/6881-2249/Music/song.mp3`
@@ -257,37 +278,67 @@ val DocumentFile.relativePath: String
  * If you want to remember file locations in database or preference, please use this function.
  * When you reopen the file, just call [DocumentFileCompat.fromFullPath]
  *
+ * @return File's actual path. Returns empty `String` if:
+ * * It is not a raw file and the authority is neither [DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY] nor [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY]
+ * * The authority is [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY], but [isTreeDocumentFile] returns `false` and column [MediaStore.MediaColumns.RELATIVE_PATH] is empty
+ *
  * @see File.getAbsolutePath
- * @see simplePath
+ * @see getSimplePath
  */
 @Suppress("DEPRECATION")
-val DocumentFile.absolutePath: String
-    get() = when {
-        isRawFile -> uri.path.orEmpty()
-        !isTreeDocumentFile -> ""
-        uri.toString() == "${DocumentFileCompat.DOWNLOADS_TREE_URI}/document/downloads" -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
-        isDownloadsDocument -> {
-            val path = uri.path.orEmpty()
-            if (!path.contains("/document/raw:") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val parentTree = mutableListOf(name.orEmpty())
-                var parent = this
-                while (parent.parentFile?.also { parent = it } != null) {
-                    parentTree.add(parent.name.orEmpty())
-                }
-                "${SimpleStorage.externalStoragePath}/${parentTree.reversed().joinToString("/")}".trimEnd('/')
+fun DocumentFile.getAbsolutePath(context: Context): String {
+    val path = uri.path.orEmpty()
+    val storageID = storageId
+    return when {
+        isRawFile -> path
+
+        isExternalStorageDocument && path.contains("/document/$storageID:") -> {
+            val basePath = path.substringAfterLast("/document/$storageID:", "").trimFileSeparator()
+            if (storageID == PRIMARY) {
+                "${SimpleStorage.externalStoragePath}/$basePath".trimEnd('/')
             } else {
-                path.substringAfterLast("/document/raw:", "").trimEnd('/')
+                "/storage/$storageID/$basePath".trimEnd('/')
             }
         }
-        inPrimaryStorage -> "${SimpleStorage.externalStoragePath}/$basePath".trimEnd('/')
-        else -> "/storage/$storageId/$basePath".trimEnd('/')
+
+        uri.toString() == "${DocumentFileCompat.DOWNLOADS_TREE_URI}/document/downloads" -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
+
+        isDownloadsDocument -> {
+            when {
+                // API 26 - 27 => content://com.android.providers.downloads.documents/document/22
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.P && path.matches(Regex("/document/\\d+")) -> {
+                    val fileName = MediaFile(context, uri).name ?: return ""
+                    File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileName).absolutePath
+                }
+
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && path.matches(Regex("(.*?)/ms[f,d]:\\d+(.*?)")) -> {
+                    if (isTreeDocumentFile) {
+                        val parentTree = mutableListOf(name.orEmpty())
+                        var parent = this
+                        while (parent.parentFile?.also { parent = it } != null) {
+                            parentTree.add(parent.name.orEmpty())
+                        }
+                        "${SimpleStorage.externalStoragePath}/${parentTree.reversed().joinToString("/")}".trimEnd('/')
+                    } else {
+                        // we can't use msf/msd ID as MediaFile ID to fetch relative path, so just return empty String
+                        ""
+                    }
+                }
+
+                else -> path.substringAfterLast("/document/raw:", "").trimEnd('/')
+            }
+        }
+
+        !isTreeDocumentFile -> ""
+        inPrimaryStorage -> "${SimpleStorage.externalStoragePath}/${getBasePath(context)}".trimEnd('/')
+        else -> "/storage/$storageID/${getBasePath(context)}".trimEnd('/')
     }
+}
 
 /**
- * @see absolutePath
+ * @see getAbsolutePath
  */
-val DocumentFile.simplePath
-    get() = "$storageId:$basePath".removePrefix(":")
+fun DocumentFile.getSimplePath(context: Context) = "$storageId:${getBasePath(context)}".removePrefix(":")
 
 /**
  * Delete this file and create new empty file using previous `filename` and `mimeType`.
@@ -322,7 +373,7 @@ val DocumentFile.canModify: Boolean
  * Read [this issue](https://github.com/anggrayudi/SimpleStorage/issues/24#issuecomment-830000378)
  */
 val DocumentFile.isWritable: Boolean
-    get() = if (isRawFile) toRawFile()!!.isWritable else canWrite()
+    get() = if (isRawFile) File(uri.path!!).isWritable else canWrite()
 
 fun DocumentFile.isRootUriPermissionGranted(context: Context): Boolean {
     return isExternalStorageDocument && DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)
@@ -334,9 +385,10 @@ fun DocumentFile.doesExist(filename: String) = findFile(filename)?.exists() == t
  * Avoid duplicate file name.
  */
 @WorkerThread
-fun DocumentFile.autoIncrementFileName(filename: String): String {
-    toRawFile()?.let {
-        return it.autoIncrementFileName(filename)
+fun DocumentFile.autoIncrementFileName(context: Context, filename: String): String {
+    toRawFile(context)?.let {
+        if (it.canRead())
+            return it.autoIncrementFileName(filename)
     }
     val files = listFiles()
     return if (files.find { it.name == filename }?.exists() == true) {
@@ -410,7 +462,7 @@ fun DocumentFile.makeFile(
 
     if (isRawFile) {
         // RawDocumentFile does not avoid duplicate file name, but TreeDocumentFile does.
-        return DocumentFile.fromFile(toRawFile()?.makeFile(cleanName, mimeType, forceCreate) ?: return null)
+        return DocumentFile.fromFile(toRawFile(context)?.makeFile(cleanName, mimeType, forceCreate) ?: return null)
     }
 
     val correctMimeType = DocumentFileCompat.getMimeTypeFromExtension(extension).let {
@@ -448,7 +500,7 @@ fun DocumentFile.makeFolder(context: Context, name: String, forceCreate: Boolean
     }
 
     if (isRawFile) {
-        return DocumentFile.fromFile(toRawFile()?.makeFolder(name, forceCreate) ?: return null)
+        return DocumentFile.fromFile(toRawFile(context)?.makeFolder(name, forceCreate) ?: return null)
     }
 
     // if name is "Aduhhh/Now/Dee", system will convert it to Aduhhh_Now_Dee, so create a sequence
@@ -485,7 +537,7 @@ fun DocumentFile.makeFolder(context: Context, name: String, forceCreate: Boolean
 }
 
 /**
- * Use this function if you cannot create file/folder in downloads directory.
+ * Use this function if you cannot create or read file/folder in downloads directory.
  */
 @WorkerThread
 fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile? {
@@ -493,12 +545,15 @@ fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile
         val path = uri.path.orEmpty()
         when {
             uri.toString() == "${DocumentFileCompat.DOWNLOADS_TREE_URI}/document/downloads" -> takeIf { it.isWritable }
+
+            // content://com.android.providers.downloads.documents/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2Fscreenshot.jpeg
             // content://com.android.providers.downloads.documents/tree/downloads/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2FIKO5
             // raw:/storage/emulated/0/Download/IKO5
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && path.startsWith("/tree/downloads/document/raw") -> {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && (path.startsWith("/tree/downloads/document/raw:") || path.startsWith("/document/raw:")) -> {
                 var currentDirectory = DocumentFileCompat.fromPublicFolder(context, PublicDirectory.DOWNLOADS, considerRawFile = false)
                     ?: return null
-                DocumentFileCompat.getDirectorySequence(path.substringAfter("/${Environment.DIRECTORY_DOWNLOADS}")).forEach {
+                val fullPath = path.substringAfterLast("/document/raw:")
+                DocumentFileCompat.getDirectorySequence(fullPath.substringAfter("/${Environment.DIRECTORY_DOWNLOADS}")).forEach {
                     val directory = currentDirectory.findFile(it) ?: return null
                     if (directory.canRead()) {
                         currentDirectory = directory
@@ -511,19 +566,23 @@ fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile
 
             // msd for directories and msf for files
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && (
-                    // If comes from SAF folder picker ACTION_OPEN_DOCUMENT_TREE,
-                    // e.g. content://com.android.providers.downloads.documents/tree/msd%3A535/document/msd%3A535
-                    path.startsWith("/tree/msd") || path.startsWith("/tree/msf")
+                    // // If comes from SAF file picker ACTION_OPEN_DOCUMENT on API 30+
+                    path.matches(Regex("/document/ms[f,d]:\\d+"))
+                            // If comes from SAF folder picker ACTION_OPEN_DOCUMENT_TREE,
+                            // e.g. content://com.android.providers.downloads.documents/tree/msd%3A535/document/msd%3A535
+                            || path.matches(Regex("/tree/ms[f,d]:\\d+(.*?)"))
                             // If comes from findFile() or fromPublicFolder(),
                             // e.g. content://com.android.providers.downloads.documents/tree/downloads/document/msd%3A271
-                            || path.startsWith("/tree/downloads/document/msd") || path.startsWith("/tree/downloads/document/msf"))
+                            || path.matches(Regex("/tree/downloads/document/ms[f,d]:\\d+")))
                     || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && (
                     // If comes from SAF folder picker ACTION_OPEN_DOCUMENT_TREE,
                     // e.g. content://com.android.providers.downloads.documents/tree/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2FDenai/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2FDenai
-                    path.startsWith("/tree/raw")
+                    path.startsWith("/tree/raw:")
                             // If comes from findFile() or fromPublicFolder(),
                             // e.g. content://com.android.providers.downloads.documents/tree/downloads/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2FDenai
-                            || path.startsWith("/tree/downloads/document/raw")
+                            || path.startsWith("/tree/downloads/document/raw:")
+                            // API 26 - 27 => content://com.android.providers.downloads.documents/document/22
+                            || path.matches(Regex("/document/\\d+"))
                     )
             -> takeIf { it.isWritable }
 
@@ -658,7 +717,7 @@ private fun DocumentFile.walkFileTreeForDeletion(): List<DocumentFile> {
 
 fun DocumentFile.deleteEmptyFolders() {
     if (isRawFile) {
-        toRawFile()?.deleteEmptyFolders()
+        File(uri.path!!).deleteEmptyFolders()
     } else if (isDirectory && isWritable) {
         walkFileTreeAndDeleteEmptyFolders().reversed().forEach { it.delete() }
     }
@@ -691,7 +750,7 @@ fun DocumentFile.openFileIntent(context: Context, authority: String) = Intent(In
     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-fun DocumentFile.hasParent(parent: DocumentFile) = absolutePath.hasParent(parent.absolutePath)
+fun DocumentFile.hasParent(context: Context, parent: DocumentFile) = getAbsolutePath(context).hasParent(parent.getAbsolutePath(context))
 
 private fun DocumentFile.walkFileTree(context: Context): List<DocumentFile> {
     val fileTree = mutableListOf<DocumentFile>()
@@ -780,9 +839,9 @@ private fun DocumentFile.copyFolderTo(
 
     if (deleteSourceWhenComplete && isInSameMountPointWith(writableTargetParentFolder)) {
         if (storageId == PRIMARY && inPrimaryStorage) {
-            val targetFile = File(writableTargetParentFolder.absolutePath, targetFolderParentName)
+            val targetFile = File(writableTargetParentFolder.getAbsolutePath(context), targetFolderParentName)
             targetFile.parentFile?.mkdirs()
-            if (toRawFile()?.renameTo(targetFile) == true) {
+            if (toRawFile(context)?.renameTo(targetFile) == true) {
                 if (skipEmptyFiles) targetFile.deleteEmptyFolders()
                 callback.onCompleted(DocumentFile.fromFile(targetFile), totalFilesToCopy, totalFilesToCopy, true)
                 return
@@ -790,12 +849,12 @@ private fun DocumentFile.copyFolderTo(
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
-            val sourceFile = toRawFile()
+            val sourceFile = toRawFile(context)
             if (sourceFile == null) {
                 callback.onFailed(FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
                 return
             }
-            writableTargetParentFolder.toRawFile()?.let { destinationFolder ->
+            writableTargetParentFolder.toRawFile(context)?.let { destinationFolder ->
                 destinationFolder.mkdirs()
                 val targetFile = File(destinationFolder, targetFolderParentName)
                 if (sourceFile.renameTo(targetFile)) {
@@ -877,7 +936,7 @@ private fun DocumentFile.copyFolderTo(
         }
     }
 
-    val targetFolderParentPath = writableTargetParentFolder.absolutePath + "/$targetFolderParentName"
+    val targetFolderParentPath = writableTargetParentFolder.getAbsolutePath(context) + "/$targetFolderParentName"
     val conflictedFiles = ArrayList<FolderCallback.FileConflict>(totalFilesToCopy)
     val buffer = ByteArray(1024)
 
@@ -891,7 +950,7 @@ private fun DocumentFile.copyFolderTo(
                 continue
             }
 
-            val subPath = sourceFile.getSubPath(targetFolderParentPath).substringBeforeLast('/', "")
+            val subPath = sourceFile.getSubPath(context, targetFolderParentPath).substringBeforeLast('/', "")
             val filename = ("$subPath/" + sourceFile.name.orEmpty()).trimFileSeparator()
             if (sourceFile.isDirectory) {
                 val newFolder = targetFolder.makeFolder(context, filename, false)
@@ -1073,7 +1132,7 @@ private fun DocumentFile.doesMeetCopyRequirements(
         return null
     }
 
-    if (targetParentFolder.absolutePath == parentFile?.absolutePath && (newFolderNameInTargetPath.isNullOrEmpty() || name == newFolderNameInTargetPath)) {
+    if (targetParentFolder.getAbsolutePath(context) == parentFile?.getAbsolutePath(context) && (newFolderNameInTargetPath.isNullOrEmpty() || name == newFolderNameInTargetPath)) {
         callback.onFailed(FolderCallback.ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER)
         return null
     }
@@ -1199,7 +1258,7 @@ private fun DocumentFile.doesMeetCopyRequirements(
         return null
     }
 
-    if (parentFile?.absolutePath == targetFolder.absolutePath && (newFilenameInTargetPath.isNullOrEmpty() || name == newFilenameInTargetPath)) {
+    if (parentFile?.getAbsolutePath(context) == targetFolder.getAbsolutePath(context) && (newFilenameInTargetPath.isNullOrEmpty() || name == newFilenameInTargetPath)) {
         callback.onFailed(FileCallback.ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER)
         return null
     }
@@ -1402,21 +1461,21 @@ private fun DocumentFile.moveFileTo(
 
     val targetStorageId = writableTargetFolder.storageId
     if (targetStorageId == PRIMARY && inPrimaryStorage) {
-        val targetFile = File(writableTargetFolder.absolutePath, cleanFileName)
+        val targetFile = File(writableTargetFolder.getAbsolutePath(context), cleanFileName)
         targetFile.parentFile?.mkdirs()
-        if (toRawFile()?.renameTo(targetFile) == true) {
+        if (toRawFile(context)?.renameTo(targetFile) == true) {
             callback.onCompleted(DocumentFile.fromFile(targetFile))
             return
         }
     }
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager() && storageId == targetStorageId) {
-        val sourceFile = toRawFile()
+        val sourceFile = toRawFile(context)
         if (sourceFile == null) {
             callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
             return
         }
-        writableTargetFolder.toRawFile()?.let { destinationFolder ->
+        writableTargetFolder.toRawFile(context)?.let { destinationFolder ->
             destinationFolder.mkdirs()
             val targetFile = File(destinationFolder, cleanFileName)
             if (sourceFile.renameTo(targetFile)) {
