@@ -201,64 +201,64 @@ class MainActivity : AppCompatActivity() {
 ## Folder Picker
 
 ```kotlin
-    private fun requestStoragePermission() {
-        /*
-        Request runtime permissions for Manifest.permission.WRITE_EXTERNAL_STORAGE
-        and Manifest.permission.READ_EXTERNAL_STORAGE
-        */
-    }
+private fun requestStoragePermission() {
+    /*
+    Request runtime permissions for Manifest.permission.WRITE_EXTERNAL_STORAGE
+    and Manifest.permission.READ_EXTERNAL_STORAGE
+    */
+}
 
-    private fun setupFolderPickerCallback() {
-        storage.folderPickerCallback = object : FolderPickerCallback {
-            override fun onStoragePermissionDenied(requestCode: Int) {
+private fun setupFolderPickerCallback() {
+    storage.folderPickerCallback = object : FolderPickerCallback {
+        override fun onStoragePermissionDenied(requestCode: Int) {
+            requestStoragePermission()
+        }
+
+        override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType?) {
+            if (storageType == null) {
                 requestStoragePermission()
+                return
             }
+            MaterialDialog(this@MainActivity)
+                .message(
+                    text = "You have no write access to this storage, thus selecting this folder is useless." +
+                            "\nWould you like to grant access to this folder?"
+                )
+                .negativeButton(android.R.string.cancel)
+                .positiveButton {
+                    storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, storageType)
+                }.show()
+        }
 
-            override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType?) {
-                if (storageType == null) {
-                    requestStoragePermission()
-                    return
-                }
-                MaterialDialog(this@MainActivity)
-                    .message(
-                        text = "You have no write access to this storage, thus selecting this folder is useless." +
-                                "\nWould you like to grant access to this folder?"
-                    )
-                    .negativeButton(android.R.string.cancel)
-                    .positiveButton {
-                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, storageType)
-                    }.show()
-            }
+        override fun onFolderSelected(requestCode: Int, folder: DocumentFile) {
+            Toast.makeText(baseContext, folder.getAbsolutePath(baseContext), Toast.LENGTH_SHORT).show()
+        }
 
-            override fun onFolderSelected(requestCode: Int, folder: DocumentFile) {
-                Toast.makeText(baseContext, folder.getAbsolutePath(baseContext), Toast.LENGTH_SHORT).show()
-            }
-
-            override fun onCanceledByUser(requestCode: Int) {
-                Toast.makeText(baseContext, "Folder picker canceled by user", Toast.LENGTH_SHORT).show()
-            }
+        override fun onCanceledByUser(requestCode: Int) {
+            Toast.makeText(baseContext, "Folder picker canceled by user", Toast.LENGTH_SHORT).show()
         }
     }
+}
 ```
 
 ## File Picker
 
 ```kotlin
-    private fun setupFilePickerCallback() {
-        storage.filePickerCallback = object : FilePickerCallback {
-            override fun onCanceledByUser(requestCode: Int) {
-                Toast.makeText(baseContext, "File picker canceled by user", Toast.LENGTH_SHORT).show()
-            }
+private fun setupFilePickerCallback() {
+    storage.filePickerCallback = object : FilePickerCallback {
+        override fun onCanceledByUser(requestCode: Int) {
+            Toast.makeText(baseContext, "File picker canceled by user", Toast.LENGTH_SHORT).show()
+        }
 
-            override fun onStoragePermissionDenied(requestCode: Int, file: DocumentFile?) {
-                requestStoragePermission()
-            }
+        override fun onStoragePermissionDenied(requestCode: Int, file: DocumentFile?) {
+            requestStoragePermission()
+        }
 
-            override fun onFileSelected(requestCode: Int, file: DocumentFile) {
-                Toast.makeText(baseContext, "File selected: ${file.name}", Toast.LENGTH_SHORT).show()
-            }
+        override fun onFileSelected(requestCode: Int, file: DocumentFile) {
+            Toast.makeText(baseContext, "File selected: ${file.name}", Toast.LENGTH_SHORT).show()
         }
     }
+}
 ```
 
 ## `SimpleStorageHelper`
