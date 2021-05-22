@@ -9,7 +9,6 @@ import android.content.Intent
 import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
-import android.provider.MediaStore
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.core.content.FileProvider
@@ -185,7 +184,7 @@ fun DocumentFile.toMediaFile(context: Context) = if (isTreeDocumentFile) null el
  * @return File path without storage ID. Returns empty `String` if:
  * * It is the root path
  * * It is not a raw file and the authority is neither [DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY] nor [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY]
- * * The authority is [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY], but [isTreeDocumentFile] returns `false` and column [MediaStore.MediaColumns.RELATIVE_PATH] is empty
+ * * The authority is [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY], but [isTreeDocumentFile] returns `false`
  */
 @Suppress("DEPRECATION")
 fun DocumentFile.getBasePath(context: Context): String {
@@ -280,7 +279,7 @@ fun DocumentFile.getRelativePath(context: Context) = getBasePath(context).substr
  *
  * @return File's actual path. Returns empty `String` if:
  * * It is not a raw file and the authority is neither [DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY] nor [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY]
- * * The authority is [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY], but [isTreeDocumentFile] returns `false` and column [MediaStore.MediaColumns.RELATIVE_PATH] is empty
+ * * The authority is [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY], but [isTreeDocumentFile] returns `false`
  *
  * @see File.getAbsolutePath
  * @see getSimplePath

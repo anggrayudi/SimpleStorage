@@ -36,10 +36,10 @@ object DocumentFileCompat {
     const val EXTERNAL_STORAGE_AUTHORITY = "com.android.externalstorage.documents"
 
     /*
-     * File picker for each API version gives the following URIs:
-     * * API 26 - 27 => `content://com.android.providers.downloads.documents/document/22`
-     * * API 28 - 29 => `content://com.android.providers.downloads.documents/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2Fscreenshot.jpeg`
-     * * API 30+     => `content://com.android.providers.downloads.documents/document/msf%3A42`
+    File picker for each API version gives the following URIs:
+    * API 26 - 27 => content://com.android.providers.downloads.documents/document/22
+    * API 28 - 29 => content://com.android.providers.downloads.documents/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2Fscreenshot.jpeg
+    * API 30+     => content://com.android.providers.downloads.documents/document/msf%3A42
      */
     const val DOWNLOADS_FOLDER_AUTHORITY = "com.android.providers.downloads.documents"
 
