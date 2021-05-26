@@ -32,6 +32,8 @@ import java.io.*
 @Suppress("DEPRECATION")
 class MediaFile(context: Context, val uri: Uri) {
 
+    constructor(context: Context, rawFile: File) : this(context, Uri.fromFile(rawFile))
+
     private val context = context.applicationContext
 
     interface AccessCallback {

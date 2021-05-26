@@ -613,6 +613,8 @@ fun DocumentFile.findFileLiterally(name: String): DocumentFile? = listFiles().fi
 
 /**
  * @param recursive walk into sub folders
+ * @param name find file name exactly
+ * @param regex you can use regex `^.*containsName.*\$` to search file name that contains specific words
  */
 @JvmOverloads
 @WorkerThread
@@ -628,9 +630,6 @@ fun DocumentFile.search(
         recursive -> walkFileTreeForSearch(documentType, mimeType, name, regex)
         else -> {
             var sequence = listFiles().asSequence().filter { it.canRead() }
-            if (name.isNotEmpty()) {
-                sequence = sequence.filter { it.name == name }
-            }
             if (regex != null) {
                 sequence = sequence.filter { regex.matches(it.name.orEmpty()) }
             }
@@ -642,7 +641,8 @@ fun DocumentFile.search(
                 DocumentFileType.FILE -> sequence = sequence.filter { it.isFile }
                 DocumentFileType.FOLDER -> sequence = sequence.filter { it.isDirectory }
             }
-            sequence.toList()
+            val result = sequence.toList()
+            if (name.isEmpty()) result else result.firstOrNull { it.name == name }?.let { listOf(it) } ?: emptyList()
         }
     }
 }
