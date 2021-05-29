@@ -5,10 +5,10 @@ import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
-import com.afollestad.materialdialogs.MaterialDialog
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
@@ -54,10 +54,10 @@ class SimpleStorageHelper {
     private fun init() {
         storage.storageAccessCallback = object : StorageAccessCallback {
             override fun onRootPathNotSelected(requestCode: Int, rootPath: String, rootStorageType: StorageType, uri: Uri) {
-                MaterialDialog(storage.context)
-                    .message(if (rootStorageType == StorageType.SD_CARD) R.string.ss_please_select_root_storage_sdcard else R.string.ss_please_select_root_storage_primary)
-                    .negativeButton()
-                    .positiveButton {
+                AlertDialog.Builder(storage.context)
+                    .setMessage(if (rootStorageType == StorageType.SD_CARD) R.string.ss_please_select_root_storage_sdcard else R.string.ss_please_select_root_storage_primary)
+                    .setNegativeButton(android.R.string.cancel) { _, _ -> }
+                    .setPositiveButton(android.R.string.ok) { _, _ ->
                         storage.requestStorageAccess(requestCodeStorageAccess, rootStorageType)
                     }.show()
             }
@@ -100,10 +100,10 @@ class SimpleStorageHelper {
                     onStoragePermissionDenied(requestCode)
                     return
                 }
-                MaterialDialog(storage.context)
-                    .message(R.string.ss_storage_access_denied_confirm)
-                    .negativeButton()
-                    .positiveButton {
+                AlertDialog.Builder(storage.context)
+                    .setMessage(R.string.ss_storage_access_denied_confirm)
+                    .setNegativeButton(android.R.string.cancel) { _, _ -> }
+                    .setPositiveButton(android.R.string.ok) { _, _ ->
                         openFolderPickerOnceGranted = true
                         storage.requestStorageAccess(requestCodeStorageAccess, storageType)
                     }.show()
