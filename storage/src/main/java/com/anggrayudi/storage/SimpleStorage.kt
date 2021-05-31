@@ -156,11 +156,16 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
     }
 
-    fun openFilePicker(requestCode: Int, filterMimeType: String = DocumentFileCompat.MIME_TYPE_UNKNOWN) {
+    fun openFilePicker(requestCode: Int, vararg filterMimeTypes: String) {
         requestCodeFilePicker = requestCode
         if (hasStorageReadPermission(wrapper.context)) {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-                .setType(filterMimeType)
+            if (filterMimeTypes.size > 1) {
+                intent.setType(DocumentFileCompat.MIME_TYPE_UNKNOWN)
+                    .putExtra(Intent.EXTRA_MIME_TYPES, filterMimeTypes)
+            } else {
+                intent.type = filterMimeTypes.firstOrNull() ?: DocumentFileCompat.MIME_TYPE_UNKNOWN
+            }
             wrapper.startActivityForResult(intent, requestCode)
         } else {
             filePickerCallback?.onStoragePermissionDenied(requestCode, null)

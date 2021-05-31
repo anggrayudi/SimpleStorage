@@ -12,7 +12,6 @@ import androidx.fragment.app.FragmentActivity
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
-import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.StorageType
 import com.anggrayudi.storage.file.getAbsolutePath
 import com.karumi.dexter.Dexter
@@ -134,9 +133,9 @@ class SimpleStorageHelper {
         storage.openFolderPicker(requestCodeFolderPicker)
     }
 
-    fun openFilePicker(requestCodeFilePicker: Int = this.requestCodeFilePicker, filterMimeType: String = DocumentFileCompat.MIME_TYPE_UNKNOWN) {
+    fun openFilePicker(requestCodeFilePicker: Int = this.requestCodeFilePicker, vararg filterMimeTypes: String) {
         this.requestCodeFilePicker = requestCodeFilePicker
-        storage.openFilePicker(requestCodeFilePicker, filterMimeType)
+        storage.openFilePicker(requestCodeFilePicker, *filterMimeTypes)
     }
 
     fun requestStorageAccess(requestCodeStorageAccess: Int = this.requestCodeStorageAccess, openFolderPickerOnceGranted: Boolean = false) {
