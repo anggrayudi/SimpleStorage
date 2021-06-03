@@ -501,6 +501,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main, menu)
         menu.findItem(R.id.action_open_fragment).intent = Intent(this, SampleFragmentActivity::class.java)
+        menu.findItem(R.id.action_settings).intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
         menu.findItem(R.id.action_donate).intent = Intent(
             Intent.ACTION_VIEW,
             Uri.parse("https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=TGPGSY66LKUMN&source=url")

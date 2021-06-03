@@ -1,6 +1,7 @@
 package com.anggrayudi.storage
 
 import android.content.ContentResolver
+import android.content.Context
 import android.content.UriPermission
 import android.net.Uri
 import android.os.Build
@@ -10,6 +11,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 import kotlin.concurrent.thread
 
 /**
@@ -20,6 +22,13 @@ import kotlin.concurrent.thread
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE, sdk = [Build.VERSION_CODES.O_MR1])
 class SimpleStorageTest {
+
+    private val context = mockk<Context> {
+        val dataDirectoryPath = "/data/user/0/${BuildConfig.LIBRARY_PACKAGE_NAME}"
+        val fileDir = File("$dataDirectoryPath/files")
+        every { filesDir } returns fileDir
+        every { dataDir } returns File(dataDirectoryPath)
+    }
 
     @Test
     fun cleanupRedundantUriPermissions() {
@@ -45,6 +54,7 @@ class SimpleStorageTest {
             uriPermission
         }
         val resolver = mockk<ContentResolver>()
+        every { context.contentResolver } returns resolver
         every { resolver.persistedUriPermissions } returns persistedUriPermissions
 
         val revokedUris = setOf(
@@ -66,7 +76,7 @@ class SimpleStorageTest {
         val capturedUris = mutableListOf<Uri>()
         every { resolver.releasePersistableUriPermission(capture(capturedUris), any()) } answers { }
 
-        SimpleStorage.cleanupRedundantUriPermissions(resolver)
+        SimpleStorage.cleanupRedundantUriPermissions(context)
 
         assertEquals(revokedUris, capturedUris)
         verify(exactly = revokedUris.size) { resolver.releasePersistableUriPermission(any(), any()) }

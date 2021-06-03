@@ -16,6 +16,7 @@ import com.afollestad.materialdialogs.list.listItems
 import com.anggrayudi.storage.extension.isDownloadsDocument
 import com.anggrayudi.storage.extension.isTreeDocumentFile
 import com.anggrayudi.storage.file.DocumentFileCompat
+import com.anggrayudi.storage.file.StorageId.PRIMARY
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -39,7 +40,7 @@ class StorageInfoAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         ioScope.launch {
             val storageId = storageIds[position]
-            val storageName = if (storageId == DocumentFileCompat.PRIMARY) "External Storage" else storageId
+            val storageName = if (storageId == PRIMARY) "External Storage" else storageId
             val storageCapacity = Formatter.formatFileSize(context, DocumentFileCompat.getStorageCapacity(context, storageId))
             val storageUsedSpace = Formatter.formatFileSize(context, DocumentFileCompat.getUsedSpace(context, storageId))
             val storageFreeSpace = Formatter.formatFileSize(context, DocumentFileCompat.getFreeSpace(context, storageId))
@@ -50,7 +51,7 @@ class StorageInfoAdapter(
                     tvStorageUsedSpace.text = "Used Space: $storageUsedSpace"
                     tvStorageFreeSpace.text = "Free Space: $storageFreeSpace"
                     btnShowGrantedUri.setOnClickListener { showGrantedUris(it.context, storageId) }
-                    if (storageId == DocumentFileCompat.PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                    if (storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                         // No URI permission required for external storage
                         btnShowGrantedUri.visibility = View.GONE
                     }
@@ -68,7 +69,7 @@ class StorageInfoAdapter(
             .filter { it.isReadPermission && it.isWritePermission && it.uri.isTreeDocumentFile }
             .map {
                 if (it.uri.isDownloadsDocument) {
-                    if (filterStorageId == DocumentFileCompat.PRIMARY) {
+                    if (filterStorageId == PRIMARY) {
                         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
                     } else ""
                 } else {
@@ -76,7 +77,7 @@ class StorageInfoAdapter(
                     val storageId = uriPath.substringBefore(':').substringAfterLast('/')
                     if (filterStorageId == storageId) {
                         val rootFolder = uriPath.substringAfter(':', "")
-                        if (storageId == DocumentFileCompat.PRIMARY) {
+                        if (storageId == PRIMARY) {
                             "${Environment.getExternalStorageDirectory()}/$rootFolder"
                         } else {
                             "/storage/$storageId/$rootFolder"

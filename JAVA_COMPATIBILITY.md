@@ -14,7 +14,7 @@ You can learn it [here](https://www.raywenderlich.com/10986797-extension-functio
 
 Common extension functions are stored in package `com.anggrayudi.storage.extension`. The others are in `com.anggrayudi.storage.file`.
 You'll find that the most useful extension functions come from `DocumentFileExtKt` and `FileExtKt`. They are:
-* `DocumentFile.storageId` and `File.storageId` → Get storage ID. Returns `primary` for external storage and something like `AAAA-BBBB` for SD card.
+* `DocumentFile.getStorageId()` and `File.getStorageId()` → Get storage ID. Returns `primary` for external storage and something like `AAAA-BBBB` for SD card.
 * `DocumentFile.getAbsolutePath()` → Get file's absolute path. Returns something like `/storage/AAAA-BBBB/Music/My Love.mp3`.
 * `DocumentFile.copyFileTo()` and `File.copyFileTo()`
 * `DocumentFile.search()` and `File.search()`, etc.
@@ -25,17 +25,14 @@ Suppose that you want to get storage ID of the file:
 
 ```kotlin
 val file = ...
-val storageId = file.storageId
+val storageId = file.getStorageId(context)
 ```
 
 #### In Java
 
 ```java
 DocumentFile file = ...
-// Prior to 0.4.2:
-String storageId = DocumentFileExtKt.getStorageId(file);
-// 0.4.2 and higher
-String storageId = DocumentFileUtils.getStorageId(file);
+String storageId = DocumentFileUtils.getStorageId(file, context);
 ```
 
 All extension functions work like static methods in Java. Note that since `0.4.2`,

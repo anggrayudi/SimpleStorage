@@ -8,7 +8,8 @@ import android.net.Uri
 import android.provider.MediaStore
 import androidx.annotation.WorkerThread
 import com.anggrayudi.storage.file.DocumentFileCompat
-import com.anggrayudi.storage.file.storageId
+import com.anggrayudi.storage.file.StorageId.PRIMARY
+import com.anggrayudi.storage.file.getStorageId
 import com.anggrayudi.storage.media.MediaFile
 import java.io.*
 
@@ -20,17 +21,16 @@ import java.io.*
 /**
  * If given [Uri] with path `/tree/primary:Downloads/MyVideo.mp4`, then return `primary`.
  */
-val Uri.storageId: String
-    get() {
-        val path = path.orEmpty()
-        return if (isRawFile) {
-            File(path).storageId
-        } else when {
-            isExternalStorageDocument -> path.substringBefore(':', "").substringAfterLast('/')
-            isDownloadsDocument -> DocumentFileCompat.PRIMARY
-            else -> ""
-        }
+fun Uri.getStorageId(context: Context): String {
+    val path = path.orEmpty()
+    return if (isRawFile) {
+        File(path).getStorageId(context)
+    } else when {
+        isExternalStorageDocument -> path.substringBefore(':', "").substringAfterLast('/')
+        isDownloadsDocument -> PRIMARY
+        else -> ""
     }
+}
 
 val Uri.isTreeDocumentFile: Boolean
     get() = path?.startsWith("/tree/") == true

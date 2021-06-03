@@ -107,8 +107,8 @@ val imageList = MediaStoreCompat.fromMediaType(context, MediaType.IMAGE)
 Since `java.io.File` has been deprecated in Android 10, thus you have to use `DocumentFile` for file management.
 
 Simple Storage adds Kotlin extension functions to `DocumentFile`, so you can manage files like this:
-* `DocumentFile.storageId`
-* `DocumentFile.storageType`
+* `DocumentFile.getStorageId()`
+* `DocumentFile.getStorageType()`
 * `DocumentFile.getBasePath()`
 * `DocumentFile.copyFileTo()`
 * `DocumentFile.moveFolderTo()`
@@ -176,7 +176,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onRootPathPermissionGranted(root: DocumentFile) {
-                Toast.makeText(baseContext, "Storage access has been granted for ${root.storageId}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(baseContext, "Storage access has been granted for ${root.getStorageId(baseContext)}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -215,8 +215,8 @@ private fun setupFolderPickerCallback() {
             requestStoragePermission()
         }
 
-        override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType?) {
-            if (storageType == null) {
+        override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType) {
+            if (storageType == StorageType.UNKNOWN) {
                 requestStoragePermission()
                 return
             }

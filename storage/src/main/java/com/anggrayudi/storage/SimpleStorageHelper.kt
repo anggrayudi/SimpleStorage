@@ -94,8 +94,8 @@ class SimpleStorageHelper {
                 onFolderSelected?.invoke(requestCode, folder)
             }
 
-            override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType?) {
-                if (storageType == null) {
+            override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType) {
+                if (storageType == StorageType.UNKNOWN) {
                     onStoragePermissionDenied(requestCode)
                     return
                 }

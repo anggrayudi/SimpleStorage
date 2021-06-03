@@ -6,11 +6,12 @@ import android.content.Context
 import android.os.Build
 import android.os.Environment
 import androidx.annotation.WorkerThread
+import androidx.core.content.ContextCompat
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.extension.trimFileSeparator
-import com.anggrayudi.storage.file.DocumentFileCompat.MIME_TYPE_BINARY_FILE
-import com.anggrayudi.storage.file.DocumentFileCompat.MIME_TYPE_UNKNOWN
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
+import com.anggrayudi.storage.file.StorageId.DATA
+import com.anggrayudi.storage.file.StorageId.PRIMARY
 import java.io.File
 import java.io.IOException
 
@@ -20,73 +21,81 @@ import java.io.IOException
  */
 
 /**
- * ID of this storage. For external storage, it will return [DocumentFileCompat.PRIMARY],
+ * ID of this storage. For external storage, it will return [PRIMARY],
  * otherwise it is a SD Card and will return integers like `6881-2249`.
  */
-val File.storageId: String
-    get() = if (path.startsWith(SimpleStorage.externalStoragePath)) {
-        DocumentFileCompat.PRIMARY
-    } else {
-        path.substringAfter("/storage/", "").substringBefore('/')
-    }
+fun File.getStorageId(context: Context) = when {
+    path.startsWith(SimpleStorage.externalStoragePath) -> PRIMARY
+    path.startsWith(context.dataDirectory.path) -> DATA
+    else -> path.substringAfter("/storage/", "").substringBefore('/')
+}
 
 val File.inPrimaryStorage: Boolean
     get() = path.startsWith(SimpleStorage.externalStoragePath)
 
-val File.inSdCardStorage: Boolean
-    get() = storageId != DocumentFileCompat.PRIMARY && path.startsWith("/storage/$storageId")
+fun File.inDataStorage(context: Context) = path.startsWith(context.dataDirectory.path)
 
-val File.storageType: StorageType?
-    get() = when {
-        inPrimaryStorage -> StorageType.EXTERNAL
-        inSdCardStorage -> StorageType.SD_CARD
-        else -> null
+fun File.inSdCardStorage(context: Context) = getStorageId(context).let { it != PRIMARY && it != DATA && path.startsWith("/storage/$it") }
+
+fun File.getStorageType(context: Context) = when {
+    inPrimaryStorage -> StorageType.EXTERNAL
+    inDataStorage(context) -> StorageType.DATA
+    inSdCardStorage(context) -> StorageType.SD_CARD
+    else -> StorageType.UNKNOWN
+}
+
+fun File.child(name: String) = File(this, name)
+
+/**
+ * @see [Context.getDataDir]
+ * @see [Context.getFilesDir]
+ */
+val Context.dataDirectory: File
+    get() = if (Build.VERSION.SDK_INT > 23) dataDir else filesDir.parentFile!!
+
+fun File.getBasePath(context: Context): String {
+    val externalStoragePath = SimpleStorage.externalStoragePath
+    if (path.startsWith(externalStoragePath)) {
+        return path.substringAfter(externalStoragePath, "").trimFileSeparator()
     }
-
-val File.basePath: String
-    get() {
-        val externalStoragePath = SimpleStorage.externalStoragePath
-        val sdCardStoragePath = "/storage/$storageId"
-        return when {
-            path.startsWith(externalStoragePath) -> path.substringAfter(externalStoragePath, "").trimFileSeparator()
-            path.startsWith(sdCardStoragePath) -> path.substringAfter(sdCardStoragePath, "").trimFileSeparator()
-            else -> ""
-        }
+    val dataDir = context.dataDirectory.path
+    if (path.startsWith(dataDir)) {
+        return path.substringAfter(dataDir, "").trimFileSeparator()
     }
+    val storageId = getStorageId(context)
+    return path.substringAfter("/storage/$storageId", "").trimFileSeparator()
+}
 
-val File.rootPath: String
-    get() {
-        val storageId = storageId
-        return when {
-            storageId == DocumentFileCompat.PRIMARY -> SimpleStorage.externalStoragePath
-            storageId.isNotEmpty() -> "/storage/$storageId"
-            else -> ""
-        }
+fun File.getRootPath(context: Context): String {
+    val storageId = getStorageId(context)
+    return when {
+        storageId == PRIMARY -> SimpleStorage.externalStoragePath
+        storageId == DATA -> context.dataDirectory.path
+        storageId.isNotEmpty() -> "/storage/$storageId"
+        else -> ""
     }
+}
 
-val File.simplePath
-    get() = "$storageId:$basePath".removePrefix(":")
+fun File.getSimplePath(context: Context) = "${getStorageId(context)}:${getBasePath(context)}".removePrefix(":")
 
 /**
  *  Returns:
  * * `null` if it is a directory or the file does not exist
- * * [DocumentFileCompat.MIME_TYPE_UNKNOWN] if the file exists but the mime type is not found
+ * * [MimeType.UNKNOWN] if the file exists but the mime type is not found
  */
 val File.mimeType: String?
-    get() = if (isFile) DocumentFileCompat.getMimeTypeFromExtension(extension) else null
+    get() = if (isFile) MimeType.getMimeTypeFromExtension(extension) else null
 
 @JvmOverloads
-fun File.getRootRawFile(requiresWriteAccess: Boolean = false) = rootPath.let {
+fun File.getRootRawFile(context: Context, requiresWriteAccess: Boolean = false) = getRootPath(context).let {
     if (it.isEmpty()) null else File(it).run {
-        if (canRead() && (requiresWriteAccess && isWritable || !requiresWriteAccess)) this else null
+        if (canRead() && (requiresWriteAccess && isWritable(context) || !requiresWriteAccess)) this else null
     }
 }
 
-val File.isReadOnly: Boolean
-    get() = canRead() && !isWritable
+fun File.isReadOnly(context: Context) = canRead() && !isWritable(context)
 
-val File.canModify: Boolean
-    get() = canRead() && isWritable
+fun File.canModify(context: Context) = canRead() && isWritable(context)
 
 val File.isEmpty: Boolean
     get() = isFile && length() == 0L || isDirectory && list().isNullOrEmpty()
@@ -101,15 +110,34 @@ fun File.createNewFileIfPossible(): Boolean = try {
  * Use it, because [File.canWrite] is not reliable on Android 10.
  * Read [this issue](https://github.com/anggrayudi/SimpleStorage/issues/24#issuecomment-830000378)
  */
-val File.isWritable: Boolean
-    get() = canWrite() && (isFile || (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || Environment.isExternalStorageManager(this)))
+fun File.isWritable(context: Context) = canWrite() && (isFile || isExternalStorageManager(context))
+
+/**
+ * @return `true` if you have full disk access
+ * @see Environment.isExternalStorageManager
+ */
+@Suppress("DEPRECATION")
+fun File.isExternalStorageManager(context: Context) = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q && Environment.isExternalStorageManager(this)
+        || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && path.startsWith(SimpleStorage.externalStoragePath) && SimpleStorage.hasStoragePermission(context)
+        || context.writableDirs.any { path.startsWith(it.path) }
+
+/**
+ * These directories do not require storage permissions. They are always writable with full disk access.
+ */
+val Context.writableDirs: Set<File>
+    get() {
+        val dirs = mutableSetOf(dataDirectory)
+        dirs.addAll(ContextCompat.getObbDirs(this).filterNotNull())
+        dirs.addAll(ContextCompat.getExternalFilesDirs(this, null).mapNotNull { it?.parentFile })
+        return dirs
+    }
 
 /**
  * Create file and if exists, increment file name.
  */
 @WorkerThread
-fun File.makeFile(name: String, mimeType: String? = MIME_TYPE_UNKNOWN, forceCreate: Boolean = true): File? {
-    if (!isDirectory || !isWritable) {
+fun File.makeFile(context: Context, name: String, mimeType: String? = MimeType.UNKNOWN, forceCreate: Boolean = true): File? {
+    if (!isDirectory || !isWritable(context)) {
         return null
     }
 
@@ -121,10 +149,10 @@ fun File.makeFile(name: String, mimeType: String? = MIME_TYPE_UNKNOWN, forceCrea
 
     val filename = cleanName.substringAfterLast('/')
     val extensionByName = cleanName.substringAfterLast('.', "")
-    val extension = if (extensionByName.isNotEmpty() && (mimeType == null || mimeType == MIME_TYPE_UNKNOWN || mimeType == MIME_TYPE_BINARY_FILE)) {
+    val extension = if (extensionByName.isNotEmpty() && (mimeType == null || mimeType == MimeType.UNKNOWN || mimeType == MimeType.BINARY_FILE)) {
         extensionByName
     } else {
-        DocumentFileCompat.getExtensionFromMimeTypeOrFileName(mimeType, cleanName)
+        MimeType.getExtensionFromMimeTypeOrFileName(mimeType, cleanName)
     }
     val baseFileName = filename.removeSuffix(".$extension")
     val fullFileName = "$baseFileName.$extension".trimEnd('.')
@@ -146,8 +174,8 @@ fun File.makeFile(name: String, mimeType: String? = MIME_TYPE_UNKNOWN, forceCrea
  */
 @WorkerThread
 @JvmOverloads
-fun File.makeFolder(name: String, forceCreate: Boolean = true): File? {
-    if (!isDirectory || !isWritable) {
+fun File.makeFolder(context: Context, name: String, forceCreate: Boolean = true): File? {
+    if (!isDirectory || !isWritable(context)) {
         return null
     }
 
@@ -168,10 +196,11 @@ fun File.makeFolder(name: String, forceCreate: Boolean = true): File? {
 
 fun File.toDocumentFile(context: Context) = if (canRead()) DocumentFileCompat.fromFile(context, this) else null
 
-fun File.deleteEmptyFolders() {
-    if (isDirectory && isWritable) {
+fun File.deleteEmptyFolders(context: Context): Boolean {
+    return if (isDirectory && isWritable(context)) {
         walkFileTreeAndDeleteEmptyFolders().reversed().forEach { it.delete() }
-    }
+        true
+    } else false
 }
 
 private fun File.walkFileTreeAndDeleteEmptyFolders(): List<File> {

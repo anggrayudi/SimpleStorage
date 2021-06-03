@@ -1,6 +1,6 @@
 package com.anggrayudi.storage.media
 
-import com.anggrayudi.storage.file.DocumentFileCompat
+import com.anggrayudi.storage.file.MimeType
 
 /**
  * Created on 05/09/20
@@ -9,5 +9,5 @@ import com.anggrayudi.storage.file.DocumentFileCompat
 data class FileDescription(
     val name: String,
     val subFolder: String = "",
-    val mimeType: String = DocumentFileCompat.MIME_TYPE_UNKNOWN
+    val mimeType: String = MimeType.UNKNOWN
 )

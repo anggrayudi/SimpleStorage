@@ -128,7 +128,7 @@ object MediaStoreCompat {
         } else {
             @Suppress("DEPRECATION")
             val publicDirectory = Environment.getExternalStoragePublicDirectory(folderName)
-            if (publicDirectory.canModify) {
+            if (publicDirectory.canModify(context)) {
                 var media = File("$publicDirectory/${file.subFolder}", file.name)
                 val parentFile = media.parentFile ?: return null
                 parentFile.mkdirs()

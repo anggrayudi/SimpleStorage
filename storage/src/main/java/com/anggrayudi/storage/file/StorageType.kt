@@ -12,5 +12,7 @@ enum class StorageType {
      * @see [SimpleStorage.externalStoragePath]
      */
     EXTERNAL,
-    SD_CARD
+    DATA,
+    SD_CARD,
+    UNKNOWN
 }

@@ -61,7 +61,7 @@ class MediaFile(context: Context, val uri: Uri) {
         } else {
             val mimeType = getColumnInfoString(MediaStore.MediaColumns.MIME_TYPE)
             val displayName = getColumnInfoString(MediaStore.MediaColumns.DISPLAY_NAME).orEmpty()
-            DocumentFileCompat.getFullFileName(displayName, mimeType)
+            MimeType.getFullFileName(displayName, mimeType)
         }
 
     /**
@@ -80,18 +80,18 @@ class MediaFile(context: Context, val uri: Uri) {
      * @see [mimeType]
      */
     val type: String?
-        get() = toRawFile()?.name?.let { DocumentFileCompat.getMimeTypeFromExtension(it.substringAfterLast('.', "")) }
+        get() = toRawFile()?.name?.let { MimeType.getMimeTypeFromExtension(it.substringAfterLast('.', "")) }
             ?: getColumnInfoString(MediaStore.MediaColumns.MIME_TYPE)
 
     /**
      * Advanced version of [type]. Returns:
      * * `null` if the file does not exist
-     * * [DocumentFileCompat.MIME_TYPE_UNKNOWN] if the file exists but the mime type is not found
+     * * [MimeType.UNKNOWN] if the file exists but the mime type is not found
      */
     val mimeType: String?
         get() = if (exists) {
             getColumnInfoString(MediaStore.MediaColumns.MIME_TYPE)
-                ?: DocumentFileCompat.getMimeTypeFromExtension(extension)
+                ?: MimeType.getMimeTypeFromExtension(extension)
         } else null
 
     var length: Long
@@ -330,7 +330,7 @@ class MediaFile(context: Context, val uri: Uri) {
         }
 
         try {
-            if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.storageId), length)) {
+            if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), length)) {
                 callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH)
                 return
             }
@@ -351,7 +351,7 @@ class MediaFile(context: Context, val uri: Uri) {
             }
         }
 
-        val cleanFileName = DocumentFileCompat.getFullFileName(fileDescription?.name ?: name.orEmpty(), fileDescription?.mimeType ?: type)
+        val cleanFileName = MimeType.getFullFileName(fileDescription?.name ?: name.orEmpty(), fileDescription?.mimeType ?: type)
             .removeForbiddenCharsFromFilename().trimFileSeparator()
         val conflictResolution = handleFileConflict(targetDirectory, cleanFileName, callback)
         if (conflictResolution == FileCallback.ConflictResolution.SKIP) {
@@ -389,7 +389,7 @@ class MediaFile(context: Context, val uri: Uri) {
         }
 
         try {
-            if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.storageId), length)) {
+            if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), length)) {
                 callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH)
                 return
             }
@@ -410,7 +410,7 @@ class MediaFile(context: Context, val uri: Uri) {
             }
         }
 
-        val cleanFileName = DocumentFileCompat.getFullFileName(fileDescription?.name ?: name.orEmpty(), fileDescription?.mimeType ?: type)
+        val cleanFileName = MimeType.getFullFileName(fileDescription?.name ?: name.orEmpty(), fileDescription?.mimeType ?: type)
             .removeForbiddenCharsFromFilename().trimFileSeparator()
         val conflictResolution = handleFileConflict(targetDirectory, cleanFileName, callback)
         if (conflictResolution == FileCallback.ConflictResolution.SKIP) {
@@ -446,8 +446,8 @@ class MediaFile(context: Context, val uri: Uri) {
         callback: FileCallback
     ): DocumentFile? {
         try {
-            val targetFolder =
-                DocumentFileCompat.mkdirs(context, DocumentFileCompat.buildAbsolutePath(targetDirectory.storageId, targetDirectory.getBasePath(context)))
+            val absolutePath = DocumentFileCompat.buildAbsolutePath(context, targetDirectory.getStorageId(context), targetDirectory.getBasePath(context))
+            val targetFolder = DocumentFileCompat.mkdirs(context, absolutePath)
             if (targetFolder == null) {
                 callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
                 return null
