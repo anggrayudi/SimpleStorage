@@ -1,8 +1,10 @@
 package com.anggrayudi.storage.callback
 
+import androidx.annotation.RestrictTo
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.documentfile.provider.DocumentFile
+import com.anggrayudi.storage.file.CreateMode
 import com.anggrayudi.storage.media.MediaFile
 import kotlinx.coroutines.CancellableContinuation
 
@@ -97,7 +99,10 @@ interface FileCallback {
         /**
          * Cancel copy/move.
          */
-        SKIP
+        SKIP;
+
+        @RestrictTo(RestrictTo.Scope.LIBRARY)
+        fun toCreateMode() = if (this == REPLACE) CreateMode.REPLACE else CreateMode.CREATE_NEW
     }
 
     enum class ErrorCode {

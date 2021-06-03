@@ -355,8 +355,9 @@ fun DocumentFile.recreateFile(context: Context): DocumentFile? {
         val filename = name.orEmpty()
         val parentFile = parentFile
         if (parentFile?.isWritable(context) == true) {
-            delete()
-            parentFile.makeFile(context, filename, type)
+            val mimeType = type
+            forceDelete(context)
+            parentFile.makeFile(context, filename, mimeType)
         } else null
     } else null
 }
@@ -419,7 +420,9 @@ fun DocumentFile.autoIncrementFileName(context: Context, filename: String): Stri
  * Useful for creating temporary files. The extension is `*.bin`
  */
 @WorkerThread
-fun DocumentFile.createBinaryFile(context: Context, name: String, forceCreate: Boolean = true) = makeFile(context, name, MimeType.BINARY_FILE, forceCreate)
+@JvmOverloads
+fun DocumentFile.createBinaryFile(context: Context, name: String, mode: CreateMode = CreateMode.CREATE_NEW) =
+    makeFile(context, name, MimeType.BINARY_FILE, mode)
 
 /**
  * Similar to [DocumentFile.createFile], but adds compatibility on API 28 and lower.
@@ -431,13 +434,13 @@ fun DocumentFile.createBinaryFile(context: Context, name: String, forceCreate: B
  * @param forceCreate if `true` and the file with this name already exists, create new file with a name that has suffix `(1)`, e.g. `My Movie (1).mp4`.
  *                    Otherwise use existed file.
  */
-@JvmOverloads
 @WorkerThread
+@JvmOverloads
 fun DocumentFile.makeFile(
     context: Context,
     name: String,
     mimeType: String? = MimeType.UNKNOWN,
-    forceCreate: Boolean = true
+    mode: CreateMode = CreateMode.CREATE_NEW
 ): DocumentFile? {
     if (!isDirectory || !isWritable(context)) {
         return null
@@ -446,7 +449,7 @@ fun DocumentFile.makeFile(
     val cleanName = name.removeForbiddenCharsFromFilename().trimFileSeparator()
     val subFolder = cleanName.substringBeforeLast('/', "")
     val parent = if (subFolder.isEmpty()) this else {
-        makeFolder(context, subFolder, forceCreate) ?: return null
+        makeFolder(context, subFolder, mode) ?: return null
     }
 
     val filename = cleanName.substringAfterLast('/')
@@ -459,14 +462,22 @@ fun DocumentFile.makeFile(
     val baseFileName = filename.removeSuffix(".$extension")
     val fullFileName = "$baseFileName.$extension".trimEnd('.')
 
-    if (!forceCreate) {
+    if (mode != CreateMode.CREATE_NEW) {
         val existingFile = parent.findFile(fullFileName)
-        if (existingFile?.exists() == true) return existingFile.let { if (it.isFile) it else null }
+        if (existingFile?.exists() == true) {
+            return existingFile.let {
+                when {
+                    mode == CreateMode.REPLACE -> it.recreateFile(context)
+                    it.isFile -> it
+                    else -> null
+                }
+            }
+        }
     }
 
     if (isRawFile) {
         // RawDocumentFile does not avoid duplicate file name, but TreeDocumentFile does.
-        return DocumentFile.fromFile(toRawFile(context)?.makeFile(context, cleanName, mimeType, forceCreate) ?: return null)
+        return DocumentFile.fromFile(toRawFile(context)?.makeFile(context, cleanName, mimeType, mode) ?: return null)
     }
 
     val correctMimeType = MimeType.getMimeTypeFromExtension(extension).let {
@@ -484,27 +495,17 @@ fun DocumentFile.makeFile(
 }
 
 /**
- * If `createNewFolderIfAlreadyExists == false`:
- * * If folder `A/B` already exists under this [DocumentFile] and you trying to create `A/B`, it will return [DocumentFile] with subfolder `A/B`.
- * * If folder `A/B` already exists under this [DocumentFile] and you trying to create `A/B/C`, it will create folder `C` and return [DocumentFile] with subfolder `A/B/C`.
- *
- * If `createNewFolderIfAlreadyExists == true`:
- * * If folder `A` already exists under this [DocumentFile] and you trying to create `A`, it will return [DocumentFile] with subfolder `A (1)`.
- * * If folder `A/B` already exists under this [DocumentFile] and you trying to create `A/B`, it will return [DocumentFile] with subfolder `A (1)/B`.
- *
  * @param name can input `MyFolder` or `MyFolder/SubFolder`
- * @param forceCreate if `true` and the file with this name already exists, create new file with a name that has suffix `(1)`, e.g. `Movies (1)`.
- *                    Otherwise use existed folder.
  */
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.makeFolder(context: Context, name: String, forceCreate: Boolean = true): DocumentFile? {
+fun DocumentFile.makeFolder(context: Context, name: String, mode: CreateMode = CreateMode.CREATE_NEW): DocumentFile? {
     if (!isDirectory || !isWritable(context)) {
         return null
     }
 
     if (isRawFile) {
-        return DocumentFile.fromFile(toRawFile(context)?.makeFolder(context, name, forceCreate) ?: return null)
+        return DocumentFile.fromFile(toRawFile(context)?.makeFolder(context, name, mode) ?: return null)
     }
 
     // if name is "Aduhhh/Now/Dee", system will convert it to Aduhhh_Now_Dee, so create a sequence
@@ -512,24 +513,25 @@ fun DocumentFile.makeFolder(context: Context, name: String, forceCreate: Boolean
     val folderNameLevel1 = directorySequence.removeFirstOrNull() ?: return null
     var currentDirectory = if (isDownloadsDocument && isTreeDocumentFile) (toWritableDownloadsDocumentFile(context) ?: return null) else this
     val folderLevel1 = currentDirectory.findFile(folderNameLevel1)
-    currentDirectory = if (folderLevel1 == null || forceCreate) {
+
+    currentDirectory = if (folderLevel1 == null || mode == CreateMode.CREATE_NEW) {
         currentDirectory.createDirectory(folderNameLevel1) ?: return null
+    } else if (mode == CreateMode.REPLACE) {
+        folderLevel1.forceDelete(context, true)
+        if (folderLevel1.isDirectory) folderLevel1 else currentDirectory.createDirectory(folderNameLevel1) ?: return null
     } else if (folderLevel1.isDirectory && folderLevel1.canRead()) {
         folderLevel1
     } else {
         return null
     }
+
     directorySequence.forEach { folder ->
         try {
             val directory = currentDirectory.findFile(folder)
             currentDirectory = if (directory == null) {
                 currentDirectory.createDirectory(folder) ?: return null
             } else if (directory.isDirectory && directory.canRead()) {
-                if (forceCreate) {
-                    currentDirectory.createDirectory(folder) ?: return null
-                } else {
-                    directory
-                }
+                directory
             } else {
                 return null
             }
@@ -686,6 +688,9 @@ private fun DocumentFile.walkFileTreeForSearch(
     return fileTree
 }
 
+/**
+ * @see File.deleteRecursively
+ */
 @WorkerThread
 @JvmOverloads
 fun DocumentFile.deleteRecursively(context: Context, childrenOnly: Boolean = false): Boolean {
@@ -700,9 +705,23 @@ fun DocumentFile.deleteRecursively(context: Context, childrenOnly: Boolean = fal
             if (files[index].delete())
                 count--
         }
-        count == 0 && (childrenOnly || delete())
+        count == 0 && (childrenOnly || delete() || !exists())
     } else {
-        delete()
+        false
+    }
+}
+
+/**
+ * @return `true` if the file/folder was deleted or does not exist
+ * @see File.forceDelete
+ */
+@WorkerThread
+@JvmOverloads
+fun DocumentFile.forceDelete(context: Context, childrenOnly: Boolean = false): Boolean {
+    return if (isDirectory) {
+        deleteRecursively(context, childrenOnly)
+    } else {
+        delete() || !exists()
     }
 }
 
@@ -905,8 +924,7 @@ private fun DocumentFile.copyFolderTo(
     val reportInterval = callback.onStart(this, totalFilesToCopy)
     if (reportInterval < 0) return
 
-    val targetFolder =
-        writableTargetParentFolder.makeFolder(context, targetFolderParentName, conflictResolution == FolderCallback.ConflictResolution.CREATE_NEW)
+    val targetFolder = writableTargetParentFolder.makeFolder(context, targetFolderParentName, conflictResolution.toCreateMode())
     if (targetFolder == null) {
         callback.onFailed(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
         return
@@ -959,7 +977,7 @@ private fun DocumentFile.copyFolderTo(
             val subPath = sourceFile.getSubPath(context, targetFolderParentPath).substringBeforeLast('/', "")
             val filename = ("$subPath/" + sourceFile.name.orEmpty()).trimFileSeparator()
             if (sourceFile.isDirectory) {
-                val newFolder = targetFolder.makeFolder(context, filename, false)
+                val newFolder = targetFolder.makeFolder(context, filename, CreateMode.REUSE)
                 if (newFolder == null) {
                     success = false
                     break
@@ -967,7 +985,7 @@ private fun DocumentFile.copyFolderTo(
                 continue
             }
 
-            val targetFile = targetFolder.makeFile(context, filename, sourceFile.type, false)
+            val targetFile = targetFolder.makeFile(context, filename, sourceFile.type, CreateMode.REUSE)
             if (targetFile != null && targetFile.length() > 0) {
                 conflictedFiles.add(FolderCallback.FileConflict(sourceFile, targetFile))
                 continue
@@ -1023,7 +1041,7 @@ private fun DocumentFile.copyFolderTo(
     }
     timer?.cancel()
     if (!success || conflictedFiles.isEmpty()) {
-        if (deleteSourceWhenComplete && success) deleteRecursively(context)
+        if (deleteSourceWhenComplete && success) forceDelete(context)
         callback.onCompleted(targetFolder, totalFilesToCopy, totalCopiedFiles, success)
         return
     }
@@ -1113,7 +1131,7 @@ private fun DocumentFile.copyFolderTo(
         }
     }
     timer?.cancel()
-    if (deleteSourceWhenComplete && success) deleteRecursively(context)
+    if (deleteSourceWhenComplete && success) forceDelete(context)
     callback.onCompleted(targetFolder, totalFilesToCopy, totalCopiedFiles, success)
 }
 
@@ -1181,7 +1199,7 @@ fun DocumentFile.copyFileTo(
     if (fileDescription?.subFolder.isNullOrEmpty()) {
         copyFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, callback)
     } else {
-        val targetDirectory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), false)
+        val targetDirectory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
         if (targetDirectory == null) {
             callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
         } else {
@@ -1221,10 +1239,11 @@ private fun DocumentFile.copyFileTo(
     val reportInterval = callback.onStart(this)
     if (reportInterval < 0) return
     val watchProgress = reportInterval > 0
+
     try {
         val targetFile = createTargetFile(
             context, writableTargetFolder, cleanFileName, newMimeTypeInTargetPath ?: mimeTypeByFileName,
-            fileConflictResolution == FileCallback.ConflictResolution.CREATE_NEW, callback
+            fileConflictResolution.toCreateMode(), callback
         ) ?: return
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
             copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, false, callback)
@@ -1323,10 +1342,10 @@ private fun createTargetFile(
     targetFolder: DocumentFile,
     newFilenameInTargetPath: String,
     mimeType: String?,
-    forceCreate: Boolean,
+    mode: CreateMode,
     callback: FileCallback
 ): DocumentFile? {
-    val targetFile = targetFolder.makeFile(context, newFilenameInTargetPath, mimeType, forceCreate)
+    val targetFile = targetFolder.makeFile(context, newFilenameInTargetPath, mimeType, mode)
     if (targetFile == null) {
         callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
     }
@@ -1438,7 +1457,7 @@ fun DocumentFile.moveFileTo(
     if (fileDescription?.subFolder.isNullOrEmpty()) {
         moveFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, callback)
     } else {
-        val targetDirectory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), false)
+        val targetDirectory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
         if (targetDirectory == null) {
             callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
         } else {
@@ -1522,7 +1541,7 @@ private fun DocumentFile.moveFileTo(
     try {
         val targetFile = createTargetFile(
             context, writableTargetFolder, cleanFileName, newMimeTypeInTargetPath ?: mimeTypeByFileName,
-            fileConflictResolution == FileCallback.ConflictResolution.CREATE_NEW, callback
+            fileConflictResolution.toCreateMode(), callback
         ) ?: return
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
             copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, true, callback)
@@ -1624,8 +1643,7 @@ private fun handleFileConflict(
             }
         }
         if (resolution == FileCallback.ConflictResolution.REPLACE) {
-            val deleteSuccess = targetFile.let { if (it.isDirectory) it.deleteRecursively(context) else it.delete() }
-            if (!deleteSuccess || targetFile.exists()) {
+            if (!targetFile.forceDelete(context)) {
                 callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
                 return FileCallback.ConflictResolution.SKIP
             }
@@ -1659,8 +1677,7 @@ private fun handleParentFolderConflict(
         when (resolution) {
             FolderCallback.ConflictResolution.REPLACE -> {
                 val isFolder = targetFolder.isDirectory
-                val deleteSuccess = targetFolder.let { if (isFolder) it.deleteRecursively(context, true) else (it.delete() || !it.exists()) }
-                if (deleteSuccess) {
+                if (targetFolder.forceDelete(context, true)) {
                     if (!isFolder) {
                         val newFolder = targetFolder.parentFile?.createDirectory(targetFolderParentName)
                         if (newFolder == null) {

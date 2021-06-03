@@ -10,4 +10,7 @@ data class FileDescription(
     val name: String,
     val subFolder: String = "",
     val mimeType: String = MimeType.UNKNOWN
-)
+) {
+    val fullName: String
+        get() = MimeType.getFullFileName(name, mimeType)
+}

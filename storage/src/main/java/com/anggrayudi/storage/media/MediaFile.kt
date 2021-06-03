@@ -221,7 +221,6 @@ class MediaFile(context: Context, val uri: Uri) {
     fun delete(): Boolean {
         val file = toRawFile()
         return if (file != null) {
-            context.contentResolver.delete(uri, null, null)
             file.delete() || !file.exists()
         } else try {
             context.contentResolver.delete(uri, null, null) > 0
@@ -342,7 +341,7 @@ class MediaFile(context: Context, val uri: Uri) {
         val targetDirectory = if (fileDescription?.subFolder.isNullOrEmpty()) {
             targetFolder
         } else {
-            val directory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), false)
+            val directory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
             if (directory == null) {
                 callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
                 return
@@ -364,7 +363,7 @@ class MediaFile(context: Context, val uri: Uri) {
         try {
             val targetFile = createTargetFile(
                 targetDirectory, cleanFileName, fileDescription?.mimeType ?: type,
-                conflictResolution == FileCallback.ConflictResolution.CREATE_NEW, callback
+                conflictResolution.toCreateMode(), callback
             ) ?: return
             createFileStreams(targetFile, callback) { inputStream, outputStream ->
                 copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, true, callback)
@@ -401,7 +400,7 @@ class MediaFile(context: Context, val uri: Uri) {
         val targetDirectory = if (fileDescription?.subFolder.isNullOrEmpty()) {
             targetFolder
         } else {
-            val directory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), false)
+            val directory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
             if (directory == null) {
                 callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
                 return
@@ -422,7 +421,7 @@ class MediaFile(context: Context, val uri: Uri) {
         try {
             val targetFile = createTargetFile(
                 targetDirectory, cleanFileName, fileDescription?.mimeType ?: type,
-                conflictResolution == FileCallback.ConflictResolution.CREATE_NEW, callback
+                conflictResolution.toCreateMode(), callback
             ) ?: return
             createFileStreams(targetFile, callback) { inputStream, outputStream ->
                 copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, false, callback)
@@ -442,7 +441,7 @@ class MediaFile(context: Context, val uri: Uri) {
         targetDirectory: DocumentFile,
         fileName: String,
         mimeType: String?,
-        forceCreate: Boolean,
+        mode: CreateMode,
         callback: FileCallback
     ): DocumentFile? {
         try {
@@ -453,7 +452,7 @@ class MediaFile(context: Context, val uri: Uri) {
                 return null
             }
 
-            val targetFile = targetFolder.makeFile(context, fileName, mimeType, forceCreate)
+            val targetFile = targetFolder.makeFile(context, fileName, mimeType, mode)
             if (targetFile == null) {
                 callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
             } else {
@@ -543,8 +542,7 @@ class MediaFile(context: Context, val uri: Uri) {
                 }
             }
             if (resolution == FileCallback.ConflictResolution.REPLACE) {
-                val deleteSuccess = if (targetFile.isDirectory) targetFile.deleteRecursively(context) else targetFile.delete()
-                if (!deleteSuccess || targetFile.exists()) {
+                if (!targetFile.forceDelete(context)) {
                     callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
                     return FileCallback.ConflictResolution.SKIP
                 }

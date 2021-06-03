@@ -1,9 +1,11 @@
 package com.anggrayudi.storage.callback
 
+import androidx.annotation.RestrictTo
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.callback.FileCallback.FileConflictAction
+import com.anggrayudi.storage.file.CreateMode
 import com.anggrayudi.storage.file.FileSize
 import kotlinx.coroutines.CancellableContinuation
 
@@ -128,7 +130,14 @@ interface FolderCallback {
         /**
          * Cancel copy/move.
          */
-        SKIP
+        SKIP;
+
+        @RestrictTo(RestrictTo.Scope.LIBRARY)
+        fun toCreateMode() = when (this) {
+            REPLACE -> CreateMode.REPLACE
+            MERGE -> CreateMode.REUSE
+            else -> CreateMode.CREATE_NEW
+        }
     }
 
     class FileConflict(

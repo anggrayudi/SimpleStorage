@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Environment
 import androidx.annotation.WorkerThread
 import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
@@ -136,7 +137,8 @@ val Context.writableDirs: Set<File>
  * Create file and if exists, increment file name.
  */
 @WorkerThread
-fun File.makeFile(context: Context, name: String, mimeType: String? = MimeType.UNKNOWN, forceCreate: Boolean = true): File? {
+@JvmOverloads
+fun File.makeFile(context: Context, name: String, mimeType: String? = MimeType.UNKNOWN, mode: CreateMode = CreateMode.CREATE_NEW): File? {
     if (!isDirectory || !isWritable(context)) {
         return null
     }
@@ -157,9 +159,17 @@ fun File.makeFile(context: Context, name: String, mimeType: String? = MimeType.U
     val baseFileName = filename.removeSuffix(".$extension")
     val fullFileName = "$baseFileName.$extension".trimEnd('.')
 
-    if (!forceCreate) {
+    if (mode != CreateMode.CREATE_NEW) {
         val existingFile = File(parent, fullFileName)
-        if (existingFile.exists()) return existingFile.let { if (it.isFile) it else null }
+        if (existingFile.exists()) {
+            return existingFile.let {
+                when {
+                    mode == CreateMode.REPLACE -> it.takeIf { it.recreateFile() }
+                    it.isFile -> it
+                    else -> null
+                }
+            }
+        }
     }
 
     return try {
@@ -169,29 +179,30 @@ fun File.makeFile(context: Context, name: String, mimeType: String? = MimeType.U
     }
 }
 
+fun File.findFile(name: String) = list()?.find { it == name }?.let { child(it) }
+
 /**
  * @param name can input `MyFolder` or `MyFolder/SubFolder`
  */
 @WorkerThread
 @JvmOverloads
-fun File.makeFolder(context: Context, name: String, forceCreate: Boolean = true): File? {
+fun File.makeFolder(context: Context, name: String, mode: CreateMode = CreateMode.CREATE_NEW): File? {
     if (!isDirectory || !isWritable(context)) {
         return null
     }
 
     val directorySequence = DocumentFileCompat.getDirectorySequence(name.removeForbiddenCharsFromFilename()).toMutableList()
     val folderNameLevel1 = directorySequence.removeFirstOrNull() ?: return null
-    val incrementedFolderNameLevel1 = if (forceCreate) autoIncrementFileName(folderNameLevel1) else folderNameLevel1
-    val newDirectory = File(this, incrementedFolderNameLevel1).apply { mkdir() }
-    return if (newDirectory.isDirectory) {
-        if (directorySequence.isEmpty()) {
-            newDirectory
-        } else {
-            File(newDirectory, directorySequence.joinToString("/")).let { if (it.mkdirs() || it.exists()) it else null }
-        }
-    } else {
-        null
+    val incrementedFolderNameLevel1 = if (mode == CreateMode.CREATE_NEW) autoIncrementFileName(folderNameLevel1) else folderNameLevel1
+    val folderLevel1 = child(incrementedFolderNameLevel1)
+
+    if (mode == CreateMode.REPLACE) {
+        folderLevel1.forceDelete(true)
     }
+    folderLevel1.mkdir()
+
+    val folder = folderLevel1.let { if (directorySequence.isEmpty()) it else it.child(directorySequence.joinToString("/")).apply { mkdirs() } }
+    return if (folder.isDirectory) folder else null
 }
 
 fun File.toDocumentFile(context: Context) = if (canRead()) DocumentFileCompat.fromFile(context, this) else null
@@ -215,11 +226,40 @@ private fun File.walkFileTreeAndDeleteEmptyFolders(): List<File> {
 }
 
 /**
+ * @see DocumentFile.deleteRecursively
+ */
+@JvmOverloads
+fun File.forceDelete(childrenOnly: Boolean = false): Boolean {
+    return if (isDirectory) {
+        val success = deleteRecursively()
+        if (childrenOnly) {
+            mkdir()
+            isDirectory && list().isNullOrEmpty()
+        } else {
+            success
+        }
+    } else {
+        delete() || !exists()
+    }
+}
+
+fun File.recreateFile(): Boolean {
+    forceDelete()
+    return tryCreateNewFile()
+}
+
+fun File.tryCreateNewFile() = try {
+    createNewFile()
+} catch (e: IOException) {
+    false
+}
+
+/**
  * Avoid duplicate file name.
  * It doesn't work if you are outside [Context.getExternalFilesDir] and don't have full disk access for Android 10+.
  */
 fun File.autoIncrementFileName(filename: String): String {
-    return if (File(absolutePath, filename).exists()) {
+    return if (child(filename).exists()) {
         val baseName = filename.substringBeforeLast('.')
         val ext = filename.substringAfterLast('.', "")
         val prefix = "$baseName ("

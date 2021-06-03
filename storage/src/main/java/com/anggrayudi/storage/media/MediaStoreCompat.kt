@@ -30,8 +30,8 @@ object MediaStoreCompat {
     @RequiresApi(Build.VERSION_CODES.Q)
     @JvmStatic
     @JvmOverloads
-    fun createDownload(context: Context, file: FileDescription, forceCreate: Boolean = true): MediaFile? {
-        return createMedia(context, MediaType.DOWNLOADS, Environment.DIRECTORY_DOWNLOADS, file, forceCreate)
+    fun createDownload(context: Context, file: FileDescription, mode: CreateMode = CreateMode.CREATE_NEW): MediaFile? {
+        return createMedia(context, MediaType.DOWNLOADS, Environment.DIRECTORY_DOWNLOADS, file, mode)
     }
 
     @JvmOverloads
@@ -40,9 +40,9 @@ object MediaStoreCompat {
         context: Context,
         file: FileDescription,
         relativeParentDirectory: ImageMediaDirectory = ImageMediaDirectory.PICTURES,
-        forceCreate: Boolean = true
+        mode: CreateMode = CreateMode.CREATE_NEW
     ): MediaFile? {
-        return createMedia(context, MediaType.IMAGE, relativeParentDirectory.folderName, file, forceCreate)
+        return createMedia(context, MediaType.IMAGE, relativeParentDirectory.folderName, file, mode)
     }
 
     @JvmOverloads
@@ -51,9 +51,9 @@ object MediaStoreCompat {
         context: Context,
         file: FileDescription,
         relativeParentDirectory: AudioMediaDirectory = AudioMediaDirectory.MUSIC,
-        forceCreate: Boolean = true
+        mode: CreateMode = CreateMode.CREATE_NEW
     ): MediaFile? {
-        return createMedia(context, MediaType.AUDIO, relativeParentDirectory.folderName, file, forceCreate)
+        return createMedia(context, MediaType.AUDIO, relativeParentDirectory.folderName, file, mode)
     }
 
     @JvmOverloads
@@ -62,12 +62,12 @@ object MediaStoreCompat {
         context: Context,
         file: FileDescription,
         relativeParentDirectory: VideoMediaDirectory = VideoMediaDirectory.MOVIES,
-        forceCreate: Boolean = true
+        mode: CreateMode = CreateMode.CREATE_NEW
     ): MediaFile? {
-        return createMedia(context, MediaType.VIDEO, relativeParentDirectory.folderName, file, forceCreate)
+        return createMedia(context, MediaType.VIDEO, relativeParentDirectory.folderName, file, mode)
     }
 
-    private fun createMedia(context: Context, mediaType: MediaType, folderName: String, file: FileDescription, forceCreate: Boolean): MediaFile? {
+    private fun createMedia(context: Context, mediaType: MediaType, folderName: String, file: FileDescription, mode: CreateMode): MediaFile? {
         val dateCreated = System.currentTimeMillis()
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, file.name)
@@ -87,9 +87,14 @@ object MediaStoreCompat {
             when {
                 existingMedia?.isEmpty == true -> existingMedia
                 existingMedia?.exists == true -> {
-                    if (!forceCreate) {
+                    if (mode == CreateMode.REUSE) {
                         return existingMedia
                     }
+                    if (mode == CreateMode.REPLACE) {
+                        existingMedia.delete()
+                        return MediaFile(context, context.contentResolver.insert(mediaType.writeUri!!, contentValues) ?: return null)
+                    }
+
                     /*
                     We use this file duplicate handler because it is better than the system's.
                     This handler also fixes Android 10's media file duplicate handler. Here's how to reproduce:
@@ -129,25 +134,19 @@ object MediaStoreCompat {
             @Suppress("DEPRECATION")
             val publicDirectory = Environment.getExternalStoragePublicDirectory(folderName)
             if (publicDirectory.canModify(context)) {
-                var media = File("$publicDirectory/${file.subFolder}", file.name)
+                val filename = file.fullName
+                var media = File("$publicDirectory/${file.subFolder}", filename)
                 val parentFile = media.parentFile ?: return null
                 parentFile.mkdirs()
-                if (media.exists() && forceCreate) {
-                    media = File(parentFile, parentFile.autoIncrementFileName(file.name))
+                if (media.exists() && mode == CreateMode.CREATE_NEW) {
+                    media = parentFile.child(parentFile.autoIncrementFileName(filename))
                 }
-                if (mediaType == MediaType.DOWNLOADS) {
-                    media.createNewFile()
-                    if (media.isFile && media.canRead()) MediaFile(context, media) else null
-                } else {
-                    contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, media.name)
-                    context.contentResolver.insert(mediaType.writeUri!!, contentValues)?.let {
-                        media.createNewFile()
-                        if (media.isFile && media.canRead()) MediaFile(context, it) else {
-                            context.contentResolver.delete(it, null)
-                            null
-                        }
-                    }
+                if (mode == CreateMode.REPLACE && !media.recreateFile()) {
+                    return null
                 }
+                if (media.createNewFileIfPossible()) {
+                    if (media.canRead()) MediaFile(context, media) else null
+                } else null
             } else {
                 null
             }
