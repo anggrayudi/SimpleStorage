@@ -104,6 +104,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupSimpleStorage(savedInstanceState: Bundle?) {
         storageHelper = SimpleStorageHelper(this, savedInstanceState)
+        storageHelper.onStorageAccessGranted = { _, root ->
+            Toast.makeText(
+                this,
+                getString(R.string.ss_selecting_root_path_success_without_open_folder_picker, root.getAbsolutePath(this)),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
         storageHelper.onFileSelected = { requestCode, file ->
             when (requestCode) {
                 REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY -> layoutCopyFromFile.updateFileSelectionView(file)

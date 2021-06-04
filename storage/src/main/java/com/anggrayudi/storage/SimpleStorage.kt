@@ -54,9 +54,23 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
     var filePickerCallback: FilePickerCallback? = null
 
-    private var requestCodeStorageAccess = 0
-    private var requestCodeFolderPicker = 0
-    private var requestCodeFilePicker = 0
+    var requestCodeStorageAccess = 1
+        set(value) {
+            field = value
+            checkRequestCode()
+        }
+
+    var requestCodeFolderPicker = 2
+        set(value) {
+            field = value
+            checkRequestCode()
+        }
+
+    var requestCodeFilePicker = 3
+        set(value) {
+            field = value
+            checkRequestCode()
+        }
 
     val context: Context
         get() = wrapper.context
@@ -111,7 +125,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      *
      * @param initialRootPath It will open [StorageType.EXTERNAL] instead for API 23 and lower, and when no SD Card inserted.
      */
-    fun requestStorageAccess(requestCode: Int, initialRootPath: StorageType = StorageType.EXTERNAL) {
+    @JvmOverloads
+    fun requestStorageAccess(requestCode: Int = requestCodeStorageAccess, initialRootPath: StorageType = StorageType.EXTERNAL) {
         if (!hasStoragePermission(context)) {
             storageAccessCallback?.onStoragePermissionDenied(requestCode)
             return
@@ -144,7 +159,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
 
     @SuppressLint("InlinedApi")
-    fun openFolderPicker(requestCode: Int) {
+    @JvmOverloads
+    fun openFolderPicker(requestCode: Int = requestCodeFolderPicker) {
         requestCodeFolderPicker = requestCode
         if (hasStoragePermission(context)) {
             val intent = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
@@ -158,7 +174,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
     }
 
-    fun openFilePicker(requestCode: Int, vararg filterMimeTypes: String) {
+    @JvmOverloads
+    fun openFilePicker(requestCode: Int = requestCodeFilePicker, vararg filterMimeTypes: String) {
         requestCodeFilePicker = requestCode
         if (hasStorageReadPermission(context)) {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
@@ -176,6 +193,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
     @Suppress("DEPRECATION")
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        checkRequestCode()
+
         when (requestCode) {
             requestCodeStorageAccess -> {
                 if (resultCode != Activity.RESULT_OK) {
@@ -304,6 +323,15 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         if (wrapper is FragmentWrapper && savedInstanceState.containsKey(KEY_REQUEST_CODE_FRAGMENT_PICKER)) {
             wrapper.requestCode = savedInstanceState.getInt(KEY_REQUEST_CODE_FRAGMENT_PICKER)
         }
+    }
+
+    private fun checkRequestCode() {
+        val set = mutableSetOf(requestCodeFilePicker, requestCodeFolderPicker, requestCodeStorageAccess)
+        if (set.size < 3)
+            throw IllegalArgumentException(
+                "Request codes must be unique. File picker=$requestCodeFilePicker, " +
+                        "Folder picker=$requestCodeFolderPicker, Storage access=$requestCodeStorageAccess"
+            )
     }
 
     private fun saveUriPermission(root: Uri) = try {
