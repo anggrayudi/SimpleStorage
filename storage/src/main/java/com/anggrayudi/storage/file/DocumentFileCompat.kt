@@ -179,7 +179,7 @@ object DocumentFileCompat {
         documentType: DocumentFileType = DocumentFileType.ANY,
         considerRawFile: Boolean = true
     ): DocumentFile? {
-        return if (considerRawFile && file.canRead() || file.isExternalStorageManager(context)) {
+        return if (file.canRead() && (considerRawFile || file.isExternalStorageManager(context))) {
             if (documentType == DocumentFileType.FILE && !file.isFile || documentType == DocumentFileType.FOLDER && !file.isDirectory)
                 null
             else

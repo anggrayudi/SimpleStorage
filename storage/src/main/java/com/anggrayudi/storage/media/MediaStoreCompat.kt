@@ -167,8 +167,8 @@ object MediaStoreCompat {
      * Consider searching [MediaFile] with [File] on API 28-
      */
     @JvmStatic
-    fun fromFileName(context: Context, mediaType: MediaType, name: String, considerRawFile: Boolean = true): MediaFile? {
-        return if (considerRawFile && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+    fun fromFileName(context: Context, mediaType: MediaType, name: String): MediaFile? {
+        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             @Suppress("DEPRECATION")
             File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), name).let {
                 if (it.isFile && it.canRead()) MediaFile(context, it) else null
@@ -228,7 +228,7 @@ object MediaStoreCompat {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             @Suppress("DEPRECATION")
             DocumentFile.fromFile(File(Environment.getExternalStorageDirectory(), cleanRelativePath))
-                .search(documentType = DocumentFileType.FILE)
+                .search(true, documentType = DocumentFileType.FILE)
                 .map { MediaFile(context, File(it.uri.path!!)) }
         } else {
             val mediaType = mediaTypeFromRelativePath(cleanRelativePath) ?: return emptyList()
@@ -250,7 +250,7 @@ object MediaStoreCompat {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             @Suppress("DEPRECATION")
             DocumentFile.fromFile(File(Environment.getExternalStorageDirectory(), cleanRelativePath))
-                .search(documentType = DocumentFileType.FILE, name = name)
+                .search(true, documentType = DocumentFileType.FILE, name = name)
                 .map { MediaFile(context, File(it.uri.path!!)) }
                 .firstOrNull()
         } else {
@@ -264,16 +264,13 @@ object MediaStoreCompat {
         }
     }
 
-    /**
-     * Consider searching [MediaFile] with [File] on API 28-
-     */
     @JvmStatic
-    fun fromFileNameContains(context: Context, mediaType: MediaType, containsName: String, considerRawFile: Boolean = true): List<MediaFile> {
-        return if (considerRawFile && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+    fun fromFileNameContains(context: Context, mediaType: MediaType, containsName: String): List<MediaFile> {
+        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
                 @Suppress("DEPRECATION")
                 DocumentFile.fromFile(directory)
-                    .search(documentType = DocumentFileType.FILE, regex = Regex("^.*$containsName.*\$"))
+                    .search(true, regex = Regex("^.*$containsName.*\$"), mimeTypes = arrayOf(mediaType.mimeType))
                     .map { MediaFile(context, File(it.uri.path!!)) }
             }.flatten()
         } else {
@@ -284,16 +281,13 @@ object MediaStoreCompat {
         }
     }
 
-    /**
-     * Consider searching [MediaFile] with [File] on API 28-
-     */
     @JvmStatic
-    fun fromMimeType(context: Context, mediaType: MediaType, mimeType: String, considerRawFile: Boolean = true): List<MediaFile> {
-        return if (considerRawFile && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+    fun fromMimeType(context: Context, mediaType: MediaType, mimeType: String): List<MediaFile> {
+        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
                 @Suppress("DEPRECATION")
                 DocumentFile.fromFile(directory)
-                    .search(documentType = DocumentFileType.FILE, mimeType = mimeType)
+                    .search(true, documentType = DocumentFileType.FILE, mimeTypes = arrayOf(mimeType))
                     .map { MediaFile(context, File(it.uri.path!!)) }
             }.flatten()
         } else {
@@ -304,16 +298,13 @@ object MediaStoreCompat {
         }
     }
 
-    /**
-     * Consider searching [MediaFile] with [File] on API 28-
-     */
     @JvmStatic
-    fun fromMediaType(context: Context, mediaType: MediaType, considerRawFile: Boolean = true): List<MediaFile> {
-        return if (considerRawFile && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+    fun fromMediaType(context: Context, mediaType: MediaType): List<MediaFile> {
+        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
                 @Suppress("DEPRECATION")
                 DocumentFile.fromFile(directory)
-                    .search(documentType = DocumentFileType.FILE)
+                    .search(true, mimeTypes = arrayOf(mediaType.mimeType))
                     .map { MediaFile(context, File(it.uri.path!!)) }
             }.flatten()
         } else {

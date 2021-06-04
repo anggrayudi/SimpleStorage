@@ -4,6 +4,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import com.anggrayudi.storage.file.MimeType
 import java.io.File
 
 /**
@@ -24,12 +25,18 @@ enum class MediaType(val readUri: Uri?, val writeUri: Uri?) {
      */
     @Suppress("DEPRECATION")
     val directories: List<File>
-        get() {
-            return when (this) {
-                IMAGE -> ImageMediaDirectory.values().map { Environment.getExternalStoragePublicDirectory(it.folderName) }
-                AUDIO -> AudioMediaDirectory.values().map { Environment.getExternalStoragePublicDirectory(it.folderName) }
-                VIDEO -> VideoMediaDirectory.values().map { Environment.getExternalStoragePublicDirectory(it.folderName) }
-                DOWNLOADS -> listOf(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS))
-            }
+        get() = when (this) {
+            IMAGE -> ImageMediaDirectory.values().map { Environment.getExternalStoragePublicDirectory(it.folderName) }
+            AUDIO -> AudioMediaDirectory.values().map { Environment.getExternalStoragePublicDirectory(it.folderName) }
+            VIDEO -> VideoMediaDirectory.values().map { Environment.getExternalStoragePublicDirectory(it.folderName) }
+            DOWNLOADS -> listOf(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS))
+        }
+
+    val mimeType: String
+        get() = when (this) {
+            IMAGE -> MimeType.IMAGE
+            AUDIO -> MimeType.AUDIO
+            VIDEO -> MimeType.VIDEO
+            else -> MimeType.UNKNOWN
         }
 }

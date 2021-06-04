@@ -120,7 +120,7 @@ Simple Storage adds Kotlin extension functions to `DocumentFile`, so you can man
 ### `MediaFile`
 
 For media files, you can have similar capabilities to `DocumentFile`, i.e.:
-* `MediaFile.realPath`
+* `MediaFile.absolutePath`
 * `MediaFile.isPending`
 * `MediaFile.delete()`
 * `MediaFile.renameTo()`
@@ -321,7 +321,7 @@ Simple Storage helps you in copying/moving files & folders via:
 For example, you can move a folder with few lines of code:
 
 ```kotlin
-// execute on background thread
+// you must execute it in background thread
 val folder: DocumentFile = ...
 val targetFolder: DocumentFile = ...
 folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, callback = object : FolderCallback {

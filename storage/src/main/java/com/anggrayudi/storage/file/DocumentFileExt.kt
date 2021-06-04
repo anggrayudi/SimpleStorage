@@ -12,6 +12,7 @@ import android.provider.DocumentsContract
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.core.content.FileProvider
+import androidx.core.content.MimeTypeFilter
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.callback.FileCallback
@@ -431,8 +432,6 @@ fun DocumentFile.createBinaryFile(context: Context, name: String, mode: CreateMo
  *
  * @param mimeType use [MimeType.UNKNOWN] if you're not sure about the file type
  * @param name you can input `My Video`, `My Video.mp4` or `My Folder/Sub Folder/My Video.mp4`
- * @param forceCreate if `true` and the file with this name already exists, create new file with a name that has suffix `(1)`, e.g. `My Movie (1).mp4`.
- *                    Otherwise use existed file.
  */
 @WorkerThread
 @JvmOverloads
@@ -628,25 +627,31 @@ fun DocumentFile.findFileLiterally(name: String): DocumentFile? = listFiles().fi
 fun DocumentFile.search(
     recursive: Boolean = false,
     documentType: DocumentFileType = DocumentFileType.ANY,
-    mimeType: String = MimeType.UNKNOWN,
+    mimeTypes: Array<String>? = null,
     name: String = "",
     regex: Regex? = null
 ): List<DocumentFile> {
     return when {
-        !isDirectory -> emptyList()
-        recursive -> walkFileTreeForSearch(documentType, mimeType, name, regex)
+        !isDirectory || !canRead() -> emptyList()
+        recursive -> {
+            if (mimeTypes.isNullOrEmpty() || mimeTypes.any { it == MimeType.UNKNOWN }) {
+                walkFileTreeForSearch(documentType, emptyArray(), name, regex)
+            } else {
+                walkFileTreeForSearch(DocumentFileType.FILE, mimeTypes, name, regex)
+            }
+        }
         else -> {
             var sequence = listFiles().asSequence().filter { it.canRead() }
             if (regex != null) {
                 sequence = sequence.filter { regex.matches(it.name.orEmpty()) }
             }
-            if (mimeType != MimeType.UNKNOWN) {
-                sequence = sequence.filter { it.mimeType == mimeType }
+            val hasMimeTypeFilter = !mimeTypes.isNullOrEmpty() && !mimeTypes.any { it == MimeType.UNKNOWN }
+            when {
+                hasMimeTypeFilter || documentType == DocumentFileType.FILE -> sequence = sequence.filter { it.isFile }
+                documentType == DocumentFileType.FOLDER -> sequence = sequence.filter { it.isDirectory }
             }
-            @Suppress("NON_EXHAUSTIVE_WHEN")
-            when (documentType) {
-                DocumentFileType.FILE -> sequence = sequence.filter { it.isFile }
-                DocumentFileType.FOLDER -> sequence = sequence.filter { it.isDirectory }
+            if (hasMimeTypeFilter) {
+                sequence = sequence.filter { it.matchesMimeTypes(mimeTypes!!) }
             }
             val result = sequence.toList()
             if (name.isEmpty()) result else result.firstOrNull { it.name == name }?.let { listOf(it) } ?: emptyList()
@@ -654,9 +659,13 @@ fun DocumentFile.search(
     }
 }
 
+private fun DocumentFile.matchesMimeTypes(filterMimeTypes: Array<String>): Boolean {
+    return filterMimeTypes.isEmpty() || !MimeTypeFilter.matches(mimeTypeByFileName, filterMimeTypes).isNullOrEmpty()
+}
+
 private fun DocumentFile.walkFileTreeForSearch(
     documentType: DocumentFileType,
-    mimeType: String,
+    mimeTypes: Array<String>,
     nameFilter: String,
     regex: Regex?
 ): List<DocumentFile> {
@@ -671,7 +680,7 @@ private fun DocumentFile.walkFileTreeForSearch(
             val filename = file.name.orEmpty()
             if ((nameFilter.isEmpty() || filename == nameFilter)
                 && (regex == null || regex.matches(filename))
-                && (mimeType == MimeType.UNKNOWN || file.mimeType == mimeType)
+                && file.matchesMimeTypes(mimeTypes)
             ) {
                 fileTree.add(file)
             }
@@ -682,7 +691,7 @@ private fun DocumentFile.walkFileTreeForSearch(
                     fileTree.add(file)
                 }
             }
-            fileTree.addAll(file.walkFileTreeForSearch(documentType, mimeType, nameFilter, regex))
+            fileTree.addAll(file.walkFileTreeForSearch(documentType, mimeTypes, nameFilter, regex))
         }
     }
     return fileTree
@@ -891,7 +900,7 @@ private fun DocumentFile.copyFolderTo(
         }
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && writableTargetParentFolder.isTreeDocumentFile) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !isRawFile && writableTargetParentFolder.isTreeDocumentFile) {
                 val movedFileUri = parentFile?.uri?.let { DocumentsContract.moveDocument(context.contentResolver, uri, it, writableTargetParentFolder.uri) }
                 if (movedFileUri != null) {
                     val newFile = context.fromTreeUri(movedFileUri)
@@ -1511,7 +1520,7 @@ private fun DocumentFile.moveFileTo(
     }
 
     try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && writableTargetFolder.isTreeDocumentFile && getStorageId(context) == targetStorageId) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !isRawFile && writableTargetFolder.isTreeDocumentFile && getStorageId(context) == targetStorageId) {
             val movedFileUri = parentFile?.uri?.let { DocumentsContract.moveDocument(context.contentResolver, uri, it, writableTargetFolder.uri) }
             if (movedFileUri != null) {
                 val newFile = context.fromTreeUri(movedFileUri)
