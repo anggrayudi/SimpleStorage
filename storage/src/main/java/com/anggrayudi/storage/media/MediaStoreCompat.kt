@@ -27,7 +27,6 @@ object MediaStoreCompat {
         @SuppressLint("InlinedApi")
         get() = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) MediaStore.VOLUME_EXTERNAL else MediaStore.VOLUME_EXTERNAL_PRIMARY
 
-    @RequiresApi(Build.VERSION_CODES.Q)
     @JvmStatic
     @JvmOverloads
     fun createDownload(context: Context, file: FileDescription, mode: CreateMode = CreateMode.CREATE_NEW): MediaFile? {
@@ -163,9 +162,6 @@ object MediaStoreCompat {
         return fromMediaId(context, mediaType, id.toString())
     }
 
-    /**
-     * Consider searching [MediaFile] with [File] on API 28-
-     */
     @JvmStatic
     fun fromFileName(context: Context, mediaType: MediaType, name: String): MediaFile? {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
