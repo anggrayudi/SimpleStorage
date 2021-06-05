@@ -2,31 +2,28 @@ package com.anggrayudi.storage.callback
 
 import androidx.annotation.RestrictTo
 import androidx.annotation.UiThread
-import androidx.annotation.WorkerThread
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.file.CreateMode
 import com.anggrayudi.storage.media.MediaFile
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.GlobalScope
 
 /**
  * Created on 17/08/20
- *
  * @author Anggrayudi H
  */
-interface FileCallback {
-
-    @WorkerThread
-    fun onPrepare() {
-        // default implementation
-    }
+abstract class FileCallback @JvmOverloads constructor(
+    uiScope: CoroutineScope = GlobalScope
+) : BaseFileCallback<FileCallback.ErrorCode, FileCallback.Report, Any>(uiScope) {
 
     /**
      * @param file can be [DocumentFile] or [MediaFile]
      * @return Time interval to watch file copy/move progress in milliseconds, otherwise `0` if you don't want to watch at all.
      * Setting negative value will cancel the operation.
      */
-    @WorkerThread
-    fun onStart(file: Any): Long = 0
+    @UiThread
+    open fun onStart(file: Any, workerThread: Thread): Long = 0
 
     /**
      * Do not call `super` when you override this function.
@@ -37,44 +34,15 @@ interface FileCallback {
      * If the worker thread is suspended for too long, it may be interrupted by the system.
      */
     @UiThread
-    fun onConflict(destinationFile: DocumentFile, action: FileConflictAction) {
+    open fun onConflict(destinationFile: DocumentFile, action: FileConflictAction) {
         action.confirmResolution(ConflictResolution.CREATE_NEW)
     }
 
     /**
-     * Given `freeSpace` and `fileSize`, then you decide whether the process will be continued or not.
-     * You can give space tolerant here, e.g. 100MB
-     *
-     * @param freeSpace of target path
-     * @return `true` to continue process
+     * @param result can be [DocumentFile] or [MediaFile]
      */
-    @WorkerThread
-    fun onCheckFreeSpace(freeSpace: Long, fileSize: Long): Boolean {
-        // default implementation
-        return true
-    }
-
-    /**
-     * Only called if the returned [onStart] greater than `0`
-     *
-     * @param progress   in percent
-     * @param writeSpeed in bytes
-     */
-    @WorkerThread
-    fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int) {
-        // default implementation
-    }
-
-    /**
-     * @param file newly moved/copied file. Can be [DocumentFile] or [MediaFile]
-     */
-    @WorkerThread
-    fun onCompleted(file: Any) {
-        // default implementation
-    }
-
-    @WorkerThread
-    fun onFailed(errorCode: ErrorCode) {
+    @UiThread
+    override fun onCompleted(result: Any) {
         // default implementation
     }
 
@@ -116,4 +84,12 @@ interface FileCallback {
         TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER,
         NO_SPACE_LEFT_ON_TARGET_PATH
     }
+
+    /**
+     * Only called if the returned [onStart] greater than `0`
+     *
+     * @param progress   in percent
+     * @param writeSpeed in bytes
+     */
+    class Report(val progress: Float, val bytesMoved: Long, val writeSpeed: Int)
 }

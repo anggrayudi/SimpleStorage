@@ -179,8 +179,6 @@ fun File.makeFile(context: Context, name: String, mimeType: String? = MimeType.U
     }
 }
 
-fun File.findFile(name: String) = list()?.find { it == name }?.let { child(it) }
-
 /**
  * @param name can input `MyFolder` or `MyFolder/SubFolder`
  */

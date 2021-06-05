@@ -321,9 +321,10 @@ Simple Storage helps you in copying/moving files & folders via:
 For example, you can move a folder with few lines of code:
 
 ```kotlin
-// you must execute it in background thread
 val folder: DocumentFile = ...
 val targetFolder: DocumentFile = ...
+
+// Since moveFolderTo() is annotated with @WorkerThread, you must execute it in background thread
 folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, callback = object : FolderCallback {
     override fun onPrepare() {
         // Show notification or progress bar dialog with indeterminate state

@@ -2,26 +2,23 @@ package com.anggrayudi.storage.callback
 
 import androidx.annotation.RestrictTo
 import androidx.annotation.UiThread
-import androidx.annotation.WorkerThread
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.callback.FileCallback.FileConflictAction
 import com.anggrayudi.storage.file.CreateMode
-import com.anggrayudi.storage.file.FileSize
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.GlobalScope
 
 /**
  * Created on 3/1/21
  * @author Anggrayudi H
  */
-interface FolderCallback {
+abstract class FolderCallback @JvmOverloads constructor(
+    uiScope: CoroutineScope = GlobalScope
+) : BaseFileCallback<FolderCallback.ErrorCode, FolderCallback.Report, FolderCallback.Result>(uiScope) {
 
-    @WorkerThread
-    fun onPrepare() {
-        // default implementation
-    }
-
-    @WorkerThread
-    fun onCountingFiles() {
+    @UiThread
+    open fun onCountingFiles() {
         // default implementation
     }
 
@@ -30,8 +27,8 @@ interface FolderCallback {
      * @return Time interval to watch folder copy/move progress in milliseconds, otherwise `0` if you don't want to watch at all.
      * Setting negative value will cancel the operation.
      */
-    @WorkerThread
-    fun onStart(folder: DocumentFile, totalFilesToCopy: Int): Long = 0
+    @UiThread
+    open fun onStart(folder: DocumentFile, totalFilesToCopy: Int, workerThread: Thread): Long = 0
 
     /**
      * Do not call `super` when you override this function.
@@ -41,72 +38,31 @@ interface FolderCallback {
      * If you want to cancel, just pass [ConflictResolution.SKIP] into [FileConflictAction.confirmResolution].
      * If the worker thread is suspended for too long, it may be interrupted by the system.
      *
+     * @param destinationFolder when copying `/storage/AAAA-BBBB/Movie` to `/storage/AAAA-BBBB/Others`, it will be `/storage/AAAA-BBBB/Others/Movie`
      * @param canMerge when conflict found, action `MERGE` may not exists.
      *                 This happens if the destination is a file.
      */
     @UiThread
-    fun onParentConflict(destinationFolder: DocumentFile, action: ParentFolderConflictAction, canMerge: Boolean) {
+    open fun onParentConflict(destinationFolder: DocumentFile, action: ParentFolderConflictAction, canMerge: Boolean) {
         action.confirmResolution(ConflictResolution.CREATE_NEW)
     }
 
     @UiThread
-    fun onContentConflict(destinationFolder: DocumentFile, conflictedFiles: MutableList<FileConflict>, action: FolderContentConflictAction) {
+    open fun onContentConflict(destinationFolder: DocumentFile, conflictedFiles: MutableList<FileConflict>, action: FolderContentConflictAction) {
         action.confirmResolution(conflictedFiles)
-    }
-
-    /**
-     * Given `freeSpace` and `fileSize`, then you decide whether the process will be continued or not.
-     * You can give space tolerant here, e.g. 100MB
-     *
-     * @param freeSpace of target path
-     * @return `true` to continue process
-     */
-    @WorkerThread
-    fun onCheckFreeSpace(freeSpace: Long, fileSize: Long): Boolean {
-        return fileSize + 100 * FileSize.MB < freeSpace // Give tolerant 100MB
-    }
-
-    /**
-     * Only called if the returned [onStart] greater than `0`
-     *
-     * @param progress   in percent
-     * @param writeSpeed in bytes
-     * @param fileCount total files/folders that are successfully copied/moved
-     */
-    @WorkerThread
-    fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int, fileCount: Int) {
-        // default implementation
-    }
-
-    /**
-     * If `totalCopiedFiles` are less than `totalFilesToCopy`, then some files cannot be copied/moved or the files are skipped due to [ConflictResolution.MERGE]
-     * [onFailed] can be called before [onCompleted] when an error has occurred.
-     * @param folder newly moved/copied file
-     * @param success `true` if the process is not canceled and no error during copy/move
-     * @param totalFilesToCopy total files, not folders
-     * @param totalCopiedFiles total files, not folders
-     */
-    @WorkerThread
-    fun onCompleted(folder: DocumentFile, totalFilesToCopy: Int, totalCopiedFiles: Int, success: Boolean) {
-        // default implementation
-    }
-
-    @WorkerThread
-    fun onFailed(errorCode: ErrorCode) {
-        // default implementation
     }
 
     class ParentFolderConflictAction(private val continuation: CancellableContinuation<ConflictResolution>) {
 
         fun confirmResolution(resolution: ConflictResolution) {
-            continuation.resumeWith(Result.success(resolution))
+            continuation.resumeWith(kotlin.Result.success(resolution))
         }
     }
 
     class FolderContentConflictAction(private val continuation: CancellableContinuation<List<FileConflict>>) {
 
         fun confirmResolution(resolutions: List<FileConflict>) {
-            continuation.resumeWith(Result.success(resolutions))
+            continuation.resumeWith(kotlin.Result.success(resolutions))
         }
     }
 
@@ -157,4 +113,23 @@ interface FolderCallback {
         TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER,
         NO_SPACE_LEFT_ON_TARGET_PATH
     }
+
+    /**
+     * Only called if the returned [onStart] greater than `0`
+     *
+     * @param progress   in percent
+     * @param writeSpeed in bytes
+     * @param fileCount total files/folders that are successfully copied/moved
+     */
+    class Report(val progress: Float, val bytesMoved: Long, val writeSpeed: Int, val fileCount: Int)
+
+    /**
+     * If `totalCopiedFiles` are less than `totalFilesToCopy`, then some files cannot be copied/moved or the files are skipped due to [ConflictResolution.MERGE]
+     * [BaseFileCallback.onFailed] can be called before [BaseFileCallback.onCompleted] when an error has occurred.
+     * @param folder newly moved/copied file
+     * @param success `true` if the process is not canceled and no error during copy/move
+     * @param totalFilesToCopy total files, not folders
+     * @param totalCopiedFiles total files, not folders
+     */
+    class Result(val folder: DocumentFile, val totalFilesToCopy: Int, val totalCopiedFiles: Int, val success: Boolean)
 }

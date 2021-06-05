@@ -785,7 +785,7 @@ object DocumentFileCompat {
     @Suppress("DEPRECATION")
     fun getFreeSpace(context: Context, storageId: String): Long {
         try {
-            if (storageId == PRIMARY  || storageId == DATA) {
+            if (storageId == PRIMARY || storageId == DATA) {
                 val stat = StatFs(recreateAppDirectory(context))
                 return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2)
                     stat.availableBytes

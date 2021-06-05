@@ -37,6 +37,106 @@
         <include layout="@layout/view_divider" />
 
         <TextView
+            android:id="@+id/titleCopyMultipleFiles"
+            style="@style/TextAppearance.AppCompat.Title.Inverse"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Copy Multiple"
+            android:textColor="@android:color/black" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="From folder"
+            android:textSize="14sp" />
+
+        <include
+            android:id="@+id/layoutCopyMultipleFiles_sourceFolder"
+            layout="@layout/view_file_picked" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="From file"
+            android:textSize="14sp" />
+
+        <include
+            android:id="@+id/layoutCopyMultipleFiles_sourceFile"
+            layout="@layout/view_file_picked" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="To folder"
+            android:textSize="14sp" />
+
+        <include
+            android:id="@+id/layoutCopyMultipleFiles_targetFolder"
+            layout="@layout/view_file_picked" />
+
+        <Button
+            android:id="@+id/btnStartCopyMultipleFiles"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Copy" />
+
+        <include layout="@layout/view_divider" />
+
+        <TextView
+            android:id="@+id/titleMoveMultipleFiles"
+            style="@style/TextAppearance.AppCompat.Title.Inverse"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Move Multiple"
+            android:textColor="@android:color/black" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="From folder"
+            android:textSize="14sp" />
+
+        <include
+            android:id="@+id/layoutMoveMultipleFiles_sourceFolder"
+            layout="@layout/view_file_picked" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="From file"
+            android:textSize="14sp" />
+
+        <include
+            android:id="@+id/layoutMoveMultipleFiles_sourceFile"
+            layout="@layout/view_file_picked" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="To folder"
+            android:textSize="14sp" />
+
+        <include
+            android:id="@+id/layoutMoveMultipleFiles_targetFolder"
+            layout="@layout/view_file_picked" />
+
+        <Button
+            android:id="@+id/btnStartMoveMultipleFiles"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Move" />
+
+        <include layout="@layout/view_divider" />
+
+        <TextView
             android:id="@+id/titleCopyFolder"
             style="@style/TextAppearance.AppCompat.Title.Inverse"
             android:layout_width="wrap_content"
@@ -52,7 +152,7 @@
             android:textSize="14sp" />
 
         <include
-            android:id="@+id/layoutCopyFolderFromFolder"
+            android:id="@+id/layoutCopyFolder_srcFolder"
             layout="@layout/view_file_picked" />
 
         <TextView
@@ -63,7 +163,7 @@
             android:textSize="14sp" />
 
         <include
-            android:id="@+id/layoutCopyFolderToFolder"
+            android:id="@+id/layoutCopyFolder_targetFolder"
             layout="@layout/view_file_picked" />
 
         <Button
@@ -91,7 +191,7 @@
             android:textSize="14sp" />
 
         <include
-            android:id="@+id/layoutMoveFolderFromFolder"
+            android:id="@+id/layoutMoveFolder_srcFolder"
             layout="@layout/view_file_picked" />
 
         <TextView
@@ -102,7 +202,7 @@
             android:textSize="14sp" />
 
         <include
-            android:id="@+id/layoutMoveFolderToFolder"
+            android:id="@+id/layoutMoveFolder_targetFolder"
             layout="@layout/view_file_picked" />
 
         <Button
@@ -130,7 +230,7 @@
             android:textSize="14sp" />
 
         <include
-            android:id="@+id/layoutCopyFromFile"
+            android:id="@+id/layoutCopy_srcFile"
             layout="@layout/view_file_picked" />
 
         <TextView
@@ -141,7 +241,7 @@
             android:textSize="14sp" />
 
         <include
-            android:id="@+id/layoutCopyFileToFolder"
+            android:id="@+id/layoutCopyFile_targetFolder"
             layout="@layout/view_file_picked" />
 
         <Button
@@ -169,7 +269,7 @@
             android:textSize="14sp" />
 
         <include
-            android:id="@+id/layoutMoveFromFile"
+            android:id="@+id/layoutMove_srcFile"
             layout="@layout/view_file_picked" />
 
         <TextView
@@ -180,7 +280,7 @@
             android:textSize="14sp" />
 
         <include
-            android:id="@+id/layoutMoveFileToFolder"
+            android:id="@+id/layoutMoveFile_targetFolder"
             layout="@layout/view_file_picked" />
 
         <Button
