@@ -280,6 +280,7 @@ class MediaFile(context: Context, val uri: Uri) {
      * @param append if `false` and the file already exists, it will recreate the file.
      */
     @WorkerThread
+    @JvmOverloads
     fun openOutputStream(append: Boolean = true): OutputStream? {
         return try {
             val file = toRawFile()

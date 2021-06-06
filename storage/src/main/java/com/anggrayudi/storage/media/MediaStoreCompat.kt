@@ -67,14 +67,14 @@ object MediaStoreCompat {
     }
 
     private fun createMedia(context: Context, mediaType: MediaType, folderName: String, file: FileDescription, mode: CreateMode): MediaFile? {
-        val dateCreated = System.currentTimeMillis()
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, file.name)
-            put(MediaStore.MediaColumns.MIME_TYPE, file.mimeType)
-            put(MediaStore.MediaColumns.DATE_ADDED, dateCreated)
-            put(MediaStore.MediaColumns.DATE_MODIFIED, dateCreated)
-        }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val dateCreated = System.currentTimeMillis()
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, file.name)
+                put(MediaStore.MediaColumns.MIME_TYPE, file.mimeType)
+                put(MediaStore.MediaColumns.DATE_ADDED, dateCreated)
+                put(MediaStore.MediaColumns.DATE_MODIFIED, dateCreated)
+            }
             val relativePath = "$folderName/${file.subFolder}".trimFileSeparator()
             contentValues.apply {
                 put(MediaStore.MediaColumns.OWNER_PACKAGE_NAME, context.packageName)

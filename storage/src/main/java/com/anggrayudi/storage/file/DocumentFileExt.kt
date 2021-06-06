@@ -3,7 +3,6 @@
 package com.anggrayudi.storage.file
 
 import android.annotation.SuppressLint
-import android.annotation.TargetApi
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -31,6 +30,8 @@ import java.io.File
 import java.io.InputStream
 import java.io.InterruptedIOException
 import java.io.OutputStream
+import java.util.*
+import kotlin.collections.ArrayList
 
 /**
  * Created on 16/08/20
@@ -95,6 +96,61 @@ fun DocumentFile.isEmpty(context: Context): Boolean {
             } catch (e: Exception) {
                 true
             }
+        }
+    }
+}
+
+/**
+ * Similar to Get Info on MacOS or File Properties in Windows.
+ */
+@WorkerThread
+fun DocumentFile.getProperties(context: Context): FileProperties? {
+    return when {
+        !canRead() -> null
+
+        isDirectory -> {
+            val properties = FileProperties(
+                name = name.orEmpty(),
+                location = getAbsolutePath(context),
+                isFolder = true,
+                isVirtual = isVirtual,
+                lastModified = lastModified().let { if (it > 0) Date(it) else null }
+            )
+            if (!isEmpty(context)) {
+                walkFileTreeForInfo(properties)
+            }
+            properties
+        }
+
+        isFile -> {
+            FileProperties(
+                name = fullName,
+                location = getAbsolutePath(context),
+                size = length(),
+                isVirtual = isVirtual,
+                lastModified = lastModified().let { if (it > 0) Date(it) else null }
+            )
+        }
+
+        else -> null
+    }
+}
+
+private fun DocumentFile.walkFileTreeForInfo(properties: FileProperties) {
+    val list = listFiles()
+    if (list.isEmpty()) {
+        properties.emptyFolders++
+        return
+    }
+    list.forEach {
+        if (it.isFile) {
+            properties.files++
+            val size = it.length()
+            properties.size += size
+            if (size == 0L) properties.emptyFiles++
+        } else {
+            properties.folders++
+            it.walkFileTreeForInfo(properties)
         }
     }
 }
@@ -1943,7 +1999,6 @@ private fun DocumentFile.moveFileTo(
  * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
  */
 @WorkerThread
-@TargetApi(Build.VERSION_CODES.Q)
 fun DocumentFile.moveFileTo(
     context: Context,
     targetFile: MediaFile,
@@ -1956,7 +2011,6 @@ fun DocumentFile.moveFileTo(
  * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
  */
 @WorkerThread
-@TargetApi(Build.VERSION_CODES.Q)
 fun DocumentFile.copyFileTo(
     context: Context,
     targetFile: MediaFile,
