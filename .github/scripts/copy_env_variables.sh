@@ -5,7 +5,7 @@ if [[ ! ($(grep "STORAGE_VERSION=" gradle.properties) == *"-SNAPSHOT") ]]; then
 fi
 
 mkdir "$HOME/.android"
-echo "$DEBUG_KEYSTORE_BASE64" | base64 --decode >"$HOME/.android/debug.keystore"
+keytool -genkey -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Debug"
 
 # Copy secret key ring for file signature
 echo "$SECRET_KEY_RING_FILE_BASE_64" | base64 --decode >"$HOME/secring.gpg"
