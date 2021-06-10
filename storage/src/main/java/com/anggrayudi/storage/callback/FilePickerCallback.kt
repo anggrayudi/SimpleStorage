@@ -1,5 +1,6 @@
 package com.anggrayudi.storage.callback
 
+import android.content.Intent
 import androidx.documentfile.provider.DocumentFile
 
 /**
@@ -9,6 +10,10 @@ import androidx.documentfile.provider.DocumentFile
 interface FilePickerCallback {
 
     fun onCanceledByUser(requestCode: Int) {
+        // default implementation
+    }
+
+    fun onActivityHandlerNotFound(intent: Intent) {
         // default implementation
     }
 

@@ -16,6 +16,12 @@ abstract class MultipleFileCallback @JvmOverloads constructor(
     uiScope: CoroutineScope = GlobalScope
 ) : BaseFileCallback<MultipleFileCallback.ErrorCode, MultipleFileCallback.Report, MultipleFileCallback.Result>(uiScope) {
 
+    /**
+     * The reason can be one of:
+     * * [FolderCallback.ErrorCode.SOURCE_FILE_NOT_FOUND]
+     * * [FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED]
+     * * [FolderCallback.ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER]
+     */
     @UiThread
     open fun onInvalidSourceFilesFound(invalidSourceFiles: Map<DocumentFile, FolderCallback.ErrorCode>, action: InvalidSourceFilesAction) {
         action.confirmResolution(false)
@@ -92,9 +98,7 @@ abstract class MultipleFileCallback @JvmOverloads constructor(
         INVALID_TARGET_FOLDER,
         UNKNOWN_IO_ERROR,
         CANCELED,
-        TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FILE,
-        NO_SPACE_LEFT_ON_TARGET_PATH,
-        NO_FILE_TO_COPY
+        NO_SPACE_LEFT_ON_TARGET_PATH
     }
 
     /**

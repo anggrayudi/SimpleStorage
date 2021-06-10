@@ -143,8 +143,11 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         } else {
             externalStorageRootAccessIntent
         }
-        wrapper.startActivityForResult(intent, requestCode)
-        requestCodeStorageAccess = requestCode
+        if (wrapper.startActivityForResult(intent, requestCode)) {
+            requestCodeStorageAccess = requestCode
+        } else {
+            storageAccessCallback?.onActivityHandlerNotFound(intent)
+        }
     }
 
     /**
@@ -168,7 +171,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             } else {
                 externalStorageRootAccessIntent
             }
-            wrapper.startActivityForResult(intent, requestCode)
+            if (!wrapper.startActivityForResult(intent, requestCode))
+                folderPickerCallback?.onActivityHandlerNotFound(intent)
         } else {
             folderPickerCallback?.onStoragePermissionDenied(requestCode)
         }
@@ -185,7 +189,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             } else {
                 intent.type = filterMimeTypes.firstOrNull() ?: MimeType.UNKNOWN
             }
-            wrapper.startActivityForResult(intent, requestCode)
+            if (!wrapper.startActivityForResult(intent, requestCode))
+                filePickerCallback?.onActivityHandlerNotFound(intent)
         } else {
             filePickerCallback?.onStoragePermissionDenied(requestCode, null)
         }
@@ -239,7 +244,9 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                             val sm = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
                             sm.storageVolumes.firstOrNull { it.isRemovable }?.createAccessIntent(null)?.let {
-                                wrapper.startActivityForResult(it, requestCode)
+                                if (!wrapper.startActivityForResult(it, requestCode)) {
+                                    storageAccessCallback?.onActivityHandlerNotFound(it)
+                                }
                                 return
                             }
                         }

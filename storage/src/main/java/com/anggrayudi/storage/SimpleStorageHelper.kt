@@ -2,6 +2,7 @@ package com.anggrayudi.storage
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -105,6 +106,10 @@ class SimpleStorageHelper {
             override fun onCanceledByUser(requestCode: Int) {
                 reset()
             }
+
+            override fun onActivityHandlerNotFound(intent: Intent) {
+                handleMissingActivityHandler()
+            }
         }
 
         storage.folderPickerCallback = object : FolderPickerCallback {
@@ -134,6 +139,10 @@ class SimpleStorageHelper {
             override fun onCanceledByUser(requestCode: Int) {
                 reset()
             }
+
+            override fun onActivityHandlerNotFound(intent: Intent) {
+                handleMissingActivityHandler()
+            }
         }
 
         storage.filePickerCallback = object : FilePickerCallback {
@@ -149,6 +158,10 @@ class SimpleStorageHelper {
             override fun onCanceledByUser(requestCode: Int) {
                 reset()
             }
+
+            override fun onActivityHandlerNotFound(intent: Intent) {
+                handleMissingActivityHandler()
+            }
         }
     }
 
@@ -156,6 +169,11 @@ class SimpleStorageHelper {
         pickerToOpenOnceGranted = 0
         originalRequestCode = 0
         filterMimeTypes = null
+    }
+
+    private fun handleMissingActivityHandler() {
+        reset()
+        Toast.makeText(storage.context, R.string.ss_missing_saf_activity_handler, Toast.LENGTH_SHORT).show()
     }
 
     @JvmOverloads

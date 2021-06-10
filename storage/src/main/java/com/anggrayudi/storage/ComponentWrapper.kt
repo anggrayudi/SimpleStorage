@@ -14,5 +14,5 @@ internal interface ComponentWrapper {
 
     val activity: FragmentActivity
 
-    fun startActivityForResult(intent: Intent, requestCode: Int)
+    fun startActivityForResult(intent: Intent, requestCode: Int): Boolean
 }

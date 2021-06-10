@@ -7,4 +7,5 @@
     <string name="ss_selecting_root_path_success_without_open_folder_picker">Storage access has been granted for %s</string>
     <string name="ss_storage_access_denied_confirm">You have no write access to this storage, thus selecting this folder is useless.
         \nWould you like to grant access to this folder?</string>
+    <string name="ss_missing_saf_activity_handler">Storage Access Framework tidak tersedia untuk saat ini.</string>
 </resources>

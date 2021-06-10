@@ -1,5 +1,6 @@
 package com.anggrayudi.storage
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,8 +27,13 @@ internal class FragmentWrapper(private val fragment: Fragment) : ComponentWrappe
     override val activity: FragmentActivity
         get() = fragment.requireActivity()
 
-    override fun startActivityForResult(intent: Intent, requestCode: Int) {
-        this.requestCode = requestCode
-        activityResultLauncher.launch(intent)
+    override fun startActivityForResult(intent: Intent, requestCode: Int): Boolean {
+        return try {
+            activityResultLauncher.launch(intent)
+            this.requestCode = requestCode
+            true
+        } catch (e: ActivityNotFoundException) {
+            false
+        }
     }
 }

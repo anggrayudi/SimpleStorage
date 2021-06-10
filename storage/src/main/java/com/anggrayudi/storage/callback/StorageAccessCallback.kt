@@ -1,5 +1,6 @@
 package com.anggrayudi.storage.callback
 
+import android.content.Intent
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.file.StorageType
@@ -11,6 +12,10 @@ import com.anggrayudi.storage.file.StorageType
 interface StorageAccessCallback {
 
     fun onCanceledByUser(requestCode: Int) {
+        // default implementation
+    }
+
+    fun onActivityHandlerNotFound(intent: Intent) {
         // default implementation
     }
 
