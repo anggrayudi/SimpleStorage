@@ -6,9 +6,10 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.karumi.dexter.Dexter
 
 /**
- * Dexter cannot display consent dialog before requesting runtime permissions, thus we create our own permission request handler.
+ * [Dexter] cannot display consent dialog before requesting runtime permissions, thus we create our own permission request handler.
  *
  * Created on 12/13/20
  * @author Anggrayudi H

@@ -62,6 +62,10 @@ Simple Storage is built in Kotlin. Follow this [documentation](JAVA_COMPATIBILIT
 
 ![Alt text](art/terminology.png?raw=true "Simple Storage Terms")
 
+### Other Terminology
+* Storage Permission – related to [runtime permissions](https://developer.android.com/training/permissions/requesting)
+* Storage Access – related to [URI permissions](https://developer.android.com/reference/android/content/ContentResolver#takePersistableUriPermission(android.net.Uri,%20int))
+
 ## Read Files
 
 In Simple Storage, `DocumentFile` is used to access files when your app has been granted full storage access,
@@ -155,12 +159,19 @@ class MainActivity : AppCompatActivity() {
     private fun setupSimpleStorage() {
         storage = SimpleStorage(this)
         storage.storageAccessCallback = object : StorageAccessCallback {
-            override fun onRootPathNotSelected(rootPath: String, rootStorageType: StorageType, uri: Uri) {
+            override fun onRootPathNotSelected(
+                requestCode: Int,
+                rootPath: String,
+                uri: Uri,
+                selectedStorageType: StorageType,
+                expectedStorageType: StorageType
+            ) {
                 MaterialDialog(this@MainActivity)
                     .message(text = "Please select $rootPath")
                     .negativeButton(android.R.string.cancel)
                     .positiveButton {
-                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, rootStorageType)
+                        val initialRoot = if (expectedStorageType.isExpected(selectedStorageType)) selectedStorageType else expectedStorageType
+                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, initialRoot, expectedStorageType)
                     }.show()
             }
 

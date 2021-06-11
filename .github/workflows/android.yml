@@ -26,7 +26,6 @@ jobs:
 
       - name: Copy environment variables
         env:
-          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
           OSS_SONATYPE_NEXUS_USERNAME: ${{ secrets.OSS_SONATYPE_NEXUS_USERNAME }}
           OSS_SONATYPE_NEXUS_PASSWORD: ${{ secrets.OSS_SONATYPE_NEXUS_PASSWORD }}
           SECRET_KEY_RING_FILE_BASE_64: ${{ secrets.SECRET_KEY_RING_FILE_BASE_64 }}

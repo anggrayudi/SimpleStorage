@@ -52,13 +52,22 @@ class SimpleStorageHelper {
 
     private fun init() {
         storage.storageAccessCallback = object : StorageAccessCallback {
-            override fun onRootPathNotSelected(requestCode: Int, rootPath: String, rootStorageType: StorageType, uri: Uri) {
+            override fun onRootPathNotSelected(
+                requestCode: Int,
+                rootPath: String,
+                uri: Uri,
+                selectedStorageType: StorageType,
+                expectedStorageType: StorageType
+            ) {
+                val storageType = if (expectedStorageType.isExpected(selectedStorageType)) selectedStorageType else expectedStorageType
+                val messageRes =
+                    if (storageType == StorageType.SD_CARD) R.string.ss_please_select_root_storage_sdcard else R.string.ss_please_select_root_storage_primary
                 AlertDialog.Builder(storage.context)
                     .setCancelable(false)
-                    .setMessage(if (rootStorageType == StorageType.SD_CARD) R.string.ss_please_select_root_storage_sdcard else R.string.ss_please_select_root_storage_primary)
+                    .setMessage(messageRes)
                     .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
                     .setPositiveButton(android.R.string.ok) { _, _ ->
-                        storage.requestStorageAccess(initialRootPath = rootStorageType)
+                        storage.requestStorageAccess(initialRootPath = storageType, expectedStorageType = expectedStorageType)
                     }.show()
             }
 
@@ -194,10 +203,14 @@ class SimpleStorageHelper {
     }
 
     @JvmOverloads
-    fun requestStorageAccess(requestCode: Int = storage.requestCodeStorageAccess) {
+    fun requestStorageAccess(
+        requestCode: Int = storage.requestCodeStorageAccess,
+        initialRootPath: StorageType = StorageType.EXTERNAL,
+        expectedStorageType: StorageType = StorageType.UNKNOWN
+    ) {
         pickerToOpenOnceGranted = 0
         originalRequestCode = requestCode
-        storage.requestStorageAccess(requestCode)
+        storage.requestStorageAccess(requestCode, initialRootPath, expectedStorageType)
     }
 
     fun onSaveInstanceState(outState: Bundle) {

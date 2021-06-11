@@ -367,7 +367,8 @@ fun DocumentFile.getAbsolutePath(context: Context): String {
             }
         }
 
-        uri.toString() == "${DocumentFileCompat.DOWNLOADS_TREE_URI}/document/downloads" -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
+        uri.toString().let { it == DocumentFileCompat.DOWNLOADS_TREE_URI || it == "${DocumentFileCompat.DOWNLOADS_TREE_URI}/document/downloads" } ->
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
 
         isDownloadsDocument -> {
             when {

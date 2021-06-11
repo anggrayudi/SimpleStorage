@@ -19,7 +19,7 @@ interface StorageAccessCallback {
         // default implementation
     }
 
-    fun onRootPathNotSelected(requestCode: Int, rootPath: String, rootStorageType: StorageType, uri: Uri)
+    fun onRootPathNotSelected(requestCode: Int, rootPath: String, uri: Uri, selectedStorageType: StorageType, expectedStorageType: StorageType)
 
     fun onStoragePermissionDenied(requestCode: Int)
 
