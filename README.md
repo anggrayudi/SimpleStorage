@@ -175,18 +175,18 @@ class MainActivity : AppCompatActivity() {
                     }.show()
             }
 
-            override fun onCanceledByUser() {
+            override fun onCanceledByUser(requestCode: Int) {
                 Toast.makeText(baseContext, "Canceled by user", Toast.LENGTH_SHORT).show()
             }
 
-            override fun onStoragePermissionDenied() {
+            override fun onStoragePermissionDenied(requestCode: Int) {
                 /*
                 Request runtime permissions for Manifest.permission.WRITE_EXTERNAL_STORAGE
                 and Manifest.permission.READ_EXTERNAL_STORAGE
                 */
             }
 
-            override fun onRootPathPermissionGranted(root: DocumentFile) {
+            override fun onRootPathPermissionGranted(requestCode: Int, root: DocumentFile) {
                 Toast.makeText(baseContext, "Storage access has been granted for ${root.getStorageId(baseContext)}", Toast.LENGTH_SHORT).show()
             }
         }
@@ -336,7 +336,7 @@ val folder: DocumentFile = ...
 val targetFolder: DocumentFile = ...
 
 // Since moveFolderTo() is annotated with @WorkerThread, you must execute it in background thread
-folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, callback = object : FolderCallback {
+folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, callback = object : FolderCallback() {
     override fun onPrepare() {
         // Show notification or progress bar dialog with indeterminate state
     }
@@ -345,7 +345,7 @@ folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, ca
         // Inform user that the app is counting & calculating files
     }
 
-    override fun onStart(folder: DocumentFile, totalFilesToCopy: Int): Long {
+    override fun onStart(folder: DocumentFile, totalFilesToCopy: Int, workerThread: Thread): Long {
         return 1000 // update progress every 1 second
     }
 
@@ -361,16 +361,16 @@ folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, ca
         handleFolderContentConflict(action, conflictedFiles)
     }
 
-    override fun onReport(progress: Float, bytesMoved: Long, writeSpeed: Int, fileCount: Int) {
-        Timber.d("onReport() -> ${progress.toInt()}% | Moved $fileCount files")
+    override fun onReport(report: Report) {
+        Timber.d("onReport() -> ${report.progress.toInt()}% | Copied ${report.fileCount} files")
     }
 
-    override fun onCompleted(folder: DocumentFile, totalFilesToCopy: Int, totalCopiedFiles: Int, success: Boolean) {
-        Timber.d("Moved $totalCopiedFiles of $totalFilesToCopy files")
+    override fun onCompleted(result: Result) {
+        Toast.makeText(baseContext, "Copied ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
     }
 
-    override fun onFailed(errorCode: FolderCallback.ErrorCode) {
-        Timber.d("An error has occurred: $errorCode")
+    override fun onFailed(errorCode: ErrorCode) {
+        Toast.makeText(baseContext, "An error has occurred: $errorCode", Toast.LENGTH_SHORT).show()
     }
 })
 ```

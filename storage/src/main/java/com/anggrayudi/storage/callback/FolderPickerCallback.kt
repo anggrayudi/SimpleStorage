@@ -15,7 +15,7 @@ interface FolderPickerCallback {
         // default implementation
     }
 
-    fun onActivityHandlerNotFound(intent: Intent) {
+    fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
         // default implementation
     }
 

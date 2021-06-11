@@ -156,7 +156,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             requestCodeStorageAccess = requestCode
             expectedStorageTypeForAccessRequest = expectedStorageType
         } else {
-            storageAccessCallback?.onActivityHandlerNotFound(intent)
+            storageAccessCallback?.onActivityHandlerNotFound(requestCode, intent)
         }
     }
 
@@ -182,7 +182,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 externalStorageRootAccessIntent
             }
             if (!wrapper.startActivityForResult(intent, requestCode))
-                folderPickerCallback?.onActivityHandlerNotFound(intent)
+                folderPickerCallback?.onActivityHandlerNotFound(requestCode, intent)
         } else {
             folderPickerCallback?.onStoragePermissionDenied(requestCode)
         }
@@ -200,7 +200,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 intent.type = filterMimeTypes.firstOrNull() ?: MimeType.UNKNOWN
             }
             if (!wrapper.startActivityForResult(intent, requestCode))
-                filePickerCallback?.onActivityHandlerNotFound(intent)
+                filePickerCallback?.onActivityHandlerNotFound(requestCode, intent)
         } else {
             filePickerCallback?.onStoragePermissionDenied(requestCode, null)
         }
@@ -254,7 +254,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                     @Suppress("DEPRECATION")
                     sm.storageVolumes.firstOrNull { it.isRemovable }?.createAccessIntent(null)?.let {
                         if (!wrapper.startActivityForResult(it, requestCode)) {
-                            storageAccessCallback?.onActivityHandlerNotFound(it)
+                            storageAccessCallback?.onActivityHandlerNotFound(requestCode, it)
                         }
                         return
                     }

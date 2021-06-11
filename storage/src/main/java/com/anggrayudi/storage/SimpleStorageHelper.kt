@@ -116,7 +116,7 @@ class SimpleStorageHelper {
                 reset()
             }
 
-            override fun onActivityHandlerNotFound(intent: Intent) {
+            override fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
                 handleMissingActivityHandler()
             }
         }
@@ -149,7 +149,7 @@ class SimpleStorageHelper {
                 reset()
             }
 
-            override fun onActivityHandlerNotFound(intent: Intent) {
+            override fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
                 handleMissingActivityHandler()
             }
         }
@@ -168,7 +168,7 @@ class SimpleStorageHelper {
                 reset()
             }
 
-            override fun onActivityHandlerNotFound(intent: Intent) {
+            override fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
                 handleMissingActivityHandler()
             }
         }
