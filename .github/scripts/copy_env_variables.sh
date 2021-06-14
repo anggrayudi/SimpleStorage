@@ -8,6 +8,7 @@ mkdir "$HOME/.android"
 keytool -genkey -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Debug"
 
 # Copy secret keys into gradle.properties
-echo "mavenCentralUsername=$OSS_SONATYPE_NEXUS_USERNAME" >>gradle.properties
-echo "mavenCentralPassword=$OSS_SONATYPE_NEXUS_PASSWORD" >>gradle.properties
-echo "RELEASE_SIGNING_ENABLED=false" >>gradle.properties
+{
+  printf "\nmavenCentralUsername=%s" "$OSS_SONATYPE_NEXUS_USERNAME"
+  printf "\nmavenCentralPassword=%s" "$OSS_SONATYPE_NEXUS_PASSWORD"
+} >>gradle.properties
