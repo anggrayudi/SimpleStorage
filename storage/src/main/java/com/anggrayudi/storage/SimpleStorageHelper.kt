@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.documentfile.provider.DocumentFile
@@ -241,6 +242,11 @@ class SimpleStorageHelper {
                 .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
                 .withListener(object : BaseMultiplePermissionsListener() {
                     override fun onPermissionsChecked(report: MultiplePermissionsReport) {
+                        if (report.isAnyPermissionPermanentlyDenied) {
+                            redirectToSystemSettings(context)
+                            onPermissionsResult(false)
+                            return
+                        }
                         val granted = report.areAllPermissionsGranted()
                         if (!granted) {
                             Toast.makeText(context, R.string.ss_please_grant_storage_permission, Toast.LENGTH_SHORT).show()
@@ -248,6 +254,19 @@ class SimpleStorageHelper {
                         onPermissionsResult(granted)
                     }
                 }).check()
+        }
+
+        @JvmStatic
+        fun redirectToSystemSettings(context: Context) {
+            AlertDialog.Builder(context)
+                .setMessage(R.string.ss_storage_permission_permanently_disabled)
+                .setNegativeButton(android.R.string.cancel) { _, _ -> }
+                .setPositiveButton(android.R.string.ok) { _, _ ->
+                    val intentSetting = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                        .addCategory(Intent.CATEGORY_DEFAULT)
+                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intentSetting)
+                }.show()
         }
     }
 }

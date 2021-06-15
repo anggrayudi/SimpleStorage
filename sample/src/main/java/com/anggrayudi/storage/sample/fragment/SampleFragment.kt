@@ -41,7 +41,7 @@ class SampleFragment : Fragment() {
             }
 
             override fun onShouldRedirectToSystemSettings(blockedPermissions: List<PermissionReport>) {
-                MainActivity.openSystemSettings(requireContext())
+                SimpleStorageHelper.redirectToSystemSettings(requireContext())
             }
         })
         .build()

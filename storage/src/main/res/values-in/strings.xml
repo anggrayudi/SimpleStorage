@@ -8,4 +8,6 @@
     <string name="ss_storage_access_denied_confirm">Kamu tidak punya akses tulis ke penyimpanan ini, sehingga tidak ada gunanya memilih folder ini.
         \nMaukah kamu memberikan akses ke folder ini?</string>
     <string name="ss_missing_saf_activity_handler">Storage Access Framework tidak tersedia untuk saat ini.</string>
+    <string name="ss_storage_permission_permanently_disabled">Izin penyimpanan telah dinonaktifkan secara permanen.
+        Apakah Anda ingin mengaktifkannya di pengaturan sistem?</string>
 </resources>

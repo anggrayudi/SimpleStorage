@@ -1,7 +1,6 @@
 package com.anggrayudi.storage.sample.activity
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -51,7 +50,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun onShouldRedirectToSystemSettings(blockedPermissions: List<PermissionReport>) {
-                    openSystemSettings(this@MainActivity)
+                    SimpleStorageHelper.redirectToSystemSettings(this@MainActivity)
                 }
             })
             .build()
@@ -647,18 +646,5 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_CODE_PICK_SOURCE_FILE_FOR_MULTIPLE_MOVE = 16
         const val REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MULTIPLE_MOVE = 17
         const val REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_MOVE = 18
-
-        fun openSystemSettings(context: Context) {
-            MaterialDialog(context)
-                .message(text = "Permission was disabled permanently. Do you want to enable it from system settings?")
-                .positiveButton {
-                    val intentSetting = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
-                        .addCategory(Intent.CATEGORY_DEFAULT)
-                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(intentSetting)
-                }
-                .negativeButton()
-                .show()
-        }
     }
 }
