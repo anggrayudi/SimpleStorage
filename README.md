@@ -115,10 +115,10 @@ Simple Storage adds Kotlin extension functions to `DocumentFile`, so you can man
 * `DocumentFile.getStorageType()`
 * `DocumentFile.getBasePath()`
 * `DocumentFile.copyFileTo()`
-* `DocumentFile.moveFolderTo()`
+* `List<DocumentFile>.moveTo()`
 * `DocumentFile.search()`
 * `DocumentFile.deleteRecursively()`
-* `DocumentFile.openInputStream()`
+* `DocumentFile.getProperties()`
 * `DocumentFile.openOutputStream()`, and many more…
 
 ### `MediaFile`

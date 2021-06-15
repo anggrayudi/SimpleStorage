@@ -102,11 +102,12 @@ fun DocumentFile.isEmpty(context: Context): Boolean {
 
 /**
  * Similar to Get Info on MacOS or File Properties in Windows.
+ * Use [Thread.interrupt] to cancel the proccess and it will trigger [FileProperties.CalculationCallback.onCanceled]
  */
 @WorkerThread
-fun DocumentFile.getProperties(context: Context): FileProperties? {
-    return when {
-        !canRead() -> null
+fun DocumentFile.getProperties(context: Context, callback: FileProperties.CalculationCallback) {
+    when {
+        !canRead() -> callback.uiScope.postToUi { callback.onError() }
 
         isDirectory -> {
             val properties = FileProperties(
@@ -116,33 +117,50 @@ fun DocumentFile.getProperties(context: Context): FileProperties? {
                 isVirtual = isVirtual,
                 lastModified = lastModified().let { if (it > 0) Date(it) else null }
             )
-            if (!isEmpty(context)) {
-                walkFileTreeForInfo(properties)
+            if (isEmpty(context)) {
+                callback.uiScope.postToUi { callback.onComplete(properties) }
+            } else {
+                val timer = startCoroutineTimer(repeatMillis = callback.updateInterval) {
+                    callback.uiScope.postToUi { callback.onUpdate(properties) }
+                }
+                val thread = Thread.currentThread()
+                walkFileTreeForInfo(properties, thread)
+                timer.cancel()
+                // need to store isInterrupted in a variable, because calling it from UI thread always returns false
+                val interrupted = thread.isInterrupted
+                callback.uiScope.postToUi {
+                    if (interrupted) {
+                        callback.onCanceled(properties)
+                    } else {
+                        callback.onComplete(properties)
+                    }
+                }
             }
-            properties
         }
 
         isFile -> {
-            FileProperties(
+            val properties = FileProperties(
                 name = fullName,
                 location = getAbsolutePath(context),
                 size = length(),
                 isVirtual = isVirtual,
                 lastModified = lastModified().let { if (it > 0) Date(it) else null }
             )
+            callback.uiScope.postToUi { callback.onComplete(properties) }
         }
-
-        else -> null
     }
 }
 
-private fun DocumentFile.walkFileTreeForInfo(properties: FileProperties) {
+private fun DocumentFile.walkFileTreeForInfo(properties: FileProperties, thread: Thread) {
     val list = listFiles()
     if (list.isEmpty()) {
         properties.emptyFolders++
         return
     }
     list.forEach {
+        if (thread.isInterrupted) {
+            return
+        }
         if (it.isFile) {
             properties.files++
             val size = it.length()
@@ -150,7 +168,7 @@ private fun DocumentFile.walkFileTreeForInfo(properties: FileProperties) {
             if (size == 0L) properties.emptyFiles++
         } else {
             properties.folders++
-            it.walkFileTreeForInfo(properties)
+            it.walkFileTreeForInfo(properties, thread)
         }
     }
 }
