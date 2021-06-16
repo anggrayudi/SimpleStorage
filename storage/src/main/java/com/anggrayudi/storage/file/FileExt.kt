@@ -45,7 +45,10 @@ fun File.getStorageType(context: Context) = when {
     else -> StorageType.UNKNOWN
 }
 
-fun File.child(name: String) = File(this, name)
+/**
+ * @param path single file name or file path
+ */
+fun File.child(path: String) = File(this, path)
 
 /**
  * @see [Context.getDataDir]

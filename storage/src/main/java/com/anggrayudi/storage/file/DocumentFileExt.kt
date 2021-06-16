@@ -267,6 +267,33 @@ fun DocumentFile.toTreeDocumentFile(context: Context): DocumentFile? {
 fun DocumentFile.toMediaFile(context: Context) = if (isTreeDocumentFile) null else MediaFile(context, uri)
 
 /**
+ * @param path single file name or file path. Empty string returns to itself.
+ */
+fun DocumentFile.child(context: Context, path: String, requiresWriteAccess: Boolean = false): DocumentFile? {
+    return when {
+        path.isEmpty() -> this
+        isDirectory -> {
+            val file = if (isRawFile) {
+                DocumentFile.fromFile(File(uri.path!!, path))
+            } else {
+                var currentDirectory = this
+                DocumentFileCompat.getDirectorySequence(path).forEach {
+                    val directory = currentDirectory.findFile(it) ?: return null
+                    if (directory.canRead()) {
+                        currentDirectory = directory
+                    } else {
+                        return null
+                    }
+                }
+                currentDirectory
+            }
+            file.takeIf { it.canRead() && (requiresWriteAccess && it.isWritable(context) || !requiresWriteAccess) }
+        }
+        else -> null
+    }
+}
+
+/**
  * @return File path without storage ID. Returns empty `String` if:
  * * It is the root path
  * * It is not a raw file and the authority is neither [DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY] nor [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY]
@@ -633,18 +660,10 @@ fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile
             // content://com.android.providers.downloads.documents/tree/downloads/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2FIKO5
             // raw:/storage/emulated/0/Download/IKO5
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && (path.startsWith("/tree/downloads/document/raw:") || path.startsWith("/document/raw:")) -> {
-                var currentDirectory = DocumentFileCompat.fromPublicFolder(context, PublicDirectory.DOWNLOADS, considerRawFile = false)
-                    ?: return null
+                val downloads = DocumentFileCompat.fromPublicFolder(context, PublicDirectory.DOWNLOADS, considerRawFile = false) ?: return null
                 val fullPath = path.substringAfterLast("/document/raw:")
-                DocumentFileCompat.getDirectorySequence(fullPath.substringAfter("/${Environment.DIRECTORY_DOWNLOADS}")).forEach {
-                    val directory = currentDirectory.findFile(it) ?: return null
-                    if (directory.canRead()) {
-                        currentDirectory = directory
-                    } else {
-                        return null
-                    }
-                }
-                currentDirectory.takeIf { it.isWritable(context) }
+                val subFile = fullPath.substringAfter("/${Environment.DIRECTORY_DOWNLOADS}", "")
+                downloads.child(context, subFile, true)
             }
 
             // msd for directories and msf for files

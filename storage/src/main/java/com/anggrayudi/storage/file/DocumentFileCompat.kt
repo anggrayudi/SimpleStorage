@@ -125,12 +125,12 @@ object DocumentFileCompat {
         } else {
             val file = exploreFile(context, storageId, basePath, documentType, considerRawFile)
             if (file == null && basePath.startsWith(Environment.DIRECTORY_DOWNLOADS) && storageId == PRIMARY) {
-                fromPublicFolder(context, PublicDirectory.DOWNLOADS, basePath.substringAfter('/', ""), considerRawFile = considerRawFile)
-                    ?.takeIf {
-                        documentType == DocumentFileType.ANY
-                                || documentType == DocumentFileType.FILE && it.isFile
-                                || documentType == DocumentFileType.FOLDER && it.isDirectory
-                    }
+                val downloads = context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))?.takeIf { it.canRead() } ?: return null
+                downloads.child(context, basePath.substringAfter('/', ""))?.takeIf {
+                    documentType == DocumentFileType.ANY
+                            || documentType == DocumentFileType.FILE && it.isFile
+                            || documentType == DocumentFileType.FOLDER && it.isDirectory
+                }
             } else {
                 file
             }
@@ -210,7 +210,9 @@ object DocumentFileCompat {
         if (subFile.isNotEmpty()) {
             rawFile = File("$rawFile/$subFile".trimEnd('/'))
         }
-        if (considerRawFile && rawFile.canRead() && (requiresWriteAccess && rawFile.isWritable(context) || !requiresWriteAccess)) {
+        if (rawFile.canRead() && (considerRawFile || rawFile.isExternalStorageManager(context))
+            && (requiresWriteAccess && rawFile.isWritable(context) || !requiresWriteAccess)
+        ) {
             return DocumentFile.fromFile(rawFile)
         }
 
@@ -227,17 +229,9 @@ object DocumentFileCompat {
             but unfortunately cannot create file in the directory. So creating directory with this authority is useless.
             Hence, convert it to writable URI with DocumentFile.toWritableDownloadsDocumentFile()
             */
-            var downloadFolder = context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))
+            val downloadFolder = context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))
             if (downloadFolder?.canRead() == true) {
-                getDirectorySequence(subFile).forEach {
-                    val directory = downloadFolder?.findFile(it) ?: return null
-                    if (directory.canRead()) {
-                        downloadFolder = directory
-                    } else {
-                        return null
-                    }
-                }
-                downloadFolder
+                downloadFolder.child(context, subFile, requiresWriteAccess)
             } else {
                 fromFullPath(context, rawFile.absolutePath, considerRawFile = false)
             }
@@ -662,11 +656,7 @@ object DocumentFileCompat {
             }
         }
         val file = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            var current = getRootDocumentFile(context, storageId, considerRawFile) ?: return null
-            getDirectorySequence(basePath).forEach {
-                current = current.findFile(it) ?: return null
-            }
-            current
+            getRootDocumentFile(context, storageId, considerRawFile)?.child(context, basePath) ?: return null
         } else {
             val directorySequence = getDirectorySequence(basePath).toMutableList()
             val parentTree = ArrayList<String>(directorySequence.size)
