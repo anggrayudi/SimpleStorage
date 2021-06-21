@@ -2034,14 +2034,96 @@ private fun DocumentFile.moveFileTo(
 }
 
 /**
+ * @return `true` if error
+ */
+private fun DocumentFile.simpleCheckSourceFile(callback: FileCallback): Boolean {
+    if (!isFile) {
+        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND) }
+        return true
+    }
+    if (!canRead()) {
+        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        return true
+    }
+    return false
+}
+
+private fun DocumentFile.copyFileToMedia(
+    context: Context,
+    fileDescription: FileDescription,
+    callback: FileCallback,
+    publicDirectory: PublicDirectory,
+    deleteSourceFileWhenComplete: Boolean,
+    mode: CreateMode
+) {
+    if (simpleCheckSourceFile(callback)) return
+
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        val publicFolder = DocumentFileCompat.fromPublicFolder(context, publicDirectory, fileDescription.subFolder, true)
+        if (publicFolder == null) {
+            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+            return
+        }
+        publicFolder.findFile(fileDescription.fullName)?.let {
+            if (mode == CreateMode.REPLACE) {
+                if (!it.forceDelete(context)) {
+                    callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+                    return
+                }
+            } else {
+                fileDescription.name = publicFolder.autoIncrementFileName(context, it.name.orEmpty())
+            }
+        }
+        fileDescription.subFolder = ""
+        if (deleteSourceFileWhenComplete) {
+            moveFileTo(context, publicFolder, fileDescription, callback)
+        } else {
+            copyFileTo(context, publicFolder, fileDescription, callback)
+        }
+    } else {
+        val validMode = if (mode == CreateMode.REUSE) CreateMode.CREATE_NEW else mode
+        val mediaFile = if (publicDirectory == PublicDirectory.DOWNLOADS) {
+            MediaStoreCompat.createDownload(context, fileDescription, validMode)
+        } else {
+            MediaStoreCompat.createImage(context, fileDescription, mode = validMode)
+        }
+        if (mediaFile == null) {
+            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+        } else {
+            copyFileTo(context, mediaFile, deleteSourceFileWhenComplete, callback)
+        }
+    }
+}
+
+@WorkerThread
+@JvmOverloads
+fun DocumentFile.copyFileToDownloadMedia(context: Context, fileDescription: FileDescription, callback: FileCallback, mode: CreateMode = CreateMode.CREATE_NEW) {
+    copyFileToMedia(context, fileDescription, callback, PublicDirectory.DOWNLOADS, false, mode)
+}
+
+@WorkerThread
+@JvmOverloads
+fun DocumentFile.copyFileToPictureMedia(context: Context, fileDescription: FileDescription, callback: FileCallback, mode: CreateMode = CreateMode.CREATE_NEW) {
+    copyFileToMedia(context, fileDescription, callback, PublicDirectory.PICTURES, false, mode)
+}
+
+@WorkerThread
+@JvmOverloads
+fun DocumentFile.moveFileToDownloadMedia(context: Context, fileDescription: FileDescription, callback: FileCallback, mode: CreateMode = CreateMode.CREATE_NEW) {
+    copyFileToMedia(context, fileDescription, callback, PublicDirectory.DOWNLOADS, true, mode)
+}
+
+@WorkerThread
+@JvmOverloads
+fun DocumentFile.moveFileToPictureMedia(context: Context, fileDescription: FileDescription, callback: FileCallback, mode: CreateMode = CreateMode.CREATE_NEW) {
+    copyFileToMedia(context, fileDescription, callback, PublicDirectory.PICTURES, true, mode)
+}
+
+/**
  * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
  */
 @WorkerThread
-fun DocumentFile.moveFileTo(
-    context: Context,
-    targetFile: MediaFile,
-    callback: FileCallback
-) {
+fun DocumentFile.moveFileTo(context: Context, targetFile: MediaFile, callback: FileCallback) {
     copyFileTo(context, targetFile, true, callback)
 }
 
@@ -2049,11 +2131,7 @@ fun DocumentFile.moveFileTo(
  * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
  */
 @WorkerThread
-fun DocumentFile.copyFileTo(
-    context: Context,
-    targetFile: MediaFile,
-    callback: FileCallback
-) {
+fun DocumentFile.copyFileTo(context: Context, targetFile: MediaFile, callback: FileCallback) {
     copyFileTo(context, targetFile, false, callback)
 }
 
@@ -2063,15 +2141,7 @@ private fun DocumentFile.copyFileTo(
     deleteSourceFileWhenComplete: Boolean,
     callback: FileCallback
 ) {
-    if (!isFile) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND) }
-        return
-    }
-
-    if (!canRead()) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
-        return
-    }
+    if (simpleCheckSourceFile(callback)) return
 
     try {
         if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, PRIMARY), length())) {
