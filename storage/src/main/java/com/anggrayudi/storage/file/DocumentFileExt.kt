@@ -120,12 +120,12 @@ fun DocumentFile.getProperties(context: Context, callback: FileProperties.Calcul
             if (isEmpty(context)) {
                 callback.uiScope.postToUi { callback.onComplete(properties) }
             } else {
-                val timer = startCoroutineTimer(repeatMillis = callback.updateInterval) {
+                val timer = if (callback.updateInterval < 1) null else startCoroutineTimer(repeatMillis = callback.updateInterval) {
                     callback.uiScope.postToUi { callback.onUpdate(properties) }
                 }
                 val thread = Thread.currentThread()
                 walkFileTreeForInfo(properties, thread)
-                timer.cancel()
+                timer?.cancel()
                 // need to store isInterrupted in a variable, because calling it from UI thread always returns false
                 val interrupted = thread.isInterrupted
                 callback.uiScope.postToUi {
@@ -972,13 +972,14 @@ private fun List<DocumentFile>.copyTo(
     val results = mutableMapOf<DocumentFile, DocumentFile>()
 
     if (deleteSourceWhenComplete) {
-        sourceInfos.forEach { (src, _) ->
+        sourceInfos.forEach { (src, info) ->
             when (val result = src.tryMoveFolderByRenamingPath(
                 context,
                 writableTargetParentFolder,
                 src.fullName,
                 skipEmptyFiles,
-                null
+                null,
+                info.conflictResolution
             )) {
                 is DocumentFile -> {
                     results[src] = result
@@ -1095,7 +1096,7 @@ private fun List<DocumentFile>.copyTo(
     val conflictedFiles = mutableListOf<FolderCallback.FileConflict>()
 
     for ((src, info) in sourceInfos) {
-        if (Thread.currentThread().isInterrupted) {
+        if (thread.isInterrupted) {
             notifyCanceled(MultipleFileCallback.ErrorCode.CANCELED)
             return
         }
@@ -1119,7 +1120,7 @@ private fun List<DocumentFile>.copyTo(
             val targetFolderParentPath = "${writableTargetParentFolder.getAbsolutePath(context)}/${src.fullName}"
 
             for (sourceFile in info.children) {
-                if (Thread.currentThread().isInterrupted) {
+                if (thread.isInterrupted) {
                     notifyCanceled(MultipleFileCallback.ErrorCode.CANCELED)
                     return
                 }
@@ -1187,7 +1188,7 @@ private fun List<DocumentFile>.copyTo(
     startTimer(solutions.isNotEmpty() && leftoverSize > 10 * FileSize.MB)
 
     for (conflict in solutions) {
-        if (Thread.currentThread().isInterrupted) {
+        if (thread.isInterrupted) {
             notifyCanceled(MultipleFileCallback.ErrorCode.CANCELED)
             return
         }
@@ -1274,25 +1275,27 @@ private fun DocumentFile.tryMoveFolderByRenamingPath(
     targetFolderParentName: String,
     skipEmptyFiles: Boolean,
     newFolderNameInTargetPath: String?,
+    conflictResolution: FolderCallback.ConflictResolution
 ): Any? {
     if (isInSameMountPointWith(context, writableTargetParentFolder)) {
         if (inInternalStorage(context)) {
-            val targetFile = File(writableTargetParentFolder.getAbsolutePath(context), targetFolderParentName)
-            targetFile.parentFile?.mkdirs()
-            if (toRawFile(context)?.renameTo(targetFile) == true) {
-                if (skipEmptyFiles) targetFile.deleteEmptyFolders(context)
-                return DocumentFile.fromFile(targetFile)
+            toRawFile(context)?.moveTo(
+                context,
+                writableTargetParentFolder.getAbsolutePath(context),
+                targetFolderParentName,
+                conflictResolution.toFileConflictResolution()
+            )?.let {
+                if (skipEmptyFiles) it.deleteEmptyFolders(context)
+                return DocumentFile.fromFile(it)
             }
         }
 
         if (isExternalStorageManager(context)) {
             val sourceFile = toRawFile(context) ?: return FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED
             writableTargetParentFolder.toRawFile(context)?.let { destinationFolder ->
-                destinationFolder.mkdirs()
-                val targetFile = File(destinationFolder, targetFolderParentName)
-                if (sourceFile.renameTo(targetFile)) {
-                    if (skipEmptyFiles) targetFile.deleteEmptyFolders(context)
-                    return DocumentFile.fromFile(targetFile)
+                sourceFile.moveTo(context, destinationFolder, targetFolderParentName, conflictResolution.toFileConflictResolution())?.let {
+                    if (skipEmptyFiles) it.deleteEmptyFolders(context)
+                    return DocumentFile.fromFile(it)
                 }
             }
         }
@@ -1384,13 +1387,20 @@ private fun DocumentFile.copyFolderTo(
         }
     }
 
+    val thread = Thread.currentThread()
+    if (thread.isInterrupted) {
+        callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.CANCELED) }
+        return
+    }
+
     if (deleteSourceWhenComplete) {
         when (val result = tryMoveFolderByRenamingPath(
             context,
             writableTargetParentFolder,
             targetFolderParentName,
             skipEmptyFiles,
-            newFolderNameInTargetPath
+            newFolderNameInTargetPath,
+            conflictResolution
         )) {
             is DocumentFile -> {
                 callback.uiScope.postToUi { callback.onCompleted(FolderCallback.Result(result, totalFilesToCopy, totalFilesToCopy, true)) }
@@ -1414,7 +1424,6 @@ private fun DocumentFile.copyFolderTo(
         return
     }
 
-    val thread = Thread.currentThread()
     val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(this, totalFilesToCopy, thread) }
     if (reportInterval < 0) return
 
@@ -1966,10 +1975,8 @@ private fun DocumentFile.moveFileTo(
     }
 
     if (inInternalStorage(context)) {
-        val targetFile = File(writableTargetFolder.getAbsolutePath(context), cleanFileName)
-        targetFile.parentFile?.mkdirs()
-        if (toRawFile(context)?.renameTo(targetFile) == true) {
-            callback.uiScope.postToUi { callback.onCompleted(DocumentFile.fromFile(targetFile)) }
+        toRawFile(context)?.moveTo(context, writableTargetFolder.getAbsolutePath(context), cleanFileName, fileConflictResolution)?.let {
+            callback.uiScope.postToUi { callback.onCompleted(DocumentFile.fromFile(it)) }
             return
         }
     }
@@ -1982,10 +1989,8 @@ private fun DocumentFile.moveFileTo(
             return
         }
         writableTargetFolder.toRawFile(context)?.let { destinationFolder ->
-            destinationFolder.mkdirs()
-            val targetFile = File(destinationFolder, cleanFileName)
-            if (sourceFile.renameTo(targetFile)) {
-                callback.uiScope.postToUi { callback.onCompleted(DocumentFile.fromFile(targetFile)) }
+            sourceFile.moveTo(context, destinationFolder, cleanFileName, fileConflictResolution)?.let {
+                callback.uiScope.postToUi { callback.onCompleted(DocumentFile.fromFile(it)) }
                 return
             }
         }

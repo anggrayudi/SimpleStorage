@@ -453,12 +453,8 @@ class MediaFile(context: Context, val uri: Uri) {
             }
         } catch (e: SecurityException) {
             handleSecurityException(e, callback)
-        } catch (e: InterruptedIOException) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANCELED) }
-        } catch (e: InterruptedException) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANCELED) }
-        } catch (e: IOException) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.UNKNOWN_IO_ERROR) }
+        } catch (e: Exception) {
+            callback.uiScope.postToUi { callback.onFailed(e.toFileCallbackErrorCode()) }
         }
         return null
     }

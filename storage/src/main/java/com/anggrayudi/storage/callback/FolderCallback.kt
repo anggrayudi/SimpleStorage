@@ -94,6 +94,13 @@ abstract class FolderCallback @JvmOverloads constructor(
             MERGE -> CreateMode.REUSE
             else -> CreateMode.CREATE_NEW
         }
+
+        @RestrictTo(RestrictTo.Scope.LIBRARY)
+        fun toFileConflictResolution() = when (this) {
+            REPLACE -> FileCallback.ConflictResolution.REPLACE
+            CREATE_NEW -> FileCallback.ConflictResolution.CREATE_NEW
+            else -> FileCallback.ConflictResolution.SKIP
+        }
     }
 
     class FileConflict(

@@ -9,6 +9,7 @@ import androidx.annotation.WorkerThread
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
+import com.anggrayudi.storage.callback.FileCallback
 import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import com.anggrayudi.storage.file.StorageId.DATA
@@ -276,5 +277,70 @@ fun File.autoIncrementFileName(filename: String): String {
         "$baseName (${++count}).$ext".trimEnd('.')
     } else {
         filename
+    }
+}
+
+@JvmOverloads
+fun File.moveTo(
+    context: Context,
+    targetFolder: String,
+    newFileNameInTarget: String? = null,
+    mode: FileCallback.ConflictResolution = FileCallback.ConflictResolution.CREATE_NEW
+): File? {
+    return moveTo(context, File(targetFolder), newFileNameInTarget, mode)
+}
+
+/**
+ * @param mode using [FileCallback.ConflictResolution.SKIP] will return `null`
+ */
+@JvmOverloads
+fun File.moveTo(
+    context: Context,
+    targetFolder: File,
+    newFileNameInTarget: String? = null,
+    mode: FileCallback.ConflictResolution = FileCallback.ConflictResolution.CREATE_NEW
+): File? {
+    if (!exists() || !isWritable(context)) {
+        return null
+    }
+    targetFolder.mkdirs()
+    if (!targetFolder.isDirectory || !targetFolder.isWritable(context)) {
+        return null
+    }
+    val filename = newFileNameInTarget ?: name
+    var dest = targetFolder.child(filename)
+    if (parent == targetFolder.path) {
+        return if (renameTo(dest)) dest else null
+    }
+    if (dest.exists()) {
+        when (mode) {
+            FileCallback.ConflictResolution.SKIP -> return null
+            FileCallback.ConflictResolution.REPLACE -> if (!dest.forceDelete()) return null
+            FileCallback.ConflictResolution.CREATE_NEW -> {
+                dest = targetFolder.child(targetFolder.autoIncrementFileName(filename))
+            }
+        }
+    }
+    if (renameTo(dest)) { // true for files and empty folders
+        return dest
+    }
+    if (isDirectory) {
+        dest.mkdirs()
+        walkFileTreeForMove(path, dest.path)
+        deleteRecursively()
+        return dest.takeIf { !it.isEmpty }
+    }
+    return null
+}
+
+private fun File.walkFileTreeForMove(srcPath: String, destFolderPath: String) {
+    listFiles()?.forEach {
+        val targetFile = File(destFolderPath, it.path.substringAfter(srcPath).trim('/'))
+        if (it.isFile) {
+            it.renameTo(targetFile)
+        } else {
+            targetFile.mkdirs()
+            it.walkFileTreeForMove(srcPath, destFolderPath)
+        }
     }
 }
