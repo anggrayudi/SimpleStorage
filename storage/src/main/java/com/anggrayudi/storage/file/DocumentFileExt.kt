@@ -77,7 +77,7 @@ val DocumentFile.fullName: String
         MimeType.getFullFileName(name.orEmpty(), type)
     }
 
-fun DocumentFile.isInSameMountPointWith(context: Context, file: DocumentFile): Boolean {
+fun DocumentFile.inSameMountPointWith(context: Context, file: DocumentFile): Boolean {
     val storageId1 = getStorageId(context)
     val storageId2 = file.getStorageId(context)
     return storageId1 == storageId2 || (storageId1 == PRIMARY || storageId1 == DATA) && (storageId2 == PRIMARY || storageId2 == DATA)
@@ -1277,7 +1277,7 @@ private fun DocumentFile.tryMoveFolderByRenamingPath(
     newFolderNameInTargetPath: String?,
     conflictResolution: FolderCallback.ConflictResolution
 ): Any? {
-    if (isInSameMountPointWith(context, writableTargetParentFolder)) {
+    if (inSameMountPointWith(context, writableTargetParentFolder)) {
         if (inInternalStorage(context)) {
             toRawFile(context)?.moveTo(
                 context,

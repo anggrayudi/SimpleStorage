@@ -39,6 +39,12 @@ fun File.inDataStorage(context: Context) = path.startsWith(context.dataDirectory
 
 fun File.inSdCardStorage(context: Context) = getStorageId(context).let { it != PRIMARY && it != DATA && path.startsWith("/storage/$it") }
 
+fun File.inSameMountPointWith(context: Context, file: File): Boolean {
+    val storageId1 = getStorageId(context)
+    val storageId2 = file.getStorageId(context)
+    return storageId1 == storageId2 || (storageId1 == PRIMARY || storageId1 == DATA) && (storageId2 == PRIMARY || storageId2 == DATA)
+}
+
 fun File.getStorageType(context: Context) = when {
     inPrimaryStorage -> StorageType.EXTERNAL
     inDataStorage(context) -> StorageType.DATA
@@ -311,6 +317,9 @@ fun File.moveTo(
     var dest = targetFolder.child(filename)
     if (parent == targetFolder.path) {
         return if (renameTo(dest)) dest else null
+    }
+    if (!inSameMountPointWith(context, targetFolder)) {
+        return null
     }
     if (dest.exists()) {
         when (mode) {
