@@ -291,20 +291,20 @@ fun File.moveTo(
     context: Context,
     targetFolder: String,
     newFileNameInTarget: String? = null,
-    mode: FileCallback.ConflictResolution = FileCallback.ConflictResolution.CREATE_NEW
+    conflictResolution: FileCallback.ConflictResolution = FileCallback.ConflictResolution.CREATE_NEW
 ): File? {
-    return moveTo(context, File(targetFolder), newFileNameInTarget, mode)
+    return moveTo(context, File(targetFolder), newFileNameInTarget, conflictResolution)
 }
 
 /**
- * @param mode using [FileCallback.ConflictResolution.SKIP] will return `null`
+ * @param conflictResolution using [FileCallback.ConflictResolution.SKIP] will return `null`
  */
 @JvmOverloads
 fun File.moveTo(
     context: Context,
     targetFolder: File,
     newFileNameInTarget: String? = null,
-    mode: FileCallback.ConflictResolution = FileCallback.ConflictResolution.CREATE_NEW
+    conflictResolution: FileCallback.ConflictResolution = FileCallback.ConflictResolution.CREATE_NEW
 ): File? {
     if (!exists() || !isWritable(context)) {
         return null
@@ -322,7 +322,7 @@ fun File.moveTo(
         return null
     }
     if (dest.exists()) {
-        when (mode) {
+        when (conflictResolution) {
             FileCallback.ConflictResolution.SKIP -> return null
             FileCallback.ConflictResolution.REPLACE -> if (!dest.forceDelete()) return null
             FileCallback.ConflictResolution.CREATE_NEW -> {

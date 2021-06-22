@@ -7,7 +7,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
-import android.system.ErrnoException
 import android.system.Os
 import androidx.annotation.WorkerThread
 import androidx.core.content.ContextCompat
@@ -692,8 +691,6 @@ object DocumentFileCompat {
     internal fun getDirectorySequence(path: String) = path.split('/')
         .filterNot { it.isBlank() }
 
-    private fun recreateAppDirectory(context: Context) = context.getAppDirectory().apply { File(this).mkdirs() }
-
     /**
      * Given the following `folderFullPaths`:
      * * `/storage/9016-4EF8/Downloads`
@@ -770,115 +767,82 @@ object DocumentFileCompat {
         }
     }
 
-    /** Get available space in bytes. */
     @JvmStatic
-    @Suppress("DEPRECATION")
     fun getFreeSpace(context: Context, storageId: String): Long {
-        try {
-            if (storageId == PRIMARY || storageId == DATA) {
-                val stat = StatFs(recreateAppDirectory(context))
-                return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2)
-                    stat.availableBytes
-                else
-                    (stat.blockSize * stat.availableBlocks).toLong()
-            } else if (Build.VERSION.SDK_INT >= 21) {
-                try {
-                    val fileUri = getDocumentFileForStorageInfo(context, storageId)?.uri ?: return 0
-                    context.contentResolver.openFileDescriptor(fileUri, "r")?.use {
+        return try {
+            val file = getDocumentFileForStorageInfo(context, storageId) ?: return 0
+            when {
+                file.isRawFile -> StatFs(file.uri.path!!).availableBytes
+                Build.VERSION.SDK_INT >= 21 -> {
+                    context.contentResolver.openFileDescriptor(file.uri, "r")?.use {
                         val stats = Os.fstatvfs(it.fileDescriptor)
-                        return stats.f_bavail * stats.f_frsize
-                    }
-                } catch (e: ErrnoException) {
-                    // ignore
+                        stats.f_bavail * stats.f_frsize
+                    } ?: 0
                 }
+                else -> 0
             }
-        } catch (e: SecurityException) {
-            // ignore
-        } catch (e: IllegalArgumentException) {
-            // ignore
-        } catch (e: IOException) {
-            // ignore
+        } catch (e: Throwable) {
+            0
         }
-        return 0
     }
 
-    /** Get available space in bytes. */
     @JvmStatic
-    @Suppress("DEPRECATION")
     fun getUsedSpace(context: Context, storageId: String): Long {
-        try {
-            if (storageId == PRIMARY || storageId == DATA) {
-                val stat = StatFs(recreateAppDirectory(context))
-                return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2)
-                    stat.totalBytes - stat.availableBytes
-                else
-                    (stat.blockSize * stat.blockCount - stat.blockSize * stat.availableBlocks).toLong()
-            } else if (Build.VERSION.SDK_INT >= 21) {
-                try {
-                    val fileUri = getDocumentFileForStorageInfo(context, storageId)?.uri ?: return 0
-                    context.contentResolver.openFileDescriptor(fileUri, "r")?.use {
+        return try {
+            val file = getDocumentFileForStorageInfo(context, storageId) ?: return 0
+            when {
+                file.isRawFile -> StatFs(file.uri.path!!).run { totalBytes - availableBytes }
+                Build.VERSION.SDK_INT >= 21 -> {
+                    context.contentResolver.openFileDescriptor(file.uri, "r")?.use {
                         val stats = Os.fstatvfs(it.fileDescriptor)
-                        return stats.f_blocks * stats.f_frsize - stats.f_bavail * stats.f_frsize
-                    }
-                } catch (e: ErrnoException) {
-                    // ignore
+                        stats.f_blocks * stats.f_frsize - stats.f_bavail * stats.f_frsize
+                    } ?: 0
                 }
+                else -> 0
             }
-        } catch (e: SecurityException) {
-            // ignore
-        } catch (e: IllegalArgumentException) {
-            // ignore
-        } catch (e: IOException) {
-            // ignore
+        } catch (e: Throwable) {
+            0
         }
-        return 0
     }
 
     @JvmStatic
-    @Suppress("DEPRECATION")
     fun getStorageCapacity(context: Context, storageId: String): Long {
-        try {
-            if (storageId == PRIMARY || storageId == DATA) {
-                val stat = StatFs(recreateAppDirectory(context))
-                return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2)
-                    stat.totalBytes
-                else
-                    (stat.blockSize * stat.blockCount).toLong()
-            } else if (Build.VERSION.SDK_INT >= 21) {
-                try {
-                    val fileUri = getDocumentFileForStorageInfo(context, storageId)?.uri ?: return 0
-                    context.contentResolver.openFileDescriptor(fileUri, "r")?.use {
+        return try {
+            val file = getDocumentFileForStorageInfo(context, storageId) ?: return 0
+            when {
+                file.isRawFile -> StatFs(file.uri.path!!).totalBytes
+                Build.VERSION.SDK_INT >= 21 -> {
+                    context.contentResolver.openFileDescriptor(file.uri, "r")?.use {
                         val stats = Os.fstatvfs(it.fileDescriptor)
-                        return stats.f_blocks * stats.f_frsize
-                    }
-                } catch (e: ErrnoException) {
-                    // ignore
+                        stats.f_blocks * stats.f_frsize
+                    } ?: 0
                 }
+                else -> 0
             }
-        } catch (e: SecurityException) {
-            // ignore
-        } catch (e: IllegalArgumentException) {
-            // ignore
-        } catch (e: IOException) {
-            // ignore
+        } catch (e: Throwable) {
+            0
         }
-        return 0
     }
 
     private fun getDocumentFileForStorageInfo(context: Context, storageId: String): DocumentFile? {
-        return if (storageId == PRIMARY || storageId == DATA) {
-            // use app private directory, so no permissions required
-            val privateAppDirectory = context.getExternalFilesDir(null) ?: return null
-            privateAppDirectory.mkdirs()
-            DocumentFile.fromFile(privateAppDirectory)
-        } else {
-            // /storage/131D-261A/Android/data/com.anggrayudi.storage.sample/files
-            val folder = File("/storage/$storageId/Android/data/${context.packageName}/files")
-            folder.mkdirs()
-            if (folder.canRead()) {
-                DocumentFile.fromFile(folder)
-            } else {
-                getAccessibleRootDocumentFile(context, folder.absolutePath, considerRawFile = false)
+        return when (storageId) {
+            PRIMARY -> {
+                // use app private directory, so no permissions required
+                val directory = context.getExternalFilesDir(null) ?: return null
+                DocumentFile.fromFile(directory)
+            }
+
+            DATA -> DocumentFile.fromFile(context.dataDirectory)
+
+            else -> {
+                // /storage/131D-261A/Android/data/com.anggrayudi.storage.sample/files
+                val folder = File("/storage/$storageId/Android/data/${context.packageName}/files")
+                folder.mkdirs()
+                if (folder.canRead()) {
+                    DocumentFile.fromFile(folder)
+                } else {
+                    getAccessibleRootDocumentFile(context, folder.absolutePath, considerRawFile = false)
+                }
             }
         }
     }

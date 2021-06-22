@@ -731,10 +731,11 @@ fun DocumentFile.search(
     return when {
         !isDirectory || !canRead() -> emptyList()
         recursive -> {
+            val thread = Thread.currentThread()
             if (mimeTypes.isNullOrEmpty() || mimeTypes.any { it == MimeType.UNKNOWN }) {
-                walkFileTreeForSearch(documentType, emptyArray(), name, regex)
+                walkFileTreeForSearch(documentType, emptyArray(), name, regex, thread)
             } else {
-                walkFileTreeForSearch(DocumentFileType.FILE, mimeTypes, name, regex)
+                walkFileTreeForSearch(DocumentFileType.FILE, mimeTypes, name, regex, thread)
             }
         }
         else -> {
@@ -764,10 +765,12 @@ private fun DocumentFile.walkFileTreeForSearch(
     documentType: DocumentFileType,
     mimeTypes: Array<String>,
     nameFilter: String,
-    regex: Regex?
+    regex: Regex?,
+    thread: Thread
 ): List<DocumentFile> {
     val fileTree = mutableListOf<DocumentFile>()
     for (file in listFiles()) {
+        if (thread.isInterrupted) break
         if (!canRead()) continue
 
         if (file.isFile) {
@@ -788,7 +791,7 @@ private fun DocumentFile.walkFileTreeForSearch(
                     fileTree.add(file)
                 }
             }
-            fileTree.addAll(file.walkFileTreeForSearch(documentType, mimeTypes, nameFilter, regex))
+            fileTree.addAll(file.walkFileTreeForSearch(documentType, mimeTypes, nameFilter, regex, thread))
         }
     }
     return fileTree
