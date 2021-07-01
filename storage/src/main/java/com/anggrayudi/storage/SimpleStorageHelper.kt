@@ -37,29 +37,27 @@ class SimpleStorageHelper {
     @JvmOverloads
     constructor(activity: ComponentActivity, savedState: Bundle? = null) {
         storage = SimpleStorage(activity)
-        savedState?.let { onRestoreInstanceState(it) }
-        init()
+        init(savedState)
     }
 
     @JvmOverloads
     constructor(activity: FragmentActivity, savedState: Bundle? = null) {
         storage = SimpleStorage(activity)
-        savedState?.let { onRestoreInstanceState(it) }
-        init()
+        init(savedState)
     }
 
     @JvmOverloads
     constructor(fragment: Fragment, savedState: Bundle? = null) {
         storage = SimpleStorage(fragment)
-        savedState?.let { onRestoreInstanceState(it) }
-        init()
+        init(savedState)
     }
 
     var onStorageAccessGranted: ((requestCode: Int, root: DocumentFile) -> Unit)? = null
     var onFolderSelected: ((requestCode: Int, folder: DocumentFile) -> Unit)? = null
     var onFileSelected: ((requestCode: Int, file: DocumentFile) -> Unit)? = null
 
-    private fun init() {
+    private fun init(savedState: Bundle?) {
+        savedState?.let { onRestoreInstanceState(it) }
         storage.storageAccessCallback = object : StorageAccessCallback {
             override fun onRootPathNotSelected(
                 requestCode: Int,

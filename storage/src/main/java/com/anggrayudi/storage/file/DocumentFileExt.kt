@@ -2066,8 +2066,8 @@ private fun DocumentFile.copyFileToMedia(
 ) {
     if (simpleCheckSourceFile(callback)) return
 
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-        val publicFolder = DocumentFileCompat.fromPublicFolder(context, publicDirectory, fileDescription.subFolder, true)
+    val publicFolder = DocumentFileCompat.fromPublicFolder(context, publicDirectory, fileDescription.subFolder, true)
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || deleteSourceFileWhenComplete && !isRawFile && publicFolder?.isTreeDocumentFile == true) {
         if (publicFolder == null) {
             callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
             return
