@@ -13,6 +13,7 @@ import android.os.Environment
 import android.os.storage.StorageManager
 import android.provider.DocumentsContract
 import android.provider.Settings
+import androidx.activity.ComponentActivity
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat.checkSelfPermission
@@ -35,8 +36,13 @@ import kotlin.concurrent.thread
  */
 class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
-    constructor(activity: FragmentActivity, savedState: Bundle? = null) : this(ActivityWrapper(activity)) {
+    constructor(activity: FragmentActivity, savedState: Bundle? = null) : this(FragmentActivityWrapper(activity)) {
         savedState?.let { onRestoreInstanceState(it) }
+    }
+
+    constructor(activity: ComponentActivity, savedState: Bundle? = null) : this(ComponentActivityWrapper(activity)) {
+        savedState?.let { onRestoreInstanceState(it) }
+        (wrapper as ComponentActivityWrapper).storage = this
     }
 
     constructor(fragment: Fragment, savedState: Bundle? = null) : this(FragmentWrapper(fragment)) {

@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
@@ -32,6 +33,13 @@ class SimpleStorageHelper {
     private var originalRequestCode = 0
     private var pickerToOpenOnceGranted = 0
     private var filterMimeTypes: Set<String>? = null
+
+    @JvmOverloads
+    constructor(activity: ComponentActivity, savedState: Bundle? = null) {
+        storage = SimpleStorage(activity)
+        savedState?.let { onRestoreInstanceState(it) }
+        init()
+    }
 
     @JvmOverloads
     constructor(activity: FragmentActivity, savedState: Bundle? = null) {

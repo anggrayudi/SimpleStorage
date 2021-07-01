@@ -9,8 +9,7 @@ import androidx.fragment.app.FragmentActivity
  * Created on 18/08/20
  * @author Anggrayudi H
  */
-// TODO: 18/08/20 Should we use WeakReference for activity?
-internal class ActivityWrapper(private val _activity: FragmentActivity) : ComponentWrapper {
+internal class FragmentActivityWrapper(private val _activity: FragmentActivity) : ComponentWrapper {
 
     override val context: Context
         get() = _activity

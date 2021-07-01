@@ -30,9 +30,9 @@ fun Activity.startActivityForResultSafely(requestCode: Int, intent: Intent) {
     }
 }
 
-fun Context.unregisterReceiverSafely(receiver: BroadcastReceiver) {
+fun Context.unregisterReceiverSafely(receiver: BroadcastReceiver?) {
     try {
-        unregisterReceiver(receiver)
+        unregisterReceiver(receiver ?: return)
     } catch (e: IllegalArgumentException) {
         // ignore
     }
