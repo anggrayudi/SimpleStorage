@@ -194,7 +194,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        // Mandatory for FragmentActivity & AppCompatActivity, but not for Fragment & ComponentActivity
+        // Mandatory for Activity, but not for Fragment & ComponentActivity
         storage.onActivityResult(requestCode, resultCode, data)
     }
 
@@ -303,7 +303,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        // Mandatory for FragmentActivity & AppCompatActivity, but not for Fragment & ComponentActivity
+        // Mandatory for Activity, but not for Fragment & ComponentActivity
         storageHelper.storage.onActivityResult(requestCode, resultCode, data)
     }
 

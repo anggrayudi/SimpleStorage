@@ -1,6 +1,7 @@
 package com.anggrayudi.storage
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -11,7 +12,6 @@ import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
@@ -34,14 +34,15 @@ class SimpleStorageHelper {
     private var pickerToOpenOnceGranted = 0
     private var filterMimeTypes: Set<String>? = null
 
+    // For unknown Activity type
     @JvmOverloads
-    constructor(activity: ComponentActivity, savedState: Bundle? = null) {
+    constructor(activity: Activity, savedState: Bundle? = null) {
         storage = SimpleStorage(activity)
         init(savedState)
     }
 
     @JvmOverloads
-    constructor(activity: FragmentActivity, savedState: Bundle? = null) {
+    constructor(activity: ComponentActivity, savedState: Bundle? = null) {
         storage = SimpleStorage(activity)
         init(savedState)
     }

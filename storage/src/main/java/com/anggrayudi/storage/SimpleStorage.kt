@@ -19,7 +19,6 @@ import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
@@ -36,7 +35,8 @@ import kotlin.concurrent.thread
  */
 class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
-    constructor(activity: FragmentActivity, savedState: Bundle? = null) : this(FragmentActivityWrapper(activity)) {
+    // For unknown Activity type
+    constructor(activity: Activity, savedState: Bundle? = null) : this(ActivityWrapper(activity)) {
         savedState?.let { onRestoreInstanceState(it) }
     }
 

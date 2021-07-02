@@ -4,6 +4,7 @@
  **/
 ext.deps = [:]
 def versions = [:]
+versions.activity = "1.2.3"
 versions.appcompat = "1.2.0"
 versions.atsl_core = "1.2.0"
 versions.atsl_junit = "1.1.2"
@@ -28,6 +29,7 @@ ext.versions = versions
 def deps = [:]
 
 // Google -------------------------------
+deps.activity = "androidx.activity:activity:$versions.activity"
 deps.appcompat = "androidx.appcompat:appcompat:$versions.appcompat"
 deps.fragment = "androidx.fragment:fragment-ktx:$versions.fragment"
 deps.core_ktx = "androidx.core:core-ktx:$versions.core_ktx"

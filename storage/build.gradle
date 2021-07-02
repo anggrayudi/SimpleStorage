@@ -25,9 +25,10 @@ android {
 }
 
 dependencies {
-    implementation deps.core_ktx
-    implementation deps.appcompat
-    implementation deps.fragment
+    api deps.appcompat
+    api deps.activity
+    api deps.core_ktx
+    api deps.fragment
     api deps.documentfile
     api deps.dexter
     api deps.coroutines.core

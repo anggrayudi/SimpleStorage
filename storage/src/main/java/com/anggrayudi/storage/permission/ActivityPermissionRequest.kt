@@ -6,7 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.FragmentActivity
 import com.karumi.dexter.Dexter
 
 /**
@@ -22,14 +21,9 @@ class ActivityPermissionRequest private constructor(
     private val callback: PermissionCallback
 ) : PermissionRequest {
 
-    private val launcher = when (activity) {
-        // need to check FragmentActivity first, because it is subclass of ComponentActivity
-        is FragmentActivity -> null
-        is ComponentActivity -> activity.registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-            onRequestPermissionsResult(it)
-        }
-        else -> null
-    }
+    private val launcher = if (activity is ComponentActivity) activity.registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        onRequestPermissionsResult(it)
+    } else null
 
     fun check() = apply {
         permissions.forEach {
@@ -91,7 +85,7 @@ class ActivityPermissionRequest private constructor(
                 if (launcher != null) {
                     launcher.launch(permissions)
                 } else {
-                    ActivityCompat.requestPermissions(activity, permissions, requestCode!!)
+                    ActivityCompat.requestPermissions(activity, permissions, requestCode ?: throw IllegalStateException("Request code hasn't been set yet"))
                 }
                 return
             }
@@ -108,7 +102,7 @@ class ActivityPermissionRequest private constructor(
         private val activity: Activity
         private val requestCode: Int?
 
-        constructor(activity: FragmentActivity, requestCode: Int) {
+        constructor(activity: Activity, requestCode: Int) {
             this.activity = activity
             this.requestCode = requestCode
         }

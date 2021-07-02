@@ -40,23 +40,21 @@ class MainActivity : AppCompatActivity() {
     private val ioScope = CoroutineScope(Dispatchers.IO + job)
     private val uiScope = CoroutineScope(Dispatchers.Main + job)
 
-    private val permissionRequest by lazy {
-        ActivityPermissionRequest.Builder(this, REQUEST_CODE_ASK_PERMISSIONS)
-            .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
-            .withCallback(object : PermissionCallback {
-                override fun onPermissionsChecked(result: PermissionResult, fromSystemDialog: Boolean) {
-                    val grantStatus = if (result.areAllPermissionsGranted) "granted" else "denied"
-                    Toast.makeText(baseContext, "Storage permissions are $grantStatus", Toast.LENGTH_SHORT).show()
-                }
+    private val permissionRequest = ActivityPermissionRequest.Builder(this)
+        .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
+        .withCallback(object : PermissionCallback {
+            override fun onPermissionsChecked(result: PermissionResult, fromSystemDialog: Boolean) {
+                val grantStatus = if (result.areAllPermissionsGranted) "granted" else "denied"
+                Toast.makeText(baseContext, "Storage permissions are $grantStatus", Toast.LENGTH_SHORT).show()
+            }
 
-                override fun onShouldRedirectToSystemSettings(blockedPermissions: List<PermissionReport>) {
-                    SimpleStorageHelper.redirectToSystemSettings(this@MainActivity)
-                }
-            })
-            .build()
-    }
+            override fun onShouldRedirectToSystemSettings(blockedPermissions: List<PermissionReport>) {
+                SimpleStorageHelper.redirectToSystemSettings(this@MainActivity)
+            }
+        })
+        .build()
 
-    private lateinit var storageHelper: SimpleStorageHelper
+    private val storageHelper = SimpleStorageHelper(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,7 +103,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupSimpleStorage(savedInstanceState: Bundle?) {
-        storageHelper = SimpleStorageHelper(this, savedInstanceState)
+        savedInstanceState?.let { storageHelper.onRestoreInstanceState(it) }
         storageHelper.onStorageAccessGranted = { _, root ->
             Toast.makeText(
                 this,
@@ -568,11 +566,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        storageHelper.storage.onActivityResult(requestCode, resultCode, data)
-    }
-
     override fun onSaveInstanceState(outState: Bundle) {
         storageHelper.onSaveInstanceState(outState)
         super.onSaveInstanceState(outState)
@@ -625,7 +618,6 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_CODE_STORAGE_ACCESS = 1
         const val REQUEST_CODE_PICK_FOLDER = 2
         const val REQUEST_CODE_PICK_FILE = 3
-        const val REQUEST_CODE_ASK_PERMISSIONS = 4
 
         const val REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY = 5
         const val REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_COPY = 6
