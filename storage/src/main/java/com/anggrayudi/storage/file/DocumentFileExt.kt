@@ -269,8 +269,10 @@ fun DocumentFile.toTreeDocumentFile(context: Context): DocumentFile? {
 fun DocumentFile.toMediaFile(context: Context) = if (isTreeDocumentFile) null else MediaFile(context, uri)
 
 /**
+ * It's faster than [DocumentFile.findFile]
  * @param path single file name or file path. Empty string returns to itself.
  */
+@JvmOverloads
 fun DocumentFile.child(context: Context, path: String, requiresWriteAccess: Boolean = false): DocumentFile? {
     return when {
         path.isEmpty() -> this
@@ -302,7 +304,7 @@ fun DocumentFile.quickFindRawFile(name: String): DocumentFile? {
 }
 
 /**
- * It's faster 140% than [DocumentFile.findFile].
+ * It's faster than [DocumentFile.findFile].
  *
  * Must set [ContentResolver] as additional parameter to improve performance.
  */
@@ -529,8 +531,6 @@ fun DocumentFile.isRootUriPermissionGranted(context: Context): Boolean {
     return isExternalStorageDocument && DocumentFileCompat.isStorageUriPermissionGranted(context, getStorageId(context))
 }
 
-fun DocumentFile.doesExist(filename: String) = findFile(filename)?.exists() == true
-
 /**
  * Avoid duplicate file name.
  */
@@ -606,14 +606,11 @@ fun DocumentFile.makeFile(
     val fullFileName = "$baseFileName.$extension".trimEnd('.')
 
     if (mode != CreateMode.CREATE_NEW) {
-        val existingFile = parent.findFile(fullFileName)
-        if (existingFile?.exists() == true) {
-            return existingFile.let {
-                when {
-                    mode == CreateMode.REPLACE -> it.recreateFile(context)
-                    it.isFile -> it
-                    else -> null
-                }
+        parent.child(context, fullFileName)?.let {
+            when {
+                mode == CreateMode.REPLACE -> it.recreateFile(context)
+                it.isFile -> it
+                else -> null
             }
         }
     }
@@ -655,7 +652,7 @@ fun DocumentFile.makeFolder(context: Context, name: String, mode: CreateMode = C
     val directorySequence = DocumentFileCompat.getDirectorySequence(name.removeForbiddenCharsFromFilename()).toMutableList()
     val folderNameLevel1 = directorySequence.removeFirstOrNull() ?: return null
     var currentDirectory = if (isDownloadsDocument && isTreeDocumentFile) (toWritableDownloadsDocumentFile(context) ?: return null) else this
-    val folderLevel1 = currentDirectory.findFile(folderNameLevel1)
+    val folderLevel1 = currentDirectory.child(context, folderNameLevel1)
 
     currentDirectory = if (folderLevel1 == null || mode == CreateMode.CREATE_NEW) {
         currentDirectory.createDirectory(folderNameLevel1) ?: return null
@@ -2112,7 +2109,7 @@ private fun DocumentFile.copyFileToMedia(
             callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
             return
         }
-        publicFolder.findFile(fileDescription.fullName)?.let {
+        publicFolder.child(context, fileDescription.fullName)?.let {
             if (mode == CreateMode.REPLACE) {
                 if (!it.forceDelete(context)) {
                     callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
@@ -2229,7 +2226,7 @@ private fun handleFileConflict(
     targetFileName: String,
     callback: FileCallback
 ): FileCallback.ConflictResolution {
-    targetFolder.findFile(targetFileName)?.let { targetFile ->
+    targetFolder.child(context, targetFileName)?.let { targetFile ->
         val resolution = awaitUiResultWithPending<FileCallback.ConflictResolution>(callback.uiScope) {
             callback.onConflict(targetFile, FileCallback.FileConflictAction(it))
         }
@@ -2251,7 +2248,7 @@ private fun handleParentFolderConflict(
     targetFolderParentName: String,
     callback: FolderCallback
 ): FolderCallback.ConflictResolution {
-    targetParentFolder.findFile(targetFolderParentName)?.let { targetFolder ->
+    targetParentFolder.child(context, targetFolderParentName)?.let { targetFolder ->
         val canMerge = targetFolder.isDirectory
         if (canMerge && targetFolder.isEmpty(context)) {
             return FolderCallback.ConflictResolution.MERGE

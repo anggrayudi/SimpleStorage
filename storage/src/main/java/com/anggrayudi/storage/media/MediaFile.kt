@@ -527,7 +527,7 @@ class MediaFile(context: Context, val uri: Uri) {
         fileName: String,
         callback: FileCallback
     ): FileCallback.ConflictResolution {
-        targetFolder.findFile(fileName)?.let { targetFile ->
+        targetFolder.child(context, fileName)?.let { targetFile ->
             val resolution = awaitUiResultWithPending<FileCallback.ConflictResolution>(callback.uiScope) {
                 callback.onConflict(targetFile, FileCallback.FileConflictAction(it))
             }

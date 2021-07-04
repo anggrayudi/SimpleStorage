@@ -631,7 +631,7 @@ object DocumentFileCompat {
             return null
         }
         return directory?.run {
-            findFile(filename)?.delete()
+            child(context, filename)?.delete()
             makeFile(context, filename, mimeType)
         }
     }
