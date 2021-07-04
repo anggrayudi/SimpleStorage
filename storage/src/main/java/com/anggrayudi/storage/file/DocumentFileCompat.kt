@@ -259,12 +259,13 @@ object DocumentFileCompat {
         if (storageId == DATA) {
             return DocumentFile.fromFile(context.dataDirectory)
         }
-        return if (considerRawFile) {
+        val file = if (considerRawFile) {
             getRootRawFile(context, storageId, requiresWriteAccess)?.let { DocumentFile.fromFile(it) }
                 ?: context.fromTreeUri(createDocumentUri(storageId))
         } else {
             context.fromTreeUri(createDocumentUri(storageId))
         }
+        return file?.takeIf { it.canRead() && (requiresWriteAccess && it.isWritable(context) || !requiresWriteAccess) }
     }
 
     /**
@@ -456,17 +457,24 @@ object DocumentFileCompat {
         requiresWriteAccess: Boolean = true,
         considerRawFile: Boolean = true
     ): DocumentFile? {
-        if (considerRawFile && fullPath.startsWith('/') || fullPath.startsWith(context.dataDirectory.path)) {
+        val tryCreateWithRawFile: () -> DocumentFile? = {
             val folder = File(fullPath.removeForbiddenCharsFromFilename()).apply { mkdirs() }
             if (folder.isDirectory && folder.canRead() && (requiresWriteAccess && folder.isWritable(context) || !requiresWriteAccess)) {
                 // Consider java.io.File for faster performance
-                return DocumentFile.fromFile(folder)
-            }
+                DocumentFile.fromFile(folder)
+            } else null
+        }
+        if (considerRawFile && fullPath.startsWith('/') || fullPath.startsWith(context.dataDirectory.path)) {
+            tryCreateWithRawFile()?.let { return it }
         }
         var currentDirectory = getAccessibleRootDocumentFile(context, fullPath, requiresWriteAccess, considerRawFile) ?: return null
+        if (currentDirectory.isRawFile) {
+            return tryCreateWithRawFile()
+        }
+        val resolver = context.contentResolver
         getDirectorySequence(getBasePath(context, fullPath)).forEach {
             try {
-                val directory = currentDirectory.findFile(it)
+                val directory = currentDirectory.quickFindTreeFile(context, resolver, it)
                 currentDirectory = when {
                     directory == null -> currentDirectory.createDirectory(it) ?: return null
                     directory.isDirectory && directory.canRead() -> directory
@@ -508,9 +516,11 @@ object DocumentFileCompat {
                 }
             } else {
                 var currentDirectory = getAccessibleRootDocumentFile(context, path, requiresWriteAccess, considerRawFile) ?: continue
+                val isRawFile = currentDirectory.isRawFile
+                val resolver = context.contentResolver
                 getDirectorySequence(getBasePath(context, path)).forEach {
                     try {
-                        val directory = currentDirectory.findFile(it)
+                        val directory = if (isRawFile) currentDirectory.quickFindRawFile(it) else currentDirectory.quickFindTreeFile(context, resolver, it)
                         if (directory == null) {
                             currentDirectory = currentDirectory.createDirectory(it) ?: return@forEach
                             val fullPath = currentDirectory.getAbsolutePath(context)
