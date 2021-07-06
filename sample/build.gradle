@@ -45,7 +45,7 @@ dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation project(":storage")
 //    localImplementation project(":storage")
-//    mavenImplementation("com.anggrayudi:storage:$STORAGE_VERSION") { changing = true }
+//    mavenImplementation("com.anggrayudi:storage:$VERSION_NAME") { changing = true }
 
     implementation deps.core_ktx
     implementation deps.appcompat

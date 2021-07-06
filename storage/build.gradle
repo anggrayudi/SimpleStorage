@@ -2,9 +2,6 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
-group = 'com.anggrayudi'
-version = "$STORAGE_VERSION"
-
 android {
     defaultConfig {
         consumerProguardFiles "consumer-rules.pro"
@@ -53,10 +50,6 @@ dependencies {
 
 ext {
     // POM
-    POM_ARTIFACT_ID = archivesBaseName
-    VERSION_NAME = version
-
-    POM_NAME = archivesBaseName
     POM_PACKAGING = 'aar'
     POM_DESCRIPTION = 'Simplify Android Storage Access Framework for file management across API levels.'
 
@@ -83,3 +76,17 @@ ext {
 }
 
 apply plugin: "com.vanniktech.maven.publish"
+
+publishing {
+    repositories {
+        maven {
+            credentials {
+                username = anggrayudi_maven_username
+                password = anggrayudi_maven_password
+            }
+            url = version.endsWith('SNAPSHOT')
+                    ? 'https://oss.sonatype.org/content/repositories/snapshots/'
+                    : 'https://oss.sonatype.org/content/repositories/releases/'
+        }
+    }
+}

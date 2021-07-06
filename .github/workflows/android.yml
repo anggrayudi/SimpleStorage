@@ -28,10 +28,13 @@ jobs:
         run: ./.github/scripts/copy_env_variables.sh
 
       - name: Build with Gradle
+        env:
+          ORG_GRADLE_PROJECT_anggrayudi_maven_username: ${{ secrets.OSS_SONATYPE_NEXUS_USERNAME }}
+          ORG_GRADLE_PROJECT_anggrayudi_maven_password: ${{ secrets.OSS_SONATYPE_NEXUS_PASSWORD }}
         run: ./gradlew build test check
 
       - name: Upload snapshot archives
         env:
-          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.OSS_SONATYPE_NEXUS_USERNAME }}
-          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.OSS_SONATYPE_NEXUS_PASSWORD }}
+          ORG_GRADLE_PROJECT_anggrayudi_maven_username: ${{ secrets.OSS_SONATYPE_NEXUS_USERNAME }}
+          ORG_GRADLE_PROJECT_anggrayudi_maven_password: ${{ secrets.OSS_SONATYPE_NEXUS_PASSWORD }}
         run: ./.github/scripts/deploy_snapshot.sh

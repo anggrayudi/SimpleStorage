@@ -25,6 +25,12 @@ allprojects {
             includeRuntime = true
         }
     }
+
+    plugins.withId("com.vanniktech.maven.publish") {
+        mavenPublish {
+            sonatypeHost = null
+        }
+    }
 }
 
 subprojects {
@@ -37,7 +43,7 @@ subprojects {
                 minSdkVersion 19
                 targetSdkVersion 30
                 versionCode 1
-                versionName "$STORAGE_VERSION"
+                versionName "$VERSION_NAME"
                 testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
                 vectorDrawables.useSupportLibrary = true
             }

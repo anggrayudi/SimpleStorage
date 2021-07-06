@@ -1,6 +1,6 @@
 # Append suffix -SNAPSHOT
-if [[ ! ($(grep "STORAGE_VERSION=" gradle.properties) == *"-SNAPSHOT") ]]; then
-  sed -ie "s/STORAGE_VERSION.*$/&-SNAPSHOT/g" gradle.properties
+if [[ ! ($(grep "VERSION_NAME=" gradle.properties) == *"-SNAPSHOT") ]]; then
+  sed -ie "s/VERSION_NAME.*$/&-SNAPSHOT/g" gradle.properties
   rm -f gradle.propertiese
 fi
 
