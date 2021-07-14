@@ -4,7 +4,7 @@ buildscript {
 
     addRepos(repositories)
 
-    ext.kotlin_version = '1.5.20'
+    ext.kotlin_version = '1.5.21'
 
     dependencies {
         classpath 'com.android.tools.build:gradle:4.2.2'

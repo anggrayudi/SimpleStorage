@@ -27,7 +27,6 @@ dependencies {
     api deps.core_ktx
     api deps.fragment
     api deps.documentfile
-    api deps.dexter
     api deps.coroutines.core
     api deps.coroutines.android
     implementation deps.timber

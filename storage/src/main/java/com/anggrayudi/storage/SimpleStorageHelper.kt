@@ -18,9 +18,7 @@ import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
 import com.anggrayudi.storage.file.StorageType
 import com.anggrayudi.storage.file.getAbsolutePath
-import com.karumi.dexter.Dexter
-import com.karumi.dexter.MultiplePermissionsReport
-import com.karumi.dexter.listener.multi.BaseMultiplePermissionsListener
+import com.anggrayudi.storage.permission.*
 
 /**
  * Helper class to ease you using file & folder picker.
@@ -30,28 +28,42 @@ import com.karumi.dexter.listener.multi.BaseMultiplePermissionsListener
 class SimpleStorageHelper {
 
     val storage: SimpleStorage
+    private val permissionRequest: PermissionRequest
 
     private var originalRequestCode = 0
     private var pickerToOpenOnceGranted = 0
     private var filterMimeTypes: Set<String>? = null
+    private var onPermissionsResult: ((Boolean) -> Unit)? = null
 
     // For unknown Activity type
     @JvmOverloads
-    constructor(activity: Activity, savedState: Bundle? = null) {
+    constructor(activity: Activity, requestCodeForPermissionDialog: Int, savedState: Bundle? = null) {
         storage = SimpleStorage(activity)
         init(savedState)
+        permissionRequest = ActivityPermissionRequest.Builder(activity, requestCodeForPermissionDialog)
+            .withPermissions(*rwPermission)
+            .withCallback(permissionCallback)
+            .build()
     }
 
     @JvmOverloads
     constructor(activity: ComponentActivity, savedState: Bundle? = null) {
         storage = SimpleStorage(activity)
         init(savedState)
+        permissionRequest = ActivityPermissionRequest.Builder(activity)
+            .withPermissions(*rwPermission)
+            .withCallback(permissionCallback)
+            .build()
     }
 
     @JvmOverloads
     constructor(fragment: Fragment, savedState: Bundle? = null) {
         storage = SimpleStorage(fragment)
         init(savedState)
+        permissionRequest = FragmentPermissionRequest.Builder(fragment)
+            .withPermissions(*rwPermission)
+            .withCallback(permissionCallback)
+            .build()
     }
 
     var onStorageAccessGranted: ((requestCode: Int, root: DocumentFile) -> Unit)? = null
@@ -119,7 +131,7 @@ class SimpleStorageHelper {
             }
 
             override fun onStoragePermissionDenied(requestCode: Int) {
-                requestStoragePermission(storage.context) { if (it) storage.openFolderPicker() else reset() }
+                requestStoragePermission { if (it) storage.openFolderPicker() else reset() }
             }
 
             override fun onCanceledByUser(requestCode: Int) {
@@ -152,7 +164,7 @@ class SimpleStorageHelper {
             }
 
             override fun onStoragePermissionDenied(requestCode: Int) {
-                requestStoragePermission(storage.context) { if (it) storage.openFolderPicker() else reset() }
+                requestStoragePermission { if (it) storage.openFolderPicker() else reset() }
             }
 
             override fun onCanceledByUser(requestCode: Int) {
@@ -166,7 +178,7 @@ class SimpleStorageHelper {
 
         storage.filePickerCallback = object : FilePickerCallback {
             override fun onStoragePermissionDenied(requestCode: Int, file: DocumentFile?) {
-                requestStoragePermission(storage.context) { if (it) storage.openFilePicker() else reset() }
+                requestStoragePermission { if (it) storage.openFilePicker() else reset() }
             }
 
             override fun onFileSelected(requestCode: Int, file: DocumentFile) {
@@ -198,6 +210,45 @@ class SimpleStorageHelper {
             }
         }
     }
+
+    private fun requestStoragePermission(onResult: (Boolean) -> Unit) {
+        onPermissionsResult = onResult
+        permissionRequest.check()
+    }
+
+    /**
+     * Mandatory for [Activity], but not for [Fragment] and [ComponentActivity]
+     */
+    fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        if (permissionRequest is ActivityPermissionRequest) {
+            permissionRequest.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        }
+    }
+
+    private val permissionCallback: PermissionCallback
+        get() = object : PermissionCallback {
+            override fun onPermissionsChecked(result: PermissionResult, fromSystemDialog: Boolean) {
+                val granted = result.areAllPermissionsGranted
+                if (!granted) {
+                    Toast.makeText(storage.context, R.string.ss_please_grant_storage_permission, Toast.LENGTH_SHORT).show()
+                }
+                onPermissionsResult?.invoke(granted)
+                onPermissionsResult = null
+            }
+
+            override fun onShouldRedirectToSystemSettings(blockedPermissions: List<PermissionReport>) {
+                redirectToSystemSettings(storage.context)
+                onPermissionsResult?.invoke(false)
+                onPermissionsResult = null
+            }
+        }
+
+    private val rwPermission: Array<String>
+        get() = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
 
     private fun reset() {
         pickerToOpenOnceGranted = 0
@@ -266,26 +317,6 @@ class SimpleStorageHelper {
         private const val KEY_OPEN_FOLDER_PICKER_ONCE_GRANTED = BuildConfig.LIBRARY_PACKAGE_NAME + ".pickerToOpenOnceGranted"
         private const val KEY_ORIGINAL_REQUEST_CODE = BuildConfig.LIBRARY_PACKAGE_NAME + ".originalRequestCode"
         private const val KEY_FILTER_MIME_TYPES = BuildConfig.LIBRARY_PACKAGE_NAME + ".filterMimeTypes"
-
-        @JvmStatic
-        fun requestStoragePermission(context: Context, onPermissionsResult: (Boolean) -> Unit) {
-            Dexter.withContext(context)
-                .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
-                .withListener(object : BaseMultiplePermissionsListener() {
-                    override fun onPermissionsChecked(report: MultiplePermissionsReport) {
-                        if (report.isAnyPermissionPermanentlyDenied) {
-                            redirectToSystemSettings(context)
-                            onPermissionsResult(false)
-                            return
-                        }
-                        val granted = report.areAllPermissionsGranted()
-                        if (!granted) {
-                            Toast.makeText(context, R.string.ss_please_grant_storage_permission, Toast.LENGTH_SHORT).show()
-                        }
-                        onPermissionsResult(granted)
-                    }
-                }).check()
-        }
 
         @JvmStatic
         fun redirectToSystemSettings(context: Context) {

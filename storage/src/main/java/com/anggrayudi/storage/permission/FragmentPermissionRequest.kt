@@ -6,11 +6,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import com.karumi.dexter.Dexter
 
 /**
- * [Dexter] cannot display consent dialog before requesting runtime permissions, thus we create our own permission request handler.
- *
  * Created on 12/13/20
  * @author Anggrayudi H
  */
@@ -25,12 +22,12 @@ class FragmentPermissionRequest private constructor(
         onRequestPermissionsResult(it)
     }
 
-    fun check() = apply {
+    override fun check() {
         val context = fragment.requireContext()
         permissions.forEach {
             if (ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED) {
                 callback.onDisplayConsentDialog(this@FragmentPermissionRequest)
-                return@apply
+                return
             }
         }
         callback.onPermissionsChecked(

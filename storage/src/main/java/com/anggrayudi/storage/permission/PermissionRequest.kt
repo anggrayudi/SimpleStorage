@@ -8,5 +8,7 @@ package com.anggrayudi.storage.permission
  */
 interface PermissionRequest {
 
+    fun check()
+
     fun continueToPermissionRequest()
 }
