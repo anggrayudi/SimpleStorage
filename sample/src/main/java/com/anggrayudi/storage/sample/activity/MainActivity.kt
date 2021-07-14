@@ -1,6 +1,7 @@
 package com.anggrayudi.storage.sample.activity
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -21,6 +22,7 @@ import com.afollestad.materialdialogs.customview.getCustomView
 import com.afollestad.materialdialogs.list.listItems
 import com.anggrayudi.storage.SimpleStorageHelper
 import com.anggrayudi.storage.callback.*
+import com.anggrayudi.storage.extension.launchOnUiThread
 import com.anggrayudi.storage.file.*
 import com.anggrayudi.storage.permission.ActivityPermissionRequest
 import com.anggrayudi.storage.permission.PermissionCallback
@@ -33,6 +35,8 @@ import kotlinx.android.synthetic.main.incl_base_operation.*
 import kotlinx.android.synthetic.main.view_file_picked.view.*
 import kotlinx.coroutines.*
 import timber.log.Timber
+import java.io.IOException
+import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
 
@@ -94,6 +98,10 @@ class MainActivity : AppCompatActivity() {
             storageHelper.openFilePicker(REQUEST_CODE_PICK_FILE)
         }
 
+        btnCreateFile.setOnClickListener {
+            storageHelper.createFile("text/plain", "Test create file", REQUEST_CODE_CREATE_FILE)
+        }
+
         setupFileCopy()
         setupFolderCopy()
         setupFileMove()
@@ -137,6 +145,9 @@ class MainActivity : AppCompatActivity() {
 
                 else -> Toast.makeText(baseContext, folder.getAbsolutePath(this), Toast.LENGTH_SHORT).show()
             }
+        }
+        storageHelper.onFileCreated = { requestCode, file ->
+            writeTestFile(applicationContext, requestCode, file)
         }
     }
 
@@ -618,6 +629,7 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_CODE_STORAGE_ACCESS = 1
         const val REQUEST_CODE_PICK_FOLDER = 2
         const val REQUEST_CODE_PICK_FILE = 3
+        const val REQUEST_CODE_CREATE_FILE = 4
 
         const val REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY = 5
         const val REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_COPY = 6
@@ -638,5 +650,19 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_CODE_PICK_SOURCE_FILE_FOR_MULTIPLE_MOVE = 16
         const val REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MULTIPLE_MOVE = 17
         const val REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_MOVE = 18
+
+        fun writeTestFile(context: Context, requestCode: Int, file: DocumentFile) {
+            thread {
+                file.openOutputStream(context)?.use {
+                    try {
+                        @Suppress("BlockingMethodInNonBlockingContext")
+                        it.write("Welcome to SimpleStorage!\nRequest code: $requestCode\nTime: ${System.currentTimeMillis()}".toByteArray())
+                        launchOnUiThread { Toast.makeText(context, "Successfully created file \"${file.name}\"", Toast.LENGTH_SHORT).show() }
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        }
     }
 }

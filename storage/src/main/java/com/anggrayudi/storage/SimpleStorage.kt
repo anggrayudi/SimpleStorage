@@ -19,6 +19,7 @@ import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
+import com.anggrayudi.storage.callback.CreateFileCallback
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
@@ -56,6 +57,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
     var filePickerCallback: FilePickerCallback? = null
 
+    var createFileCallback: CreateFileCallback? = null
+
     var requestCodeStorageAccess = 1
         set(value) {
             field = value
@@ -69,6 +72,12 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
 
     var requestCodeFilePicker = 3
+        set(value) {
+            field = value
+            checkRequestCode()
+        }
+
+    var requestCodeCreateFile = 4
         set(value) {
             field = value
             checkRequestCode()
@@ -167,7 +176,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
 
     /**
-     * Makes your app can access [direct file path](https://developer.android.com/training/data-storage/shared/media#direct-file-paths)
+     * Makes your app can access [direct file paths](https://developer.android.com/training/data-storage/shared/media#direct-file-paths)
      *
      * See [Manage all files on a storage device](https://developer.android.com/training/data-storage/manage-all-files)
      */
@@ -175,6 +184,15 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     @RequiresApi(Build.VERSION_CODES.R)
     fun requestFullStorageAccess() {
         context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+    }
+
+    @JvmOverloads
+    fun createFile(mimeType: String, fileName: String? = null, requestCode: Int = requestCodeCreateFile) {
+        requestCodeCreateFile = requestCode
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).setType(mimeType)
+        fileName?.let { intent.putExtra(Intent.EXTRA_TITLE, it) }
+        if (!wrapper.startActivityForResult(intent, requestCode))
+            createFileCallback?.onActivityHandlerNotFound(requestCode, intent)
     }
 
     @SuppressLint("InlinedApi")
@@ -313,6 +331,12 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
     }
 
+    private fun handleActivityResultForCreateFile(requestCode: Int, uri: Uri) {
+        DocumentFileCompat.fromUri(context, uri)?.let {
+            createFileCallback?.onFileCreated(requestCode, it)
+        }
+    }
+
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         checkRequestCode()
 
@@ -340,6 +364,16 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                     filePickerCallback?.onCanceledByUser(requestCode)
                 }
             }
+
+            requestCodeCreateFile -> {
+                // resultCode is always OK for creating files
+                val uri = data?.data
+                if (uri != null) {
+                    handleActivityResultForCreateFile(requestCode, uri)
+                } else {
+                    createFileCallback?.onCanceledByUser(requestCode)
+                }
+            }
         }
     }
 
@@ -348,6 +382,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         outState.putInt(KEY_REQUEST_CODE_STORAGE_ACCESS, requestCodeStorageAccess)
         outState.putInt(KEY_REQUEST_CODE_FOLDER_PICKER, requestCodeFolderPicker)
         outState.putInt(KEY_REQUEST_CODE_FILE_PICKER, requestCodeFilePicker)
+        outState.putInt(KEY_REQUEST_CODE_CREATE_FILE, requestCodeCreateFile)
         if (wrapper is FragmentWrapper) {
             wrapper.requestCode?.let { outState.putInt(KEY_REQUEST_CODE_FRAGMENT_PICKER, it) }
         }
@@ -358,17 +393,18 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         requestCodeStorageAccess = savedInstanceState.getInt(KEY_REQUEST_CODE_STORAGE_ACCESS)
         requestCodeFolderPicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FOLDER_PICKER)
         requestCodeFilePicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FILE_PICKER)
+        requestCodeCreateFile = savedInstanceState.getInt(KEY_REQUEST_CODE_CREATE_FILE)
         if (wrapper is FragmentWrapper && savedInstanceState.containsKey(KEY_REQUEST_CODE_FRAGMENT_PICKER)) {
             wrapper.requestCode = savedInstanceState.getInt(KEY_REQUEST_CODE_FRAGMENT_PICKER)
         }
     }
 
     private fun checkRequestCode() {
-        val set = mutableSetOf(requestCodeFilePicker, requestCodeFolderPicker, requestCodeStorageAccess)
-        if (set.size < 3)
+        val set = mutableSetOf(requestCodeFilePicker, requestCodeFolderPicker, requestCodeStorageAccess, requestCodeCreateFile)
+        if (set.size < 4)
             throw IllegalArgumentException(
-                "Request codes must be unique. File picker=$requestCodeFilePicker, " +
-                        "Folder picker=$requestCodeFolderPicker, Storage access=$requestCodeStorageAccess"
+                "Request codes must be unique. File picker=$requestCodeFilePicker, Folder picker=$requestCodeFolderPicker, " +
+                        "Storage access=$requestCodeStorageAccess, Create file=$requestCodeCreateFile"
             )
     }
 
@@ -386,6 +422,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         private const val KEY_REQUEST_CODE_STORAGE_ACCESS = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeStorageAccess"
         private const val KEY_REQUEST_CODE_FOLDER_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFolderPicker"
         private const val KEY_REQUEST_CODE_FILE_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFilePicker"
+        private const val KEY_REQUEST_CODE_CREATE_FILE = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeCreateFile"
         private const val KEY_REQUEST_CODE_FRAGMENT_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFragmentPicker"
         private const val KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST = BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedStorageTypeForAccessRequest"
 

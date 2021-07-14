@@ -12,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
+import com.anggrayudi.storage.callback.CreateFileCallback
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
@@ -56,6 +57,7 @@ class SimpleStorageHelper {
     var onStorageAccessGranted: ((requestCode: Int, root: DocumentFile) -> Unit)? = null
     var onFolderSelected: ((requestCode: Int, folder: DocumentFile) -> Unit)? = null
     var onFileSelected: ((requestCode: Int, file: DocumentFile) -> Unit)? = null
+    var onFileCreated: ((requestCode: Int, file: DocumentFile) -> Unit)? = null
 
     private fun init(savedState: Bundle?) {
         savedState?.let { onRestoreInstanceState(it) }
@@ -180,6 +182,21 @@ class SimpleStorageHelper {
                 handleMissingActivityHandler()
             }
         }
+
+        storage.createFileCallback = object : CreateFileCallback {
+            override fun onCanceledByUser(requestCode: Int) {
+                reset()
+            }
+
+            override fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
+                handleMissingActivityHandler()
+            }
+
+            override fun onFileCreated(requestCode: Int, file: DocumentFile) {
+                reset()
+                onFileCreated?.invoke(requestCode, file)
+            }
+        }
     }
 
     private fun reset() {
@@ -219,6 +236,13 @@ class SimpleStorageHelper {
         pickerToOpenOnceGranted = 0
         originalRequestCode = requestCode
         storage.requestStorageAccess(requestCode, initialRootPath, expectedStorageType)
+    }
+
+    @JvmOverloads
+    fun createFile(mimeType: String, fileName: String? = null, requestCode: Int = storage.requestCodeCreateFile) {
+        pickerToOpenOnceGranted = 0
+        originalRequestCode = requestCode
+        storage.createFile(mimeType, fileName, requestCode)
     }
 
     fun onSaveInstanceState(outState: Bundle) {

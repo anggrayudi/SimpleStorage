@@ -83,6 +83,10 @@ class SampleFragment : Fragment() {
         btnSelectFile.setOnClickListener {
             storageHelper.openFilePicker(MainActivity.REQUEST_CODE_PICK_FILE)
         }
+
+        btnCreateFile.setOnClickListener {
+            storageHelper.createFile("text/plain", "Test create file", MainActivity.REQUEST_CODE_CREATE_FILE)
+        }
     }
 
     private fun setupSimpleStorage(savedInstanceState: Bundle?) {
@@ -92,6 +96,9 @@ class SampleFragment : Fragment() {
         }
         storageHelper.onFolderSelected = { requestCode, folder ->
             Toast.makeText(requireContext(), folder.getAbsolutePath(requireContext()), Toast.LENGTH_SHORT).show()
+        }
+        storageHelper.onFileCreated = { requestCode, file ->
+            MainActivity.writeTestFile(requireContext().applicationContext, requestCode, file)
         }
     }
 }
