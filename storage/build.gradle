@@ -49,12 +49,12 @@ dependencies {
 
 ext {
     // POM
+    POM_NAME = 'storage'
     POM_PACKAGING = 'aar'
     POM_DESCRIPTION = 'Simplify Android Storage Access Framework for file management across API levels.'
 
     // Project
     VCS_URL = "https://github.com/anggrayudi/SimpleStorage.git"
-    GROUP = "com.anggrayudi"
 
     // POM Project
     POM_URL = "https://github.com/anggrayudi/SimpleStorage"
