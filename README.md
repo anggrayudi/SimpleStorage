@@ -144,7 +144,7 @@ an helper class named `SimpleStorage` to ease the request process:
 ```kotlin
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var storage: SimpleStorage
+    private val storage = SimpleStorage(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -157,7 +157,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupSimpleStorage() {
-        storage = SimpleStorage(this)
         storage.storageAccessCallback = object : StorageAccessCallback {
             override fun onRootPathNotSelected(
                 requestCode: Int,
@@ -282,13 +281,12 @@ default styles for managing storage access.
 ```kotlin
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var storageHelper: SimpleStorageHelper
+    private val storageHelper = SimpleStorageHelper(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        storageHelper = SimpleStorageHelper(this, savedInstanceState)
         storageHelper.onFolderSelected = { requestCode, folder ->
             // do stuff
         }

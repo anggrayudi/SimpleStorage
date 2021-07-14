@@ -90,14 +90,12 @@ fun DocumentFile.isEmpty(context: Context): Boolean {
     return isFile && length() == 0L || isDirectory && kotlin.run {
         if (isRawFile) {
             toRawFile(context)?.list().isNullOrEmpty()
-        } else {
-            try {
-                val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, id)
-                context.contentResolver.query(childrenUri, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)?.use { it.count == 0 }
-                    ?: true
-            } catch (e: Exception) {
-                true
-            }
+        } else try {
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, id)
+            context.contentResolver.query(childrenUri, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)?.use { it.count == 0 }
+                ?: true
+        } catch (e: Exception) {
+            true
         }
     }
 }
