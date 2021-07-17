@@ -118,7 +118,7 @@ fun File.createNewFileIfPossible(): Boolean = try {
 }
 
 /**
- * Use it, because [File.canWrite] is not reliable on Android 10.
+ * Use it, because [File.canWrite] is unreliable on Android 10.
  * Read [this issue](https://github.com/anggrayudi/SimpleStorage/issues/24#issuecomment-830000378)
  */
 fun File.isWritable(context: Context) = canWrite() && (isFile || isExternalStorageManager(context))

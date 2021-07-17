@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
+import android.text.format.Formatter
 import androidx.annotation.RestrictTo
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
@@ -520,7 +521,7 @@ fun DocumentFile.getRootDocumentFile(context: Context, requiresWriteAccess: Bool
 fun DocumentFile.canModify(context: Context) = canRead() && isWritable(context)
 
 /**
- * Use it, because [DocumentFile.canWrite] is not reliable on Android 10.
+ * Use it, because [DocumentFile.canWrite] is unreliable on Android 10.
  * Read [this issue](https://github.com/anggrayudi/SimpleStorage/issues/24#issuecomment-830000378)
  */
 fun DocumentFile.isWritable(context: Context) = if (isRawFile) File(uri.path!!).isWritable(context) else canWrite()
@@ -528,6 +529,8 @@ fun DocumentFile.isWritable(context: Context) = if (isRawFile) File(uri.path!!).
 fun DocumentFile.isRootUriPermissionGranted(context: Context): Boolean {
     return isExternalStorageDocument && DocumentFileCompat.isStorageUriPermissionGranted(context, getStorageId(context))
 }
+
+fun DocumentFile.getFormattedSize(context: Context) = Formatter.formatFileSize(context, length())
 
 /**
  * Avoid duplicate file name.

@@ -615,11 +615,6 @@ class MainActivity : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        permissionRequest.onRequestPermissionsResult(requestCode, permissions, grantResults)
-    }
-
     override fun onDestroy() {
         job.cancel()
         super.onDestroy()

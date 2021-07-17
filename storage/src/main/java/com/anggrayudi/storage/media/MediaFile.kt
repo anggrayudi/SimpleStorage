@@ -10,6 +10,7 @@ import android.content.IntentSender
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.text.format.Formatter
 import androidx.annotation.RequiresApi
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
@@ -102,6 +103,9 @@ class MediaFile(context: Context, val uri: Uri) {
                 handleSecurityException(e)
             }
         }
+
+    val formattedSize: String
+        get() = Formatter.formatFileSize(context, length)
 
     /**
      * Check if file exists
