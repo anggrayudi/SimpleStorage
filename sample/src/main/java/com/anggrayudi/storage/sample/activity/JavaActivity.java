@@ -94,7 +94,7 @@ public class JavaActivity extends AppCompatActivity {
             return null;
         });
         storageHelper.setOnFileCreated((requestCode, file) -> {
-            String message = "Folder created: " + file.getName();
+            String message = "File created: " + file.getName();
             Toast.makeText(getBaseContext(), message, Toast.LENGTH_SHORT).show();
             return null;
         });

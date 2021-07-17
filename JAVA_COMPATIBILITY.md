@@ -1,6 +1,6 @@
 # Java Compatibility
 
-Kotlin is fully compatible with Java, meaning that all Kotlin code are readable in Java.
+Kotlin is compatible with Java, meaning that Kotlin code is readable in Java.
 
 ## How to use?
 
@@ -64,5 +64,6 @@ Just go to the source code to check whether it has the annotation.
 
 ## Sample Code
 
-More sample code in Java can be found in
+* More sample code in Java can be found in
 [`JavaActivity`](https://github.com/anggrayudi/SimpleStorage/blob/master/sample/src/main/java/com/anggrayudi/storage/sample/activity/JavaActivity.java)
+* Learn Kotlin here, easier & free on [Udacity](https://classroom.udacity.com/courses/ud9011)
