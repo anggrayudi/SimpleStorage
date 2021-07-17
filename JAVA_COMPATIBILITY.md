@@ -66,4 +66,4 @@ Just go to the source code to check whether it has the annotation.
 
 * More sample code in Java can be found in
 [`JavaActivity`](https://github.com/anggrayudi/SimpleStorage/blob/master/sample/src/main/java/com/anggrayudi/storage/sample/activity/JavaActivity.java)
-* Learn Kotlin here, easier & free on [Udacity](https://classroom.udacity.com/courses/ud9011)
+* Learn Kotlin on [Udacity](https://classroom.udacity.com/courses/ud9011). It's easy and free!

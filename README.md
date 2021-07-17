@@ -191,12 +191,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        // Mandatory for Activity, but not for Fragment & ComponentActivity
-        storage.onActivityResult(requestCode, resultCode, data)
-    }
-
     override fun onSaveInstanceState(outState: Bundle) {
         storage.onSaveInstanceState(outState)
         super.onSaveInstanceState(outState)
@@ -205,6 +199,18 @@ class MainActivity : AppCompatActivity() {
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         super.onRestoreInstanceState(savedInstanceState)
         storage.onRestoreInstanceState(savedInstanceState)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        // Mandatory for Activity, but not for Fragment & ComponentActivity
+        storage.onActivityResult(requestCode, resultCode, data)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        // Mandatory for Activity, but not for Fragment & ComponentActivity
+        storage.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 }
 ```
@@ -299,12 +305,6 @@ class MainActivity : AppCompatActivity() {
         btnOpenFilePicker.setOnClickListener { storageHelper.openFilePicker() }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        // Mandatory for Activity, but not for Fragment & ComponentActivity
-        storageHelper.storage.onActivityResult(requestCode, resultCode, data)
-    }
-
     override fun onSaveInstanceState(outState: Bundle) {
         storageHelper.onSaveInstanceState(outState)
         super.onSaveInstanceState(outState)
@@ -313,6 +313,18 @@ class MainActivity : AppCompatActivity() {
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         super.onRestoreInstanceState(savedInstanceState)
         storageHelper.onRestoreInstanceState(savedInstanceState)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        // Mandatory for Activity, but not for Fragment & ComponentActivity
+        storageHelper.storage.onActivityResult(requestCode, resultCode, data)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        // Mandatory for Activity, but not for Fragment & ComponentActivity
+        storageHelper.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 }
 ```

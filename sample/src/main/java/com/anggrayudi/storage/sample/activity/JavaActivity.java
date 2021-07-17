@@ -74,8 +74,8 @@ public class JavaActivity extends AppCompatActivity {
         if (savedState != null) {
             storageHelper.onRestoreInstanceState(savedState);
         }
-        storageHelper.setOnStorageAccessGranted((requestCode, file) -> {
-            String absolutePath = DocumentFileUtils.getAbsolutePath(file, getBaseContext());
+        storageHelper.setOnStorageAccessGranted((requestCode, root) -> {
+            String absolutePath = DocumentFileUtils.getAbsolutePath(root, getBaseContext());
             Toast.makeText(
                     getBaseContext(),
                     getString(R.string.ss_selecting_root_path_success_without_open_folder_picker, absolutePath),
