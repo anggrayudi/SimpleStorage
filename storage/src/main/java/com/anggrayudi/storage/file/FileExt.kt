@@ -5,6 +5,7 @@ package com.anggrayudi.storage.file
 import android.content.Context
 import android.os.Build
 import android.os.Environment
+import androidx.annotation.RestrictTo
 import androidx.annotation.WorkerThread
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
@@ -100,7 +101,7 @@ val File.mimeType: String?
 @JvmOverloads
 fun File.getRootRawFile(context: Context, requiresWriteAccess: Boolean = false) = getRootPath(context).let {
     if (it.isEmpty()) null else File(it).run {
-        if (canRead() && (requiresWriteAccess && isWritable(context) || !requiresWriteAccess)) this else null
+        if (canRead()) takeIfWritable(context, requiresWriteAccess) else null
     }
 }
 
@@ -110,6 +111,16 @@ fun File.canModify(context: Context) = canRead() && isWritable(context)
 
 val File.isEmpty: Boolean
     get() = isFile && length() == 0L || isDirectory && list().isNullOrEmpty()
+
+@RestrictTo(RestrictTo.Scope.LIBRARY)
+fun File.shouldWritable(context: Context, requiresWriteAccess: Boolean) = requiresWriteAccess && isWritable(context) || !requiresWriteAccess
+
+@RestrictTo(RestrictTo.Scope.LIBRARY)
+fun File.takeIfWritable(context: Context, requiresWriteAccess: Boolean) = takeIf { it.shouldWritable(context, requiresWriteAccess) }
+
+@RestrictTo(RestrictTo.Scope.LIBRARY)
+fun File.checkRequirements(context: Context, requiresWriteAccess: Boolean, considerRawFile: Boolean) = canRead() &&
+        (considerRawFile || isExternalStorageManager(context)) && shouldWritable(context, requiresWriteAccess)
 
 fun File.createNewFileIfPossible(): Boolean = try {
     isFile || createNewFile()

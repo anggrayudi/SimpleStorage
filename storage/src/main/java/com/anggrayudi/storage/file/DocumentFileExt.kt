@@ -260,9 +260,7 @@ fun DocumentFile.toRawDocumentFile(context: Context): DocumentFile? {
 fun DocumentFile.toTreeDocumentFile(context: Context): DocumentFile? {
     return if (isRawFile) {
         DocumentFileCompat.fromFile(context, toRawFile(context) ?: return null, considerRawFile = false)
-    } else {
-        this
-    }
+    } else takeIf { it.isTreeDocumentFile }
 }
 
 fun DocumentFile.toMediaFile(context: Context) = if (isTreeDocumentFile) null else MediaFile(context, uri)
@@ -291,7 +289,7 @@ fun DocumentFile.child(context: Context, path: String, requiresWriteAccess: Bool
                 }
                 currentDirectory
             }
-            file?.takeIf { requiresWriteAccess && it.isWritable(context) || !requiresWriteAccess }
+            file?.takeIfWritable(context, requiresWriteAccess)
         }
         else -> null
     }
@@ -332,6 +330,16 @@ fun DocumentFile.quickFindTreeFile(context: Context, resolver: ContentResolver, 
     }
     return null
 }
+
+@RestrictTo(RestrictTo.Scope.LIBRARY)
+fun DocumentFile.shouldWritable(context: Context, requiresWriteAccess: Boolean) = requiresWriteAccess && isWritable(context) || !requiresWriteAccess
+
+@RestrictTo(RestrictTo.Scope.LIBRARY)
+fun DocumentFile.takeIfWritable(context: Context, requiresWriteAccess: Boolean) = takeIf { it.shouldWritable(context, requiresWriteAccess) }
+
+@RestrictTo(RestrictTo.Scope.LIBRARY)
+fun DocumentFile.checkRequirements(context: Context, requiresWriteAccess: Boolean, considerRawFile: Boolean) = canRead() &&
+        (considerRawFile || isExternalStorageManager(context)) && shouldWritable(context, requiresWriteAccess)
 
 /**
  * @return File path without storage ID. Returns empty `String` if:

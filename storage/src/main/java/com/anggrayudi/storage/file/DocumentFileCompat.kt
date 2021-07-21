@@ -114,15 +114,16 @@ object DocumentFileCompat {
         storageId: String = PRIMARY,
         basePath: String = "",
         documentType: DocumentFileType = DocumentFileType.ANY,
+        requiresWriteAccess: Boolean = false,
         considerRawFile: Boolean = true
     ): DocumentFile? {
         if (storageId == DATA) {
             return DocumentFile.fromFile(context.dataDirectory.child(basePath))
         }
         return if (basePath.isEmpty()) {
-            getRootDocumentFile(context, storageId, considerRawFile)
+            getRootDocumentFile(context, storageId, requiresWriteAccess, considerRawFile)
         } else {
-            val file = exploreFile(context, storageId, basePath, documentType, considerRawFile)
+            val file = exploreFile(context, storageId, basePath, documentType, requiresWriteAccess, considerRawFile)
             if (file == null && basePath.startsWith(Environment.DIRECTORY_DOWNLOADS) && storageId == PRIMARY) {
                 val downloads = context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))?.takeIf { it.canRead() } ?: return null
                 downloads.child(context, basePath.substringAfter('/', ""))?.takeIf {
@@ -149,14 +150,15 @@ object DocumentFileCompat {
         context: Context,
         fullPath: String,
         documentType: DocumentFileType = DocumentFileType.ANY,
+        requiresWriteAccess: Boolean = false,
         considerRawFile: Boolean = true
     ): DocumentFile? {
         return if (fullPath.startsWith('/')) {
             // absolute path
-            fromFile(context, File(fullPath), documentType, considerRawFile)
+            fromFile(context, File(fullPath), documentType, requiresWriteAccess, considerRawFile)
         } else {
             // simple path
-            fromSimplePath(context, fullPath.substringBefore(':'), fullPath.substringAfter(':'), documentType, considerRawFile)
+            fromSimplePath(context, fullPath.substringBefore(':'), fullPath.substringAfter(':'), documentType, requiresWriteAccess, considerRawFile)
         }
     }
 
@@ -176,17 +178,18 @@ object DocumentFileCompat {
         context: Context,
         file: File,
         documentType: DocumentFileType = DocumentFileType.ANY,
+        requiresWriteAccess: Boolean = false,
         considerRawFile: Boolean = true
     ): DocumentFile? {
-        return if (file.canRead() && (considerRawFile || file.isExternalStorageManager(context))) {
+        return if (file.checkRequirements(context, requiresWriteAccess, considerRawFile)) {
             if (documentType == DocumentFileType.FILE && !file.isFile || documentType == DocumentFileType.FOLDER && !file.isDirectory)
                 null
             else
                 DocumentFile.fromFile(file)
         } else {
             val basePath = file.getBasePath(context).removeForbiddenCharsFromFilename().trimFileSeparator()
-            exploreFile(context, file.getStorageId(context), basePath, documentType, considerRawFile)
-                ?: fromSimplePath(context, file.getStorageId(context), basePath, documentType, considerRawFile)
+            exploreFile(context, file.getStorageId(context), basePath, documentType, requiresWriteAccess, considerRawFile)
+                ?: fromSimplePath(context, file.getStorageId(context), basePath, documentType, requiresWriteAccess, considerRawFile)
         }
     }
 
@@ -209,9 +212,7 @@ object DocumentFileCompat {
         if (subFile.isNotEmpty()) {
             rawFile = File("$rawFile/$subFile".trimEnd('/'))
         }
-        if (rawFile.canRead() && (considerRawFile || rawFile.isExternalStorageManager(context))
-            && (requiresWriteAccess && rawFile.isWritable(context) || !requiresWriteAccess)
-        ) {
+        if (rawFile.checkRequirements(context, requiresWriteAccess, considerRawFile)) {
             return DocumentFile.fromFile(rawFile)
         }
 
@@ -484,7 +485,7 @@ object DocumentFileCompat {
                 return null
             }
         }
-        return currentDirectory.takeIf { requiresWriteAccess && it.isWritable(context) || !requiresWriteAccess }
+        return currentDirectory.takeIfWritable(context, requiresWriteAccess)
     }
 
     /**
@@ -545,7 +546,7 @@ object DocumentFileCompat {
             }
         }
         results.indices.forEach { index ->
-            results[index] = results[index]?.takeIf { requiresWriteAccess && it.isWritable(context) || !requiresWriteAccess }
+            results[index] = results[index]?.takeIfWritable(context, requiresWriteAccess)
         }
         return results
     }
@@ -652,10 +653,11 @@ object DocumentFileCompat {
         storageId: String,
         basePath: String,
         documentType: DocumentFileType,
+        requiresWriteAccess: Boolean,
         considerRawFile: Boolean
     ): DocumentFile? {
         val rawFile = File(buildAbsolutePath(context, storageId, basePath))
-        if ((considerRawFile || storageId == DATA) && rawFile.canRead()) {
+        if ((considerRawFile || storageId == DATA) && rawFile.canRead() && rawFile.shouldWritable(context, requiresWriteAccess)) {
             return if (documentType == DocumentFileType.ANY || documentType == DocumentFileType.FILE && rawFile.isFile
                 || documentType == DocumentFileType.FOLDER && rawFile.isDirectory
             ) {
@@ -665,7 +667,7 @@ object DocumentFileCompat {
             }
         }
         val file = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            getRootDocumentFile(context, storageId, considerRawFile)?.child(context, basePath) ?: return null
+            getRootDocumentFile(context, storageId, requiresWriteAccess, considerRawFile)?.child(context, basePath) ?: return null
         } else {
             val directorySequence = getDirectorySequence(basePath).toMutableList()
             val parentTree = ArrayList<String>(directorySequence.size)
