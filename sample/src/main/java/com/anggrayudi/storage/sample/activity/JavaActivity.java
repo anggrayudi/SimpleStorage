@@ -1,5 +1,9 @@
 package com.anggrayudi.storage.sample.activity;
 
+import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_CREATE_FILE;
+import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_PICK_FILE;
+import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_PICK_FOLDER;
+
 import android.Manifest;
 import android.os.Bundle;
 import android.widget.Toast;
@@ -24,10 +28,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 
 import timber.log.Timber;
-
-import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_CREATE_FILE;
-import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_PICK_FILE;
-import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_PICK_FOLDER;
 
 /**
  * Created on 17/07/21
@@ -83,8 +83,8 @@ public class JavaActivity extends AppCompatActivity {
             ).show();
             return null;
         });
-        storageHelper.setOnFileSelected((requestCode, file) -> {
-            String message = "File selected: " + DocumentFileUtils.getFullName(file);
+        storageHelper.setOnFileSelected((requestCode, files) -> {
+            String message = "File selected: " + DocumentFileUtils.getFullName(files.get(0));
             Toast.makeText(getBaseContext(), message, Toast.LENGTH_SHORT).show();
             return null;
         });

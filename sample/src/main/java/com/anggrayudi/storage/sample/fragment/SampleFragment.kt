@@ -91,8 +91,8 @@ class SampleFragment : Fragment() {
 
     private fun setupSimpleStorage(savedInstanceState: Bundle?) {
         storageHelper = SimpleStorageHelper(this, savedInstanceState)
-        storageHelper.onFileSelected = { requestCode, file ->
-            Toast.makeText(requireContext(), "File selected: ${file.fullName}", Toast.LENGTH_SHORT).show()
+        storageHelper.onFileSelected = { requestCode, files ->
+            Toast.makeText(requireContext(), "File selected: ${files.first().fullName}", Toast.LENGTH_SHORT).show()
         }
         storageHelper.onFolderSelected = { requestCode, folder ->
             Toast.makeText(requireContext(), folder.getAbsolutePath(requireContext()), Toast.LENGTH_SHORT).show()

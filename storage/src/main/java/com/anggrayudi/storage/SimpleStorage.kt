@@ -213,10 +213,11 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
 
     @JvmOverloads
-    fun openFilePicker(requestCode: Int = requestCodeFilePicker, vararg filterMimeTypes: String) {
+    fun openFilePicker(requestCode: Int = requestCodeFilePicker, allowMultiple: Boolean = false, vararg filterMimeTypes: String) {
         requestCodeFilePicker = requestCode
         if (hasStorageReadPermission(context)) {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple)
             if (filterMimeTypes.size > 1) {
                 intent.setType(MimeType.UNKNOWN)
                     .putExtra(Intent.EXTRA_MIME_TYPES, filterMimeTypes)
@@ -315,17 +316,28 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
     }
 
-    private fun handleActivityResultForFilePicker(requestCode: Int, uri: Uri) {
-        val file = if (uri.isDownloadsDocument && Build.VERSION.SDK_INT < 28 && uri.path?.startsWith("/document/raw:") == true) {
-            val fullPath = uri.path.orEmpty().substringAfterLast("/document/raw:")
-            DocumentFile.fromFile(File(fullPath))
-        } else {
-            context.fromSingleUri(uri)
+    private fun handleActivityResultForFilePicker(requestCode: Int, data: Intent) {
+        val uris = data.clipData?.run {
+            val list = mutableListOf<Uri>()
+            for (i in 0 until itemCount) {
+                list.add(getItemAt(i).uri)
+            }
+            list.takeIf { it.isNotEmpty() }
+        } ?: listOf(data.data ?: return)
+
+        val files = uris.mapNotNull { uri ->
+            if (uri.isDownloadsDocument && Build.VERSION.SDK_INT < 28 && uri.path?.startsWith("/document/raw:") == true) {
+                val fullPath = uri.path.orEmpty().substringAfterLast("/document/raw:")
+                DocumentFile.fromFile(File(fullPath))
+            } else {
+                context.fromSingleUri(uri)
+            }
         }
-        if (file == null || !file.canRead()) {
-            filePickerCallback?.onStoragePermissionDenied(requestCode, file)
+
+        if (files.isNotEmpty() && files.all { it.canRead() }) {
+            filePickerCallback?.onFileSelected(requestCode, files)
         } else {
-            filePickerCallback?.onFileSelected(requestCode, file)
+            filePickerCallback?.onStoragePermissionDenied(requestCode, files)
         }
     }
 
@@ -357,7 +369,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
             requestCodeFilePicker -> {
                 if (resultCode == Activity.RESULT_OK) {
-                    handleActivityResultForFilePicker(requestCode, data?.data ?: return)
+                    handleActivityResultForFilePicker(requestCode, data ?: return)
                 } else {
                     filePickerCallback?.onCanceledByUser(requestCode)
                 }

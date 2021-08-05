@@ -20,7 +20,10 @@ interface FilePickerCallback {
     /**
      * Called when you have no read permission to current path
      */
-    fun onStoragePermissionDenied(requestCode: Int, file: DocumentFile?)
+    fun onStoragePermissionDenied(requestCode: Int, files: List<DocumentFile>?)
 
-    fun onFileSelected(requestCode: Int, file: DocumentFile)
+    /**
+     * @param files non-empty list
+     */
+    fun onFileSelected(requestCode: Int, files: List<DocumentFile>)
 }

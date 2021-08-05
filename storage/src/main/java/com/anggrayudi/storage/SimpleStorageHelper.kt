@@ -68,7 +68,11 @@ class SimpleStorageHelper {
 
     var onStorageAccessGranted: ((requestCode: Int, root: DocumentFile) -> Unit)? = null
     var onFolderSelected: ((requestCode: Int, folder: DocumentFile) -> Unit)? = null
-    var onFileSelected: ((requestCode: Int, file: DocumentFile) -> Unit)? = null
+
+    /**
+     * `files` parameter is non-empty list
+     */
+    var onFileSelected: ((requestCode: Int, files: List<DocumentFile>) -> Unit)? = null
     var onFileCreated: ((requestCode: Int, file: DocumentFile) -> Unit)? = null
 
     private fun init(savedState: Bundle?) {
@@ -177,13 +181,13 @@ class SimpleStorageHelper {
         }
 
         storage.filePickerCallback = object : FilePickerCallback {
-            override fun onStoragePermissionDenied(requestCode: Int, file: DocumentFile?) {
+            override fun onStoragePermissionDenied(requestCode: Int, files: List<DocumentFile>?) {
                 requestStoragePermission { if (it) storage.openFilePicker() else reset() }
             }
 
-            override fun onFileSelected(requestCode: Int, file: DocumentFile) {
+            override fun onFileSelected(requestCode: Int, files: List<DocumentFile>) {
                 reset()
-                onFileSelected?.invoke(requestCode, file)
+                onFileSelected?.invoke(requestCode, files)
             }
 
             override fun onCanceledByUser(requestCode: Int) {
@@ -269,12 +273,12 @@ class SimpleStorageHelper {
     }
 
     @JvmOverloads
-    fun openFilePicker(requestCode: Int = storage.requestCodeFilePicker, vararg filterMimeTypes: String) {
+    fun openFilePicker(requestCode: Int = storage.requestCodeFilePicker, allowMultiple: Boolean = false, vararg filterMimeTypes: String) {
         pickerToOpenOnceGranted = TYPE_FILE_PICKER
         originalRequestCode = requestCode
         filterMimeTypes.toSet().let {
             this.filterMimeTypes = it
-            storage.openFilePicker(requestCode, *it.toTypedArray())
+            storage.openFilePicker(requestCode, allowMultiple, *it.toTypedArray())
         }
     }
 

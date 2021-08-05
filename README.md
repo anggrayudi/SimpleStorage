@@ -296,7 +296,7 @@ class MainActivity : AppCompatActivity() {
         storageHelper.onFolderSelected = { requestCode, folder ->
             // do stuff
         }
-        storageHelper.onFileSelected = { requestCode, file ->
+        storageHelper.onFileSelected = { requestCode, files ->
             // do stuff
         }
 

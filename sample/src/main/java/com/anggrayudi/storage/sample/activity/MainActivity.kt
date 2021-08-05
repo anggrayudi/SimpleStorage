@@ -95,7 +95,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnSelectFile.setOnClickListener {
-            storageHelper.openFilePicker(REQUEST_CODE_PICK_FILE)
+            storageHelper.openFilePicker(REQUEST_CODE_PICK_FILE, true)
         }
 
         btnCreateFile.setOnClickListener {
@@ -119,13 +119,17 @@ class MainActivity : AppCompatActivity() {
                 Toast.LENGTH_SHORT
             ).show()
         }
-        storageHelper.onFileSelected = { requestCode, file ->
+        storageHelper.onFileSelected = { requestCode, files ->
+            val file = files.first()
             when (requestCode) {
                 REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY -> layoutCopy_srcFile.updateFileSelectionView(file)
                 REQUEST_CODE_PICK_SOURCE_FILE_FOR_MOVE -> layoutMove_srcFile.updateFileSelectionView(file)
                 REQUEST_CODE_PICK_SOURCE_FILE_FOR_MULTIPLE_COPY -> layoutCopyMultipleFiles_sourceFile.updateFileSelectionView(file)
                 REQUEST_CODE_PICK_SOURCE_FILE_FOR_MULTIPLE_MOVE -> layoutMoveMultipleFiles_sourceFile.updateFileSelectionView(file)
-                else -> Toast.makeText(baseContext, "File selected: ${file.fullName}", Toast.LENGTH_SHORT).show()
+                else -> {
+                    val names = files.joinToString(", ") { it.fullName }
+                    Toast.makeText(baseContext, "File selected: $names", Toast.LENGTH_SHORT).show()
+                }
             }
         }
         storageHelper.onFolderSelected = { requestCode, folder ->
