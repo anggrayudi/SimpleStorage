@@ -12,10 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
-import com.anggrayudi.storage.callback.CreateFileCallback
-import com.anggrayudi.storage.callback.FilePickerCallback
-import com.anggrayudi.storage.callback.FolderPickerCallback
-import com.anggrayudi.storage.callback.StorageAccessCallback
+import com.anggrayudi.storage.callback.*
 import com.anggrayudi.storage.file.StorageType
 import com.anggrayudi.storage.file.getAbsolutePath
 import com.anggrayudi.storage.permission.*
@@ -69,11 +66,9 @@ class SimpleStorageHelper {
     var onStorageAccessGranted: ((requestCode: Int, root: DocumentFile) -> Unit)? = null
     var onFolderSelected: ((requestCode: Int, folder: DocumentFile) -> Unit)? = null
 
-    /**
-     * `files` parameter is non-empty list
-     */
-    var onFileSelected: ((requestCode: Int, files: List<DocumentFile>) -> Unit)? = null
+    var onFileSelected: ((requestCode: Int, /* non-empty list */ files: List<DocumentFile>) -> Unit)? = null
     var onFileCreated: ((requestCode: Int, file: DocumentFile) -> Unit)? = null
+    var onFileReceived: OnFileReceived? = null
 
     private fun init(savedState: Bundle?) {
         savedState?.let { onRestoreInstanceState(it) }
@@ -213,6 +208,20 @@ class SimpleStorageHelper {
                 onFileCreated?.invoke(requestCode, file)
             }
         }
+
+        storage.fileReceiverCallback = object : FileReceiverCallback {
+            override fun onFileReceived(files: List<DocumentFile>) {
+                onFileReceived?.onFileReceived(files)
+            }
+
+            override fun onNonFileReceived(intent: Intent) {
+                onFileReceived?.onNonFileReceived(intent)
+            }
+
+            override fun onStoragePermissionDenied(files: List<DocumentFile>) {
+                requestStoragePermission { if (it) onFileReceived?.onFileReceived(files) else reset() }
+            }
+        }
     }
 
     private fun requestStoragePermission(onResult: (Boolean) -> Unit) {
@@ -312,6 +321,11 @@ class SimpleStorageHelper {
         originalRequestCode = savedInstanceState.getInt(KEY_ORIGINAL_REQUEST_CODE)
         pickerToOpenOnceGranted = savedInstanceState.getInt(KEY_OPEN_FOLDER_PICKER_ONCE_GRANTED)
         filterMimeTypes = savedInstanceState.getStringArray(KEY_FILTER_MIME_TYPES)?.toSet()
+    }
+
+    interface OnFileReceived {
+        fun onFileReceived(files: List<DocumentFile>)
+        fun onNonFileReceived(intent: Intent)
     }
 
     companion object {

@@ -19,10 +19,7 @@ import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
-import com.anggrayudi.storage.callback.CreateFileCallback
-import com.anggrayudi.storage.callback.FilePickerCallback
-import com.anggrayudi.storage.callback.FolderPickerCallback
-import com.anggrayudi.storage.callback.StorageAccessCallback
+import com.anggrayudi.storage.callback.*
 import com.anggrayudi.storage.extension.*
 import com.anggrayudi.storage.file.*
 import com.anggrayudi.storage.file.StorageId.PRIMARY
@@ -58,6 +55,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     var filePickerCallback: FilePickerCallback? = null
 
     var createFileCallback: CreateFileCallback? = null
+
+    var fileReceiverCallback: FileReceiverCallback? = null
 
     var requestCodeStorageAccess = 1
         set(value) {
@@ -316,24 +315,44 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
     }
 
-    private fun handleActivityResultForFilePicker(requestCode: Int, data: Intent) {
-        val uris = data.clipData?.run {
+    private fun intentToDocumentFiles(intent: Intent?): List<DocumentFile> {
+        val uris = intent?.clipData?.run {
             val list = mutableListOf<Uri>()
             for (i in 0 until itemCount) {
                 list.add(getItemAt(i).uri)
             }
             list.takeIf { it.isNotEmpty() }
-        } ?: listOf(data.data ?: return)
+        } ?: listOf(intent?.data ?: return emptyList())
 
-        val files = uris.mapNotNull { uri ->
+        return uris.mapNotNull { uri ->
             if (uri.isDownloadsDocument && Build.VERSION.SDK_INT < 28 && uri.path?.startsWith("/document/raw:") == true) {
                 val fullPath = uri.path.orEmpty().substringAfterLast("/document/raw:")
                 DocumentFile.fromFile(File(fullPath))
             } else {
                 context.fromSingleUri(uri)
             }
-        }
+        }.filter { it.isFile }
+    }
 
+    fun checkIfFileReceived(intent: Intent?) {
+        when (intent?.action) {
+            Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE -> {
+                val files = intentToDocumentFiles(intent)
+                if (files.isEmpty()) {
+                    fileReceiverCallback?.onNonFileReceived(intent)
+                } else {
+                    if (files.all { it.canRead() }) {
+                        fileReceiverCallback?.onFileReceived(files)
+                    } else {
+                        fileReceiverCallback?.onStoragePermissionDenied(files)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun handleActivityResultForFilePicker(requestCode: Int, data: Intent) {
+        val files = intentToDocumentFiles(data)
         if (files.isNotEmpty() && files.all { it.canRead() }) {
             filePickerCallback?.onFileSelected(requestCode, files)
         } else {

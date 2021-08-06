@@ -153,6 +153,17 @@ class MainActivity : AppCompatActivity() {
         storageHelper.onFileCreated = { requestCode, file ->
             writeTestFile(applicationContext, requestCode, file)
         }
+        storageHelper.onFileReceived = object : SimpleStorageHelper.OnFileReceived {
+            override fun onFileReceived(files: List<DocumentFile>) {
+                val names = files.joinToString(", ") { it.fullName }
+                Toast.makeText(baseContext, "File received: $names", Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onNonFileReceived(intent: Intent) {
+                Toast.makeText(baseContext, "Non-file is received", Toast.LENGTH_SHORT).show()
+            }
+        }
+        storageHelper.storage.checkIfFileReceived(intent)
     }
 
     private fun View.updateFolderSelectionView(folder: DocumentFile) {
@@ -579,6 +590,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             .show()
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        storageHelper.storage.checkIfFileReceived(intent)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
