@@ -163,7 +163,9 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(baseContext, "Non-file is received", Toast.LENGTH_SHORT).show()
             }
         }
-        storageHelper.storage.checkIfFileReceived(intent)
+        if (savedInstanceState == null) {
+            storageHelper.storage.checkIfFileReceived(intent)
+        }
     }
 
     private fun View.updateFolderSelectionView(folder: DocumentFile) {

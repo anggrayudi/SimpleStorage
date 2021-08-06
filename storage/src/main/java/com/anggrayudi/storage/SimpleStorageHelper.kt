@@ -64,11 +64,103 @@ class SimpleStorageHelper {
     }
 
     var onStorageAccessGranted: ((requestCode: Int, root: DocumentFile) -> Unit)? = null
+
     var onFolderSelected: ((requestCode: Int, folder: DocumentFile) -> Unit)? = null
+        set(callback) {
+            field = callback
+            storage.folderPickerCallback = object : FolderPickerCallback {
+                override fun onFolderSelected(requestCode: Int, folder: DocumentFile) {
+                    reset()
+                    callback?.invoke(requestCode, folder)
+                }
+
+                override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType) {
+                    if (storageType == StorageType.UNKNOWN) {
+                        onStoragePermissionDenied(requestCode)
+                        return
+                    }
+                    AlertDialog.Builder(storage.context)
+                        .setCancelable(false)
+                        .setMessage(R.string.ss_storage_access_denied_confirm)
+                        .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
+                        .setPositiveButton(android.R.string.ok) { _, _ ->
+                            storage.requestStorageAccess(initialRootPath = storageType)
+                        }.show()
+                }
+
+                override fun onStoragePermissionDenied(requestCode: Int) {
+                    requestStoragePermission { if (it) storage.openFolderPicker() else reset() }
+                }
+
+                override fun onCanceledByUser(requestCode: Int) {
+                    reset()
+                }
+
+                override fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
+                    handleMissingActivityHandler()
+                }
+            }
+        }
 
     var onFileSelected: ((requestCode: Int, /* non-empty list */ files: List<DocumentFile>) -> Unit)? = null
+        set(callback) {
+            field = callback
+            storage.filePickerCallback = object : FilePickerCallback {
+                override fun onStoragePermissionDenied(requestCode: Int, files: List<DocumentFile>?) {
+                    requestStoragePermission { if (it) storage.openFilePicker() else reset() }
+                }
+
+                override fun onFileSelected(requestCode: Int, files: List<DocumentFile>) {
+                    reset()
+                    callback?.invoke(requestCode, files)
+                }
+
+                override fun onCanceledByUser(requestCode: Int) {
+                    reset()
+                }
+
+                override fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
+                    handleMissingActivityHandler()
+                }
+            }
+        }
+
     var onFileCreated: ((requestCode: Int, file: DocumentFile) -> Unit)? = null
+        set(callback) {
+            field = callback
+            storage.createFileCallback = object : CreateFileCallback {
+                override fun onCanceledByUser(requestCode: Int) {
+                    reset()
+                }
+
+                override fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
+                    handleMissingActivityHandler()
+                }
+
+                override fun onFileCreated(requestCode: Int, file: DocumentFile) {
+                    reset()
+                    callback?.invoke(requestCode, file)
+                }
+            }
+        }
+
     var onFileReceived: OnFileReceived? = null
+        set(callback) {
+            field = callback
+            storage.fileReceiverCallback = object : FileReceiverCallback {
+                override fun onFileReceived(files: List<DocumentFile>) {
+                    callback?.onFileReceived(files)
+                }
+
+                override fun onNonFileReceived(intent: Intent) {
+                    callback?.onNonFileReceived(intent)
+                }
+
+                override fun onStoragePermissionDenied(files: List<DocumentFile>) {
+                    requestStoragePermission { if (it) callback?.onFileReceived(files) else reset() }
+                }
+            }
+        }
 
     private fun init(savedState: Bundle?) {
         savedState?.let { onRestoreInstanceState(it) }
@@ -139,87 +231,6 @@ class SimpleStorageHelper {
 
             override fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
                 handleMissingActivityHandler()
-            }
-        }
-
-        storage.folderPickerCallback = object : FolderPickerCallback {
-            override fun onFolderSelected(requestCode: Int, folder: DocumentFile) {
-                reset()
-                onFolderSelected?.invoke(requestCode, folder)
-            }
-
-            override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType) {
-                if (storageType == StorageType.UNKNOWN) {
-                    onStoragePermissionDenied(requestCode)
-                    return
-                }
-                AlertDialog.Builder(storage.context)
-                    .setCancelable(false)
-                    .setMessage(R.string.ss_storage_access_denied_confirm)
-                    .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
-                    .setPositiveButton(android.R.string.ok) { _, _ ->
-                        storage.requestStorageAccess(initialRootPath = storageType)
-                    }.show()
-            }
-
-            override fun onStoragePermissionDenied(requestCode: Int) {
-                requestStoragePermission { if (it) storage.openFolderPicker() else reset() }
-            }
-
-            override fun onCanceledByUser(requestCode: Int) {
-                reset()
-            }
-
-            override fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
-                handleMissingActivityHandler()
-            }
-        }
-
-        storage.filePickerCallback = object : FilePickerCallback {
-            override fun onStoragePermissionDenied(requestCode: Int, files: List<DocumentFile>?) {
-                requestStoragePermission { if (it) storage.openFilePicker() else reset() }
-            }
-
-            override fun onFileSelected(requestCode: Int, files: List<DocumentFile>) {
-                reset()
-                onFileSelected?.invoke(requestCode, files)
-            }
-
-            override fun onCanceledByUser(requestCode: Int) {
-                reset()
-            }
-
-            override fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
-                handleMissingActivityHandler()
-            }
-        }
-
-        storage.createFileCallback = object : CreateFileCallback {
-            override fun onCanceledByUser(requestCode: Int) {
-                reset()
-            }
-
-            override fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
-                handleMissingActivityHandler()
-            }
-
-            override fun onFileCreated(requestCode: Int, file: DocumentFile) {
-                reset()
-                onFileCreated?.invoke(requestCode, file)
-            }
-        }
-
-        storage.fileReceiverCallback = object : FileReceiverCallback {
-            override fun onFileReceived(files: List<DocumentFile>) {
-                onFileReceived?.onFileReceived(files)
-            }
-
-            override fun onNonFileReceived(intent: Intent) {
-                onFileReceived?.onNonFileReceived(intent)
-            }
-
-            override fun onStoragePermissionDenied(files: List<DocumentFile>) {
-                requestStoragePermission { if (it) onFileReceived?.onFileReceived(files) else reset() }
             }
         }
     }
@@ -325,7 +336,9 @@ class SimpleStorageHelper {
 
     interface OnFileReceived {
         fun onFileReceived(files: List<DocumentFile>)
-        fun onNonFileReceived(intent: Intent)
+        fun onNonFileReceived(intent: Intent) {
+            // default implementation
+        }
     }
 
     companion object {
