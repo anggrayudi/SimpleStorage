@@ -612,6 +612,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main, menu)
         menu.findItem(R.id.action_open_fragment).intent = Intent(this, SampleFragmentActivity::class.java)
+        menu.findItem(R.id.action_pref_save_location).intent = Intent(this, SettingsActivity::class.java)
         menu.findItem(R.id.action_settings).intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
         menu.findItem(R.id.action_about).intent = Intent(
             Intent.ACTION_VIEW,

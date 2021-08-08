@@ -10,6 +10,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/action_pref_save_location"
+        android:title="Save location preference case"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/action_donate"
         android:title="Donation"
         app:showAsAction="never" />
