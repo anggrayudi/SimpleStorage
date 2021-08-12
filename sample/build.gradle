@@ -2,6 +2,9 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
+def properties = new Properties()
+properties.load(rootProject.file('local.properties').newDataInputStream())
+
 android {
     signingConfigs {
         debug {
@@ -9,6 +12,12 @@ android {
             keyPassword 'android'
             storePassword 'android'
             storeFile file("${System.properties['user.home']}${File.separator}.android${File.separator}debug.keystore")
+        }
+        release {
+            keyAlias properties['keyAlias']
+            keyPassword properties['keyPassword']
+            storePassword properties['storePassword']
+            storeFile file('keystore.jks')
         }
     }
 
@@ -18,11 +27,22 @@ android {
     }
 
     buildTypes {
-        release {
+        debug {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.debug
         }
+        release {
+            minifyEnabled false
+            shrinkResources false
+            zipAlignEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+    }
+
+    lintOptions {
+        abortOnError false
     }
 
     flavorDimensions "libSource"

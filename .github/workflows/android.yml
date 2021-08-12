@@ -25,6 +25,10 @@ jobs:
           java-version: 1.8
 
       - name: Copy environment variables
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_ALIAS: ${{ secrets.RELEASE_KEYSTORE_ALIAS }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
         run: ./.github/scripts/copy_env_variables.sh
 
       - name: Build with Gradle
