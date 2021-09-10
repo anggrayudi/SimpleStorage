@@ -23,17 +23,15 @@ class ActivityPermissionRequest private constructor(
     } else null
 
     override fun check() {
-        permissions.forEach {
-            if (ContextCompat.checkSelfPermission(activity, it) != PackageManager.PERMISSION_GRANTED) {
-                callback.onDisplayConsentDialog(this@ActivityPermissionRequest)
-                return
-            }
+        if (permissions.all { ContextCompat.checkSelfPermission(activity, it) == PackageManager.PERMISSION_GRANTED }) {
+            callback.onPermissionsChecked(
+                PermissionResult(permissions.map {
+                    PermissionReport(it, isGranted = true, deniedPermanently = false)
+                }), false
+            )
+        } else {
+            callback.onDisplayConsentDialog(this)
         }
-        callback.onPermissionsChecked(
-            PermissionResult(permissions.map {
-                PermissionReport(it, isGranted = true, deniedPermanently = false)
-            }), false
-        )
     }
 
     fun onRequestPermissionsResult(

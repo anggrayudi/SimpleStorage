@@ -24,17 +24,15 @@ class FragmentPermissionRequest private constructor(
 
     override fun check() {
         val context = fragment.requireContext()
-        permissions.forEach {
-            if (ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED) {
-                callback.onDisplayConsentDialog(this@FragmentPermissionRequest)
-                return
-            }
+        if (permissions.all { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }) {
+            callback.onPermissionsChecked(
+                PermissionResult(permissions.map {
+                    PermissionReport(it, isGranted = true, deniedPermanently = false)
+                }), false
+            )
+        } else {
+            callback.onDisplayConsentDialog(this)
         }
-        callback.onPermissionsChecked(
-            PermissionResult(permissions.map {
-                PermissionReport(it, isGranted = true, deniedPermanently = false)
-            }), false
-        )
     }
 
     private fun onRequestPermissionsResult(result: Map<String, Boolean>) {

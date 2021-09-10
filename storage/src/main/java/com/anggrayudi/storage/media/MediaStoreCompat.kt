@@ -66,6 +66,26 @@ object MediaStoreCompat {
         return createMedia(context, MediaType.VIDEO, relativeParentDirectory.folderName, file, mode)
     }
 
+    @JvmStatic
+    @JvmOverloads
+    fun createMedia(context: Context, fullPath: String, file: FileDescription, mode: CreateMode = CreateMode.CREATE_NEW): MediaFile? {
+        val basePath = DocumentFileCompat.getBasePath(context, fullPath).trimFileSeparator()
+        if (basePath.isEmpty()) {
+            return null
+        }
+        val mediaFolder = basePath.substringBefore('/')
+        val mediaType = when (mediaFolder) {
+            Environment.DIRECTORY_DOWNLOADS -> MediaType.DOWNLOADS
+            in ImageMediaDirectory.values().map { it.folderName } -> MediaType.IMAGE
+            in AudioMediaDirectory.values().map { it.folderName } -> MediaType.AUDIO
+            in VideoMediaDirectory.values().map { it.folderName } -> MediaType.VIDEO
+            else -> return null
+        }
+        val subFolder = basePath.substringAfter('/', "")
+        file.subFolder = "$subFolder/${file.subFolder}".trimFileSeparator()
+        return createMedia(context, mediaType, mediaFolder, file, mode)
+    }
+
     private fun createMedia(context: Context, mediaType: MediaType, folderName: String, file: FileDescription, mode: CreateMode): MediaFile? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val dateCreated = System.currentTimeMillis()

@@ -429,7 +429,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
 
     private fun checkRequestCode() {
-        val set = mutableSetOf(requestCodeFilePicker, requestCodeFolderPicker, requestCodeStorageAccess, requestCodeCreateFile)
+        val set = setOf(requestCodeFilePicker, requestCodeFolderPicker, requestCodeStorageAccess, requestCodeCreateFile)
         if (set.size < 4)
             throw IllegalArgumentException(
                 "Request codes must be unique. File picker=$requestCodeFilePicker, Folder picker=$requestCodeFolderPicker, " +
