@@ -31,7 +31,9 @@ class FileExtKtTest {
             "Bunny (3).mp4",
             "MyMovie.mp4",
             "Papa Nakal.mp4",
-            "Collections (24).gz"
+            "Collections (24).gz",
+            "Book",
+            "Book (10)"
         ).map {
             val file = mock<File>()
             whenever(file.name).thenReturn(it)
@@ -54,6 +56,7 @@ class FileExtKtTest {
             "Bunny (2).mp4",
             "Collections (24).gz",
             "Collections (28).gz",
+            "Book"
         ).map {
             if (!existingFiles.any { file -> file.absolutePath == "$videoPath/$it" }) {
                 val file = mock<File>()
@@ -70,7 +73,8 @@ class FileExtKtTest {
             "Bunny (4).mp4",
             "Bunny (2).mp4",
             "Collections (24) (1).gz",
-            "Collections (28).gz"
+            "Collections (28).gz",
+            "Book (11)"
         )
 
         assertEquals(expected, filesToCreate)
@@ -85,16 +89,15 @@ class FileExtKtTest {
             val baseName = filename.substringBeforeLast('.')
             val ext = filename.substringAfterLast('.', "")
             val prefix = "$baseName ("
-            val lastFile = list().orEmpty().filter {
+            var lastFileCount = list().orEmpty().filter {
                 it.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(it)
                         || DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION.matches(it))
-            }
-                .maxOfOrNull { it }
-                .orEmpty()
-            var count = lastFile.substringAfterLast('(', "")
-                .substringBefore(')', "")
-                .toIntOrNull() ?: 0
-            "$baseName (${++count}).$ext".trimEnd('.')
+            }.maxOfOrNull {
+                it.substringAfterLast('(', "")
+                    .substringBefore(')', "")
+                    .toIntOrNull() ?: 0
+            } ?: 0
+            "$baseName (${++lastFileCount}).$ext".trimEnd('.')
         } else {
             filename
         }

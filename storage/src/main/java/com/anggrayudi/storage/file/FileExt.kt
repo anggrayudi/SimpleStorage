@@ -282,16 +282,15 @@ fun File.autoIncrementFileName(filename: String): String {
         val baseName = filename.substringBeforeLast('.')
         val ext = filename.substringAfterLast('.', "")
         val prefix = "$baseName ("
-        val lastFile = list().orEmpty().filter {
+        var lastFileCount = list().orEmpty().filter {
             it.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(it)
                     || DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION.matches(it))
-        }
-            .maxOfOrNull { it }
-            .orEmpty()
-        var count = lastFile.substringAfterLast('(', "")
-            .substringBefore(')', "")
-            .toIntOrNull() ?: 0
-        "$baseName (${++count}).$ext".trimEnd('.')
+        }.maxOfOrNull {
+            it.substringAfterLast('(', "")
+                .substringBefore(')', "")
+                .toIntOrNull() ?: 0
+        } ?: 0
+        "$baseName (${++lastFileCount}).$ext".trimEnd('.')
     } else {
         filename
     }
