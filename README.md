@@ -19,6 +19,7 @@
 * [File Picker](#file-picker)
 * [`SimpleStorageHelper`](#simplestoragehelper)
 * [Move & Copy: Files & Folders](#move--copy-files--folders)
+* [FAQ](#faq)
 * [License](#license)
 
 ## Overview
@@ -392,6 +393,10 @@ whenever a conflict is found via `onConflict()`. Here're screenshots of the samp
 ![Alt text](art/folder-content-conflict.png?raw=true "Folder Content Conflict")
 
 Read `MainActivity` from the sample code if you want to mimic above dialogs.
+
+## FAQ
+
+Having trouble? Read the [Frequently Asked Questions](FAQ.md).
 
 ## License
 
