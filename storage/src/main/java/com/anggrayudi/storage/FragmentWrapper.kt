@@ -14,11 +14,10 @@ import androidx.fragment.app.FragmentActivity
 internal class FragmentWrapper(private val fragment: Fragment) : ComponentWrapper {
 
     lateinit var storage: SimpleStorage
-    var requestCode: Int? = null
+    var requestCode = 0
 
     private val activityResultLauncher = fragment.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        requestCode?.run { storage.onActivityResult(this, it.resultCode, it.data) }
-        requestCode = null
+        storage.onActivityResult(requestCode, it.resultCode, it.data)
     }
 
     override val context: Context

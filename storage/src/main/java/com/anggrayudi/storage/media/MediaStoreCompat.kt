@@ -244,7 +244,7 @@ object MediaStoreCompat {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             @Suppress("DEPRECATION")
             DocumentFile.fromFile(File(Environment.getExternalStorageDirectory(), cleanRelativePath))
-                .search(true, documentType = DocumentFileType.FILE)
+                .search(true, DocumentFileType.FILE)
                 .map { MediaFile(context, File(it.uri.path!!)) }
         } else {
             val mediaType = mediaTypeFromRelativePath(cleanRelativePath) ?: return emptyList()
@@ -266,7 +266,7 @@ object MediaStoreCompat {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             @Suppress("DEPRECATION")
             DocumentFile.fromFile(File(Environment.getExternalStorageDirectory(), cleanRelativePath))
-                .search(true, documentType = DocumentFileType.FILE, name = name)
+                .search(true, DocumentFileType.FILE, name = name)
                 .map { MediaFile(context, File(it.uri.path!!)) }
                 .firstOrNull()
         } else {
@@ -303,7 +303,7 @@ object MediaStoreCompat {
             mediaType.directories.map { directory ->
                 @Suppress("DEPRECATION")
                 DocumentFile.fromFile(directory)
-                    .search(true, documentType = DocumentFileType.FILE, mimeTypes = arrayOf(mimeType))
+                    .search(true, DocumentFileType.FILE, arrayOf(mimeType))
                     .map { MediaFile(context, File(it.uri.path!!)) }
             }.flatten()
         } else {

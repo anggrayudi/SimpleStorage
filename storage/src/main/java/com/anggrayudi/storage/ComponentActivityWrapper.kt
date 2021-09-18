@@ -13,11 +13,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 internal class ComponentActivityWrapper(private val _activity: ComponentActivity) : ComponentWrapper {
 
     lateinit var storage: SimpleStorage
-    var requestCode: Int? = null
+    var requestCode = 0
 
     private val activityResultLauncher = _activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        requestCode?.run { storage.onActivityResult(this, it.resultCode, it.data) }
-        requestCode = null
+        storage.onActivityResult(requestCode, it.resultCode, it.data)
     }
 
     override val context: Context
