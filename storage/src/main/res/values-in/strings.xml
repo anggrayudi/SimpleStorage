@@ -10,4 +10,7 @@
     <string name="ss_missing_saf_activity_handler">Storage Access Framework tidak tersedia untuk saat ini.</string>
     <string name="ss_storage_permission_permanently_disabled">Izin penyimpanan telah dinonaktifkan secara permanen.
         Apakah Anda ingin mengaktifkannya di pengaturan sistem?</string>
+    <string name="ss_please_select_base_path">Silakan pilih jalur: %s</string>
+    <string name="ss_please_select_base_path_with_storage_type_primary">Silakan pilih penyimpanan internal dengan jalur: %s</string>
+    <string name="ss_please_select_base_path_with_storage_type_sd_card">Silakan pilih kartu SD dengan jalur: %s</string>
 </resources>

@@ -221,6 +221,33 @@ class SimpleStorageHelper {
                 reset()
             }
 
+            override fun onExpectedStorageNotSelected(
+                requestCode: Int,
+                selectedFolder: DocumentFile,
+                selectedStorageType: StorageType,
+                expectedBasePath: String,
+                expectedStorageType: StorageType
+            ) {
+                val message = storage.context.getString(
+                    when (expectedStorageType) {
+                        StorageType.EXTERNAL -> R.string.ss_please_select_base_path_with_storage_type_primary
+                        StorageType.SD_CARD -> R.string.ss_please_select_base_path_with_storage_type_sd_card
+                        else -> R.string.ss_please_select_base_path
+                    }, expectedBasePath
+                )
+                AlertDialog.Builder(storage.context)
+                    .setCancelable(false)
+                    .setMessage(message)
+                    .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
+                    .setPositiveButton(android.R.string.ok) { _, _ ->
+                        storage.requestStorageAccess(
+                            initialRootPath = expectedStorageType,
+                            expectedStorageType = expectedStorageType,
+                            expectedBasePath = expectedBasePath
+                        )
+                    }.show()
+            }
+
             override fun onStoragePermissionDenied(requestCode: Int) {
                 requestStoragePermission { if (it) storage.openFolderPicker() else reset() }
             }
@@ -306,11 +333,12 @@ class SimpleStorageHelper {
     fun requestStorageAccess(
         requestCode: Int = storage.requestCodeStorageAccess,
         initialRootPath: StorageType = StorageType.EXTERNAL,
-        expectedStorageType: StorageType = StorageType.UNKNOWN
+        expectedStorageType: StorageType = StorageType.UNKNOWN,
+        expectedBasePath: String = ""
     ) {
         pickerToOpenOnceGranted = 0
         originalRequestCode = requestCode
-        storage.requestStorageAccess(requestCode, initialRootPath, expectedStorageType)
+        storage.requestStorageAccess(requestCode, initialRootPath, expectedStorageType, expectedBasePath)
     }
 
     @JvmOverloads

@@ -10,4 +10,7 @@
     <string name="ss_missing_saf_activity_handler">Storage Access Framework is currently not available.</string>
     <string name="ss_storage_permission_permanently_disabled">Storage permission was disabled permanently.
         Do you want to enable it from system settings?</string>
+    <string name="ss_please_select_base_path">Please select path: %s</string>
+    <string name="ss_please_select_base_path_with_storage_type_primary">Please select internal storage with path: %s</string>
+    <string name="ss_please_select_base_path_with_storage_type_sd_card">Please select SD card with path: %s</string>
 </resources>

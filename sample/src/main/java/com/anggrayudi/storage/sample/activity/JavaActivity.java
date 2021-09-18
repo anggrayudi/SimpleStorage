@@ -5,6 +5,7 @@ import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_P
 import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_PICK_FOLDER;
 
 import android.Manifest;
+import android.os.Build;
 import android.os.Bundle;
 import android.widget.Toast;
 
@@ -65,6 +66,7 @@ public class JavaActivity extends AppCompatActivity {
 
     private void setupButtonActions() {
         findViewById(R.id.btnRequestStoragePermission).setOnClickListener(v -> permissionRequest.check());
+        findViewById(R.id.btnRequestStoragePermission).setEnabled(Build.VERSION.SDK_INT >= 23 && Build.VERSION.SDK_INT <= 28);
         findViewById(R.id.btnSelectFolder).setOnClickListener(v -> storageHelper.openFolderPicker(REQUEST_CODE_PICK_FOLDER));
         findViewById(R.id.btnSelectFile).setOnClickListener(v -> storageHelper.openFilePicker(REQUEST_CODE_PICK_FILE));
         findViewById(R.id.btnCreateFile).setOnClickListener(v -> storageHelper.createFile("text/plain", "File name", REQUEST_CODE_CREATE_FILE));

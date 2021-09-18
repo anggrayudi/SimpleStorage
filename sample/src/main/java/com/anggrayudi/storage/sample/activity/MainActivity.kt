@@ -75,7 +75,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupButtonActions() {
-        btnRequestStoragePermission.setOnClickListener { permissionRequest.check() }
+        btnRequestStoragePermission.run {
+            setOnClickListener { permissionRequest.check() }
+            isEnabled = Build.VERSION.SDK_INT in 23..28
+        }
 
         btnRequestStorageAccess.setOnClickListener {
             storageHelper.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS)

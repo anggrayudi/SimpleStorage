@@ -10,7 +10,7 @@
         android:id="@+id/btnRequestStoragePermission"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Request Storage Permission" />
+        android:text="Request Storage Permission (API 23-28)" />
 
     <Button
         android:id="@+id/btnRequestStorageAccess"
@@ -22,7 +22,7 @@
         android:id="@+id/btnRequestFullStorageAccess"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Request Full Storage Access (API 30)" />
+        android:text="Request Full Storage Access (API 30+)" />
 
     <Button
         android:id="@+id/btnSelectFolder"

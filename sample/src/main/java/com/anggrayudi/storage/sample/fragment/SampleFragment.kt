@@ -61,7 +61,10 @@ class SampleFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupSimpleStorage(savedInstanceState)
 
-        btnRequestStoragePermission.setOnClickListener { permissionRequest.check() }
+        btnRequestStoragePermission.run {
+            setOnClickListener { permissionRequest.check() }
+            isEnabled = Build.VERSION.SDK_INT in 23..28
+        }
 
         btnRequestStorageAccess.setOnClickListener {
             storageHelper.requestStorageAccess(MainActivity.REQUEST_CODE_STORAGE_ACCESS)

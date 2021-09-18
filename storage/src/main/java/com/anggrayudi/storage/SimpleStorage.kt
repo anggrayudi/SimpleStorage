@@ -132,26 +132,30 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
     private var expectedStorageTypeForAccessRequest = StorageType.UNKNOWN
 
+    private var expectedBasePathForAccessRequest: String? = null
+
     /**
      * Managing files in direct storage requires root access. Thus we need to make sure users select root path.
      *
      * @param initialRootPath it has no effect on API 23 and lower
      * @param expectedStorageType for example, if you set [StorageType.SD_CARD] but the user selects [StorageType.EXTERNAL], then
      * trigger [StorageAccessCallback.onRootPathNotSelected]. Set to [StorageType.UNKNOWN] to accept any storage type.
+     * @param expectedBasePath applicable for API 30+ only, because Android 11 does not allow selecting the root path.
      */
     @JvmOverloads
     fun requestStorageAccess(
         requestCode: Int = requestCodeStorageAccess,
         initialRootPath: StorageType = StorageType.EXTERNAL,
-        expectedStorageType: StorageType = StorageType.UNKNOWN
+        expectedStorageType: StorageType = StorageType.UNKNOWN,
+        expectedBasePath: String = ""
     ) {
-        if (!hasStoragePermission(context)) {
-            storageAccessCallback?.onStoragePermissionDenied(requestCode)
-            return
-        }
-
         if (initialRootPath == StorageType.DATA || expectedStorageType == StorageType.DATA) {
             throw IllegalArgumentException("Cannot use StorageType.DATA because it is never available in Storage Access Framework's folder selector.")
+        }
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !hasStoragePermission(context)) {
+            storageAccessCallback?.onStoragePermissionDenied(requestCode)
+            return
         }
 
         if (initialRootPath == StorageType.EXTERNAL && expectedStorageType.isExpected(initialRootPath) && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !isSdCardPresent) {
@@ -169,6 +173,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         if (wrapper.startActivityForResult(intent, requestCode)) {
             requestCodeStorageAccess = requestCode
             expectedStorageTypeForAccessRequest = expectedStorageType
+            expectedBasePathForAccessRequest = expectedBasePath
         } else {
             storageAccessCallback?.onActivityHandlerNotFound(requestCode, intent)
         }
@@ -198,7 +203,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     @JvmOverloads
     fun openFolderPicker(requestCode: Int = requestCodeFolderPicker) {
         requestCodeFolderPicker = requestCode
-        if (hasStoragePermission(context)) {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P || hasStoragePermission(context)) {
             val intent = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
                 Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
             } else {
@@ -233,7 +238,22 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     private fun handleActivityResultForStorageAccess(requestCode: Int, uri: Uri) {
         val storageId = uri.getStorageId(context)
         val storageType = StorageType.fromStorageId(storageId)
-        if (!expectedStorageTypeForAccessRequest.isExpected(storageType)) {
+
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q) {
+            val selectedFolder = DocumentFile.fromTreeUri(context, uri) ?: return
+            if (!expectedStorageTypeForAccessRequest.isExpected(storageType) ||
+                !expectedBasePathForAccessRequest.isNullOrEmpty() && selectedFolder.getBasePath(context) != expectedBasePathForAccessRequest
+            ) {
+                storageAccessCallback?.onExpectedStorageNotSelected(
+                    requestCode,
+                    selectedFolder,
+                    storageType,
+                    expectedBasePathForAccessRequest!!,
+                    expectedStorageTypeForAccessRequest
+                )
+                return
+            }
+        } else if (!expectedStorageTypeForAccessRequest.isExpected(storageType)) {
             val rootPath = context.fromTreeUri(uri)?.getAbsolutePath(context).orEmpty()
             storageAccessCallback?.onRootPathNotSelected(requestCode, rootPath, uri, storageType, expectedStorageTypeForAccessRequest)
             return
@@ -407,17 +427,19 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
 
     fun onSaveInstanceState(outState: Bundle) {
+        outState.putString(KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST, expectedBasePathForAccessRequest)
         outState.putInt(KEY_REQUEST_CODE_STORAGE_ACCESS, expectedStorageTypeForAccessRequest.ordinal)
         outState.putInt(KEY_REQUEST_CODE_STORAGE_ACCESS, requestCodeStorageAccess)
         outState.putInt(KEY_REQUEST_CODE_FOLDER_PICKER, requestCodeFolderPicker)
         outState.putInt(KEY_REQUEST_CODE_FILE_PICKER, requestCodeFilePicker)
         outState.putInt(KEY_REQUEST_CODE_CREATE_FILE, requestCodeCreateFile)
         if (wrapper is FragmentWrapper) {
-            wrapper.requestCode?.let { outState.putInt(KEY_REQUEST_CODE_FRAGMENT_PICKER, it) }
+            outState.putInt(KEY_REQUEST_CODE_FRAGMENT_PICKER, wrapper.requestCode)
         }
     }
 
     fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        expectedBasePathForAccessRequest = savedInstanceState.getString(KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST)
         expectedStorageTypeForAccessRequest = StorageType.values()[savedInstanceState.getInt(KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST)]
         requestCodeStorageAccess = savedInstanceState.getInt(KEY_REQUEST_CODE_STORAGE_ACCESS)
         requestCodeFolderPicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FOLDER_PICKER)
@@ -454,6 +476,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         private const val KEY_REQUEST_CODE_CREATE_FILE = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeCreateFile"
         private const val KEY_REQUEST_CODE_FRAGMENT_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFragmentPicker"
         private const val KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST = BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedStorageTypeForAccessRequest"
+        private const val KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST = BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedBasePathForAccessRequest"
 
         @JvmStatic
         @Suppress("DEPRECATION")
