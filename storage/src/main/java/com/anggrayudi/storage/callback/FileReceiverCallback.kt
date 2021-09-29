@@ -11,5 +11,4 @@ interface FileReceiverCallback {
 
     fun onFileReceived(files: List<DocumentFile>)
     fun onNonFileReceived(intent: Intent)
-    fun onStoragePermissionDenied(files: List<DocumentFile>)
 }

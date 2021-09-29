@@ -155,10 +155,6 @@ class SimpleStorageHelper {
                 override fun onNonFileReceived(intent: Intent) {
                     callback?.onNonFileReceived(intent)
                 }
-
-                override fun onStoragePermissionDenied(files: List<DocumentFile>) {
-                    requestStoragePermission { if (it) callback?.onFileReceived(files) else reset() }
-                }
             }
         }
 

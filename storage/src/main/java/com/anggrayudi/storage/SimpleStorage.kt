@@ -219,20 +219,16 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     @JvmOverloads
     fun openFilePicker(requestCode: Int = requestCodeFilePicker, allowMultiple: Boolean = false, vararg filterMimeTypes: String) {
         requestCodeFilePicker = requestCode
-        if (hasStorageReadPermission(context)) {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-                .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple)
-            if (filterMimeTypes.size > 1) {
-                intent.setType(MimeType.UNKNOWN)
-                    .putExtra(Intent.EXTRA_MIME_TYPES, filterMimeTypes)
-            } else {
-                intent.type = filterMimeTypes.firstOrNull() ?: MimeType.UNKNOWN
-            }
-            if (!wrapper.startActivityForResult(intent, requestCode))
-                filePickerCallback?.onActivityHandlerNotFound(requestCode, intent)
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+            .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple)
+        if (filterMimeTypes.size > 1) {
+            intent.setType(MimeType.UNKNOWN)
+                .putExtra(Intent.EXTRA_MIME_TYPES, filterMimeTypes)
         } else {
-            filePickerCallback?.onStoragePermissionDenied(requestCode, null)
+            intent.type = filterMimeTypes.firstOrNull() ?: MimeType.UNKNOWN
         }
+        if (!wrapper.startActivityForResult(intent, requestCode))
+            filePickerCallback?.onActivityHandlerNotFound(requestCode, intent)
     }
 
     private fun handleActivityResultForStorageAccess(requestCode: Int, uri: Uri) {
@@ -361,11 +357,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 if (files.isEmpty()) {
                     fileReceiverCallback?.onNonFileReceived(intent)
                 } else {
-                    if (files.all { it.canRead() }) {
-                        fileReceiverCallback?.onFileReceived(files)
-                    } else {
-                        fileReceiverCallback?.onStoragePermissionDenied(files)
-                    }
+                    fileReceiverCallback?.onFileReceived(files)
                 }
             }
         }
