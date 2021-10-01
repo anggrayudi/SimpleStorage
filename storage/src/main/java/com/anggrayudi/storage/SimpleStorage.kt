@@ -292,7 +292,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                     val sm = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
                     @Suppress("DEPRECATION")
-                    sm.storageVolumes.firstOrNull { it.isRemovable }?.createAccessIntent(null)?.let {
+                    sm.storageVolumes.firstOrNull { !it.isPrimary }?.createAccessIntent(null)?.let {
                         if (!wrapper.startActivityForResult(it, requestCode)) {
                             storageAccessCallback?.onActivityHandlerNotFound(requestCode, it)
                         }
