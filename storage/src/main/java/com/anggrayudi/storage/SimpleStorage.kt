@@ -93,7 +93,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             val sm = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
             sm.primaryStorageVolume.createOpenDocumentTreeIntent()
         } else {
-            defaultExternalStorageIntent
+            getDefaultExternalStorageIntent(context)
         }
 
     /**
@@ -113,12 +113,12 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 } else {
                     //Access to the entire volume is only available for non-primary volumes
                     if (it.isPrimary) {
-                        defaultExternalStorageIntent
+                        getDefaultExternalStorageIntent(context)
                     } else {
                         it.createAccessIntent(null)
                     }
                 }
-            } ?: defaultExternalStorageIntent
+            } ?: getDefaultExternalStorageIntent(context)
         }
 
     /**
@@ -199,9 +199,12 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             createFileCallback?.onActivityHandlerNotFound(requestCode, intent)
     }
 
+    /**
+     * @param initialPath only works for API 26+
+     */
     @SuppressLint("InlinedApi")
     @JvmOverloads
-    fun openFolderPicker(requestCode: Int = requestCodeFolderPicker) {
+    fun openFolderPicker(requestCode: Int = requestCodeFolderPicker, initialPath: FileFullPath? = null) {
         requestCodeFolderPicker = requestCode
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P || hasStoragePermission(context)) {
             val intent = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
@@ -209,6 +212,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             } else {
                 externalStorageRootAccessIntent
             }
+            initialPath?.uri?.let { intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, context.fromTreeUri(it)?.uri) }
             if (!wrapper.startActivityForResult(intent, requestCode))
                 folderPickerCallback?.onActivityHandlerNotFound(requestCode, intent)
         } else {
@@ -480,13 +484,14 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             get() = Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED
 
         @JvmStatic
-        val defaultExternalStorageIntent: Intent
-            @SuppressLint("InlinedApi")
-            get() = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+        @SuppressLint("InlinedApi")
+        fun getDefaultExternalStorageIntent(context: Context): Intent {
+            return Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
                 if (Build.VERSION.SDK_INT >= 26) {
-                    putExtra(DocumentsContract.EXTRA_INITIAL_URI, DocumentFileCompat.createDocumentUri(PRIMARY))
+                    putExtra(DocumentsContract.EXTRA_INITIAL_URI, context.fromTreeUri(DocumentFileCompat.createDocumentUri(PRIMARY))?.uri)
                 }
             }
+        }
 
         /**
          * For read and write permissions

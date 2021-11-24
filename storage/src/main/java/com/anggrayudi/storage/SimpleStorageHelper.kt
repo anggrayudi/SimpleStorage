@@ -13,6 +13,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import com.anggrayudi.storage.callback.*
+import com.anggrayudi.storage.file.FileFullPath
 import com.anggrayudi.storage.file.StorageType
 import com.anggrayudi.storage.file.getAbsolutePath
 import com.anggrayudi.storage.permission.*
@@ -309,10 +310,10 @@ class SimpleStorageHelper {
     }
 
     @JvmOverloads
-    fun openFolderPicker(requestCode: Int = storage.requestCodeFolderPicker) {
+    fun openFolderPicker(requestCode: Int = storage.requestCodeFolderPicker, initialPath: FileFullPath? = null) {
         pickerToOpenOnceGranted = TYPE_FOLDER_PICKER
         originalRequestCode = requestCode
-        storage.openFolderPicker(requestCode)
+        storage.openFolderPicker(requestCode, initialPath)
     }
 
     @JvmOverloads
