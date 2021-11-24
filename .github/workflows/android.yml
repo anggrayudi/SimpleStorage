@@ -32,12 +32,21 @@ jobs:
         run: ./.github/scripts/copy_env_variables.sh
 
       - name: Build with Gradle
+        if: ${{ github.repository_owner == 'anggrayudi' }}
         env:
           ORG_GRADLE_PROJECT_anggrayudi_maven_username: ${{ secrets.OSS_SONATYPE_NEXUS_USERNAME }}
           ORG_GRADLE_PROJECT_anggrayudi_maven_password: ${{ secrets.OSS_SONATYPE_NEXUS_PASSWORD }}
         run: ./gradlew build test check
 
+      - name: Build with Gradle (default)
+        if: ${{ github.repository_owner != 'anggrayudi' }}
+        env:
+          ORG_GRADLE_PROJECT_anggrayudi_maven_username: 'abc'
+          ORG_GRADLE_PROJECT_anggrayudi_maven_password: 'xyz'
+        run: ./gradlew build test check
+
       - name: Upload snapshot archives
+        if: ${{ github.repository_owner == 'anggrayudi' }}
         env:
           ORG_GRADLE_PROJECT_anggrayudi_maven_username: ${{ secrets.OSS_SONATYPE_NEXUS_USERNAME }}
           ORG_GRADLE_PROJECT_anggrayudi_maven_password: ${{ secrets.OSS_SONATYPE_NEXUS_PASSWORD }}
