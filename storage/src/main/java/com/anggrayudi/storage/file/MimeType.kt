@@ -29,6 +29,12 @@ object MimeType {
     @JvmStatic
     fun getFullFileName(name: String, mimeType: String?): String {
         // Prior to API 29, MimeType.BINARY_FILE has no file extension
+        if (mimeType == BINARY_FILE) {
+            val extension = getExtensionFromFileName(name)
+            if (extension.isNotEmpty()) {
+                return name
+            }
+        }
         return getExtensionFromMimeType(mimeType).let { if (it.isEmpty() || name.endsWith(".$it")) name else "$name.$it".trimEnd('.') }
     }
 
@@ -41,12 +47,17 @@ object MimeType {
         return mimeType?.let { if (it == BINARY_FILE) "bin" else MimeTypeMap.getSingleton().getExtensionFromMimeType(it) }.orEmpty()
     }
 
+    @JvmStatic
+    fun getExtensionFromFileName(filename: String?): String {
+        return filename?.substringAfterLast('.', "").orEmpty()
+    }
+
     /**
      * @see getExtensionFromMimeType
      */
     @JvmStatic
     fun getExtensionFromMimeTypeOrFileName(mimeType: String?, filename: String): String {
-        return if (mimeType == null || mimeType == UNKNOWN) filename.substringAfterLast('.', "") else getExtensionFromMimeType(mimeType)
+        return if (mimeType == null || mimeType == UNKNOWN) getExtensionFromFileName(filename) else getExtensionFromMimeType(mimeType)
     }
 
     /**
