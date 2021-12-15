@@ -39,5 +39,7 @@ class MimeTypeTest {
         assertEquals("abc.jpg", MimeType.getFullFileName("abc.jpg", "*/*"))
         assertEquals("abc.jpg", MimeType.getFullFileName("abc.jpg", "application/octet-stream"))
         assertEquals("abc.dwg", MimeType.getFullFileName("abc.dwg", "application/octet-stream"))
+        assertEquals("abc.bin", MimeType.getFullFileName("abc", "application/octet-stream"))
+        assertEquals("abc.bin", MimeType.getFullFileName("abc.bin", "application/octet-stream"))
     }
 }

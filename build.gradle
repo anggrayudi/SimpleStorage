@@ -4,14 +4,14 @@ buildscript {
 
     addRepos(repositories)
 
-    ext.kotlin_version = '1.5.21'
+    ext.kotlin_version = '1.6.0'
 
     dependencies {
-        classpath 'com.android.tools:r8:2.2.64'
+        classpath 'com.android.tools:r8:3.0.73'
         classpath 'com.android.tools.build:gradle:4.2.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.vanniktech:gradle-maven-publish-plugin:0.16.0'
-        classpath "org.jetbrains.dokka:dokka-gradle-plugin:1.4.20"
+        classpath "org.jetbrains.dokka:dokka-gradle-plugin:1.6.0"
     }
 }
 
@@ -23,7 +23,6 @@ allprojects {
         kotlinOptions {
             freeCompilerArgs = ['-Xjvm-default=all', '-Xopt-in=kotlin.RequiresOptIn']
             jvmTarget = '1.8'
-            includeRuntime = true
         }
     }
 
