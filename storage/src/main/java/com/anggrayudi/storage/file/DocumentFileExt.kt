@@ -2266,7 +2266,6 @@ private fun handleParentFolderConflict(
             callback.onParentConflict(targetFolder, FolderCallback.ParentFolderConflictAction(it), canMerge)
         }
 
-        @Suppress("NON_EXHAUSTIVE_WHEN")
         when (resolution) {
             FolderCallback.ConflictResolution.REPLACE -> {
                 callback.uiScope.postToUi { callback.onDeleteConflictedFiles() }
@@ -2299,6 +2298,10 @@ private fun handleParentFolderConflict(
                     }
                 }
             }
+
+            else -> {
+                // skip
+            }
         }
         return resolution
     }
@@ -2329,7 +2332,6 @@ private fun List<DocumentFile>.handleParentFolderConflict(
             callback.uiScope.postToUi { callback.onDeleteConflictedFiles() }
         }
         resolution.forEach { conflict ->
-            @Suppress("NON_EXHAUSTIVE_WHEN")
             when (conflict.solution) {
                 FolderCallback.ConflictResolution.REPLACE -> {
                     if (!conflict.target.let { it.deleteRecursively(context, true) || !it.exists() }) {
@@ -2343,6 +2345,10 @@ private fun List<DocumentFile>.handleParentFolderConflict(
                         callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
                         return null
                     }
+                }
+
+                else -> {
+                    // skip
                 }
             }
         }

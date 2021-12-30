@@ -4,7 +4,7 @@ buildscript {
 
     addRepos(repositories)
 
-    ext.kotlin_version = '1.6.0'
+    ext.kotlin_version = '1.6.10'
 
     dependencies {
         classpath 'com.android.tools:r8:3.0.73'
