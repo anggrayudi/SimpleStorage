@@ -86,8 +86,8 @@ class FileExtKtTest {
      */
     private fun File.autoIncrementFileName(filename: String): String {
         return if (File(absolutePath, filename).exists()) {
-            val baseName = filename.substringBeforeLast('.')
-            val ext = filename.substringAfterLast('.', "")
+            val baseName = MimeType.getBaseFileName(filename)
+            val ext = MimeType.getExtensionFromFileName(filename)
             val prefix = "$baseName ("
             var lastFileCount = list().orEmpty().filter {
                 it.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(it)

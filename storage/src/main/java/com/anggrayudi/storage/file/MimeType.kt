@@ -1,6 +1,7 @@
 package com.anggrayudi.storage.file
 
 import android.webkit.MimeTypeMap
+import com.anggrayudi.storage.extension.normalizeFileName
 
 /**
  * See [mime type list](https://www.freeformatter.com/mime-types-list.html)
@@ -29,17 +30,19 @@ object MimeType {
     @JvmStatic
     fun getFullFileName(name: String, mimeType: String?): String {
         // Prior to API 29, MimeType.BINARY_FILE has no file extension
-        if (mimeType == BINARY_FILE) {
-            val extension = getExtensionFromFileName(name)
+        val cleanName = name.normalizeFileName()
+        if (mimeType == BINARY_FILE || mimeType == UNKNOWN) {
+            val extension = getExtensionFromFileName(cleanName)
             if (extension.isNotEmpty()) {
-                return name
+                return cleanName
             }
         }
-        return getExtensionFromMimeType(mimeType).let { if (it.isEmpty() || name.endsWith(".$it")) name else "$name.$it".trimEnd('.') }
+        return getExtensionFromMimeType(mimeType).let { if (it.isEmpty() || cleanName.endsWith(".$it")) cleanName else "$cleanName.$it".trimEnd('.') }
     }
 
     /**
      * Some mime types return no file extension on older API levels. This function adds compatibility accross API levels.
+     * Since API 29, [MimeType.BINARY_FILE] has extension `*.bin`
      * @see getExtensionFromMimeTypeOrFileName
      */
     @JvmStatic
@@ -48,9 +51,22 @@ object MimeType {
     }
 
     @JvmStatic
-    fun getExtensionFromFileName(filename: String?): String {
-        return filename?.substringAfterLast('.', "").orEmpty()
+    fun getBaseFileName(filename: String?): String {
+        return if (hasExtension(filename)) filename.orEmpty().substringBeforeLast('.') else filename.orEmpty()
     }
+
+    @JvmStatic
+    fun getExtensionFromFileName(filename: String?): String {
+        return if (hasExtension(filename)) filename.orEmpty().substringAfterLast('.', "") else ""
+    }
+
+    /**
+     * File extensions must be alphanumeric. The following filenames are considered as have no extension:
+     * * `abc.pq rs`
+     * * `abc.あん`
+     */
+    @JvmStatic
+    fun hasExtension(filename: String?) = filename?.matches(Regex("(.*?)\\.[a-zA-Z0-9]+")) == true
 
     /**
      * @see getExtensionFromMimeType
@@ -66,5 +82,10 @@ object MimeType {
     @JvmStatic
     fun getMimeTypeFromExtension(fileExtension: String): String {
         return if (fileExtension == "bin") BINARY_FILE else MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileExtension) ?: UNKNOWN
+    }
+
+    @JvmStatic
+    fun getMimeTypeFromFileName(filename: String?): String {
+        return getMimeTypeFromExtension(getExtensionFromFileName(filename))
     }
 }

@@ -8,9 +8,9 @@ import android.os.Build
 import android.os.Environment
 import android.provider.BaseColumns
 import android.provider.MediaStore
-import android.webkit.MimeTypeMap
 import androidx.annotation.RequiresApi
 import androidx.documentfile.provider.DocumentFile
+import com.anggrayudi.storage.extension.trimFileName
 import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.*
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
@@ -88,24 +88,28 @@ object MediaStoreCompat {
 
     private fun createMedia(context: Context, mediaType: MediaType, folderName: String, file: FileDescription, mode: CreateMode): MediaFile? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val dateCreated = System.currentTimeMillis()
+            val fullName = file.fullName
+            val mimeType = file.mimeType
+            val baseName = MimeType.getBaseFileName(fullName)
+            val ext = MimeType.getExtensionFromFileName(fullName)
             val contentValues = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, file.name)
-                put(MediaStore.MediaColumns.MIME_TYPE, file.mimeType)
+                put(MediaStore.MediaColumns.DISPLAY_NAME, if (mimeType == MimeType.BINARY_FILE) fullName else baseName)
+                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                val dateCreated = System.currentTimeMillis()
                 put(MediaStore.MediaColumns.DATE_ADDED, dateCreated)
                 put(MediaStore.MediaColumns.DATE_MODIFIED, dateCreated)
             }
-            val relativePath = "$folderName/${file.subFolder}".trimFileSeparator()
+            val relativePath = "$folderName/${file.subFolder}".trimFileName()
             contentValues.apply {
                 put(MediaStore.MediaColumns.OWNER_PACKAGE_NAME, context.packageName)
                 if (relativePath.isNotBlank()) {
                     put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
                 }
             }
-            var existingMedia = fromBasePath(context, mediaType, "$relativePath/${file.name}")
+            val existingMedia = fromBasePath(context, mediaType, "$relativePath/$fullName")
             when {
                 existingMedia?.isEmpty == true -> existingMedia
-                existingMedia?.exists == true -> {
+                existingMedia != null -> {
                     if (mode == CreateMode.REUSE) {
                         return existingMedia
                     }
@@ -114,38 +118,26 @@ object MediaStoreCompat {
                         return MediaFile(context, context.contentResolver.insert(mediaType.writeUri!!, contentValues) ?: return null)
                     }
 
-                    /*
-                    We use this file duplicate handler because it is better than the system's.
-                    This handler also fixes Android 10's media file duplicate handler. Here's how to reproduce:
-                    1) Use Android 10. Let's say there's a file named Pictures/profile.png with media ID 25.
-                    2) Create an image file with ContentValues using the same name (profile) & mime type (image/png), under Pictures directory too.
-                    3) A new media file is created into the file database with ID 26, but it uses the old file,
-                       instead of creating a new file named profile (1).png. On Android 11, it will be profile (1).png.
-                     */
-                    val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(file.mimeType) ?: file.name.substringAfterLast('.', "")
-                    val baseName = file.name.substringBeforeLast('.')
-                    val prefix = "$baseName ("
-                    val lastFile = fromFileNameContains(context, mediaType, baseName)
-                        .filter { relativePath.isBlank() || relativePath == it.relativePath.removeSuffix("/") }
-                        .mapNotNull { it.name }
-                        .filter {
-                            it.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(it)
-                                    || DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION.matches(it))
-                        }
-                        .maxOfOrNull { it }
-                        .orEmpty()
-                    var count = lastFile.substringAfterLast('(', "")
-                        .substringBefore(')', "")
-                        .toIntOrNull() ?: 0
-
-                    existingMedia = fromFileName(context, mediaType, "$baseName ($count).$ext".trimEnd('.'))
-                    // Check if file exists, but has zero length
-                    if (existingMedia?.openInputStream()?.use { it.available() == 0 } == true) {
-                        existingMedia
-                    } else {
-                        contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, "$baseName (${++count}).$ext".trimEnd('.'))
-                        MediaFile(context, context.contentResolver.insert(mediaType.writeUri!!, contentValues) ?: return null)
+                    if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                        // Android R+ already has this check, thus no need to check empty media files for reuse
+                        val prefix = "$baseName ("
+                        fromFileNameContains(context, mediaType, baseName).asSequence()
+                            .filter { relativePath.isBlank() || relativePath == it.relativePath.removeSuffix("/") }
+                            .filter {
+                                val name = it.name
+                                if (name.isNullOrEmpty() || MimeType.getExtensionFromFileName(name) != ext)
+                                    false
+                                else {
+                                    name.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(name)
+                                            || DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION.matches(name))
+                                }
+                            }
+                            // Use existing empty media file
+                            .firstOrNull { it.hasZeroLength }
+                            ?.let { return it }
                     }
+
+                    MediaFile(context, context.contentResolver.insert(mediaType.writeUri!!, contentValues) ?: return null)
                 }
                 else -> MediaFile(context, context.contentResolver.insert(mediaType.writeUri!!, contentValues) ?: return null)
             }
@@ -170,6 +162,22 @@ object MediaStoreCompat {
                 null
             }
         }
+    }
+
+    /**
+     * This action only deletes your app's created files.
+     * @see MediaFile.owner
+     */
+    @JvmStatic
+    fun deleteEmptyMediaFiles(context: Context, mediaType: MediaType): Int {
+        var deleted = 0
+        fromMediaType(context, mediaType).forEach {
+            if (it.hasZeroLength) {
+                it.delete()
+                deleted++
+            }
+        }
+        return deleted
     }
 
     @JvmStatic

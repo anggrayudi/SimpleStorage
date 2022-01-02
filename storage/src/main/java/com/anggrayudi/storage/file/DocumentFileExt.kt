@@ -214,13 +214,13 @@ val DocumentFile.isRawFile: Boolean
  * Filename without extension
  */
 val DocumentFile.baseName: String
-    get() = fullName.substringBeforeLast('.')
+    get() = MimeType.getBaseFileName(fullName)
 
 /**
  * File extension
  */
 val DocumentFile.extension: String
-    get() = fullName.substringAfterLast('.', "")
+    get() = MimeType.getExtensionFromFileName(fullName)
 
 /**
  * Advanced version of [DocumentFile.getType]. Returns:
@@ -232,7 +232,7 @@ val DocumentFile.mimeType: String?
 
 val DocumentFile.mimeTypeByFileName: String?
     get() = if (isDirectory) null else {
-        val extension = name.orEmpty().substringAfterLast('.', "")
+        val extension = MimeType.getExtensionFromFileName(name)
         val mimeType = MimeType.getMimeTypeFromExtension(extension)
         if (mimeType == MimeType.UNKNOWN) type else mimeType
     }
@@ -551,8 +551,8 @@ fun DocumentFile.autoIncrementFileName(context: Context, filename: String): Stri
     }
     val files = listFiles()
     return if (files.find { it.name == filename }?.exists() == true) {
-        val baseName = filename.substringBeforeLast('.')
-        val ext = filename.substringAfterLast('.', "")
+        val baseName = MimeType.getBaseFileName(filename)
+        val ext = MimeType.getExtensionFromFileName(filename)
         val prefix = "$baseName ("
         var lastFileCount = files.filter {
             val name = it.name.orEmpty()
@@ -604,7 +604,7 @@ fun DocumentFile.makeFile(
     }
 
     val filename = cleanName.substringAfterLast('/')
-    val extensionByName = cleanName.substringAfterLast('.', "")
+    val extensionByName = MimeType.getExtensionFromFileName(cleanName)
     val extension = if (extensionByName.isNotEmpty() && (mimeType == null || mimeType == MimeType.UNKNOWN || mimeType == MimeType.BINARY_FILE)) {
         extensionByName
     } else {

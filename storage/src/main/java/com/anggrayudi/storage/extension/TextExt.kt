@@ -2,6 +2,8 @@
 
 package com.anggrayudi.storage.extension
 
+import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
+
 /**
  * Created on 19/08/20
  * @author Anggrayudi H
@@ -22,6 +24,10 @@ fun String.count(text: String): Int {
     } while (index in 1 until length)
     return count
 }
+
+fun String.trimFileName() = trim { it <= ' ' || it == '/' }.trimEnd('.')
+
+fun String.normalizeFileName() = removeForbiddenCharsFromFilename().trimFileName()
 
 fun String.trimFileSeparator() = trim('/')
 

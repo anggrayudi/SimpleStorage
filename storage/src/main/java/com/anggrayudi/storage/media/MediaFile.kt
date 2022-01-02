@@ -70,28 +70,24 @@ class MediaFile(context: Context, val uri: Uri) {
         get() = toRawFile()?.name ?: getColumnInfoString(MediaStore.MediaColumns.DISPLAY_NAME)
 
     val baseName: String
-        get() = fullName.substringBeforeLast('.')
+        get() = MimeType.getBaseFileName(fullName)
 
     val extension: String
-        get() = fullName.substringAfterLast('.', "")
+        get() = MimeType.getExtensionFromFileName(fullName)
 
     /**
      * @see [mimeType]
      */
     val type: String?
-        get() = toRawFile()?.name?.let { MimeType.getMimeTypeFromExtension(it.substringAfterLast('.', "")) }
+        get() = toRawFile()?.name?.let { MimeType.getMimeTypeFromExtension(MimeType.getExtensionFromFileName(it)) }
             ?: getColumnInfoString(MediaStore.MediaColumns.MIME_TYPE)
 
     /**
-     * Advanced version of [type]. Returns:
-     * * `null` if the file does not exist
-     * * [MimeType.UNKNOWN] if the file exists but the mime type is not found
+     * Advanced version of [type]. Returns [MimeType.UNKNOWN] if the mime type is not found.
      */
-    val mimeType: String?
-        get() = if (exists) {
-            getColumnInfoString(MediaStore.MediaColumns.MIME_TYPE)
-                ?: MimeType.getMimeTypeFromExtension(extension)
-        } else null
+    val mimeType: String
+        get() = getColumnInfoString(MediaStore.MediaColumns.MIME_TYPE)
+            ?: MimeType.getMimeTypeFromExtension(extension)
 
     var length: Long
         get() = toRawFile()?.length() ?: getColumnInfoLong(MediaStore.MediaColumns.SIZE)
@@ -108,20 +104,22 @@ class MediaFile(context: Context, val uri: Uri) {
         get() = Formatter.formatFileSize(context, length)
 
     /**
-     * Check if file exists
-     */
-    val exists: Boolean
-        get() = toRawFile()?.exists()
-            ?: uri.openInputStream(context)?.use { true }
-            ?: false
-
-    /**
-     * The URI presents in SAF database, but the file is not found.
+     * The URI presents in SAF database, but the file is not found or has zero length.
+     * @see hasZeroLength
      */
     val isEmpty: Boolean
+        get() = presentsInSafDatabase && hasZeroLength
+
+    val presentsInSafDatabase: Boolean
         get() = context.contentResolver.query(uri, null, null, null, null)?.use {
-            it.count > 0 && !exists
+            it.count > 0
         } ?: false
+
+    /**
+     * @see isEmpty
+     */
+    val hasZeroLength: Boolean
+        get() = uri.openInputStream(context)?.use { stream -> stream.available() == 0 } != false
 
     /**
      * `true` if this file was created with [File]. Only works on API 28 and lower.
@@ -240,12 +238,10 @@ class MediaFile(context: Context, val uri: Uri) {
         val file = toRawFile()
         val contentValues = ContentValues(1).apply { put(MediaStore.MediaColumns.DISPLAY_NAME, newName) }
         return if (file != null) {
-            file.renameTo(File(file.parent, newName)) && context.contentResolver.update(uri, contentValues, null, null) > 0
-        } else try {
-            context.contentResolver.update(uri, contentValues, null, null) > 0
-        } catch (e: SecurityException) {
-            handleSecurityException(e)
-            false
+            context.contentResolver.update(uri, contentValues, null, null)
+            file.renameTo(File(file.parent, newName))
+        } else {
+            throw UnsupportedOperationException("Cannot rename media files on Android 10+")
         }
     }
 

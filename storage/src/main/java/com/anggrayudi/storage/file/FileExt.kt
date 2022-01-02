@@ -171,7 +171,7 @@ fun File.makeFile(context: Context, name: String, mimeType: String? = MimeType.U
     }
 
     val filename = cleanName.substringAfterLast('/')
-    val extensionByName = cleanName.substringAfterLast('.', "")
+    val extensionByName = MimeType.getExtensionFromFileName(cleanName)
     val extension = if (extensionByName.isNotEmpty() && (mimeType == null || mimeType == MimeType.UNKNOWN || mimeType == MimeType.BINARY_FILE)) {
         extensionByName
     } else {
@@ -279,8 +279,8 @@ fun File.tryCreateNewFile() = try {
  */
 fun File.autoIncrementFileName(filename: String): String {
     return if (child(filename).exists()) {
-        val baseName = filename.substringBeforeLast('.')
-        val ext = filename.substringAfterLast('.', "")
+        val baseName = MimeType.getBaseFileName(filename)
+        val ext = MimeType.getExtensionFromFileName(filename)
         val prefix = "$baseName ("
         var lastFileCount = list().orEmpty().filter {
             it.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(it)
