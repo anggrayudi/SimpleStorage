@@ -230,6 +230,8 @@ class MediaFile(context: Context, val uri: Uri) {
         }
     }
 
+    // TODO: 04/01/22 Zip & unzip media files
+
     /**
      * Please note that this function does not move file if you input `newName` as `Download/filename.mp4`.
      * If you want to move media files, please use [moveFileTo] instead.
@@ -327,13 +329,8 @@ class MediaFile(context: Context, val uri: Uri) {
             return
         }
 
-        try {
-            if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), length)) {
-                callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
-                return
-            }
-        } catch (e: Throwable) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), length)) {
+            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
             return
         }
 
@@ -383,13 +380,8 @@ class MediaFile(context: Context, val uri: Uri) {
             return
         }
 
-        try {
-            if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), length)) {
-                callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
-                return
-            }
-        } catch (e: Throwable) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), length)) {
+            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
             return
         }
 

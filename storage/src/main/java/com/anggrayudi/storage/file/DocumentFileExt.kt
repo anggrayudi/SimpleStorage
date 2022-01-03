@@ -1041,15 +1041,10 @@ fun List<DocumentFile>.compressToZip(
 
     var actualFilesSize = 0L
 
-    try {
-        treeFiles.forEach { actualFilesSize += it.length() }
-        mediaFiles.forEach { actualFilesSize += it.length() }
-        if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetZipFile.getStorageId(context)), actualFilesSize)) {
-            callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
-            return
-        }
-    } catch (e: Throwable) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+    treeFiles.forEach { actualFilesSize += it.length() }
+    mediaFiles.forEach { actualFilesSize += it.length() }
+    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetZipFile.getStorageId(context)), actualFilesSize)) {
+        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
         return
     }
 
@@ -1212,14 +1207,8 @@ fun DocumentFile.decompressZip(
                 entry = it.nextEntry
             }
 
-            try {
-                if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), actualFilesSize)) {
-                    callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
-                    it.closeEntryQuietly()
-                    return
-                }
-            } catch (e: Throwable) {
-                callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+            if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), actualFilesSize)) {
+                callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
                 it.closeEntryQuietly()
                 return
             }
@@ -1402,13 +1391,8 @@ private fun List<DocumentFile>.copyTo(
 
     val totalSizeToCopy = sourceInfos.values.sumOf { it.size }
 
-    try {
-        if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, writableTargetParentFolder.getStorageId(context)), totalSizeToCopy)) {
-            callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
-            return
-        }
-    } catch (e: Throwable) {
-        callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, writableTargetParentFolder.getStorageId(context)), totalSizeToCopy)) {
+        callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
         return
     }
 
@@ -1803,13 +1787,8 @@ private fun DocumentFile.copyFolderTo(
         }
     }
 
-    try {
-        if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, writableTargetParentFolder.getStorageId(context)), totalSizeToCopy)) {
-            callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
-            return
-        }
-    } catch (e: Throwable) {
-        callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, writableTargetParentFolder.getStorageId(context)), totalSizeToCopy)) {
+        callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
         return
     }
 
@@ -2098,13 +2077,8 @@ private fun DocumentFile.copyFileTo(
 
     callback.uiScope.postToUi { callback.onPrepare() }
 
-    try {
-        if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, writableTargetFolder.getStorageId(context)), length())) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
-            return
-        }
-    } catch (e: Throwable) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, writableTargetFolder.getStorageId(context)), length())) {
+        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
         return
     }
 
@@ -2537,13 +2511,8 @@ private fun DocumentFile.copyFileTo(
 ) {
     if (simpleCheckSourceFile(callback)) return
 
-    try {
-        if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, PRIMARY), length())) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
-            return
-        }
-    } catch (e: Throwable) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, PRIMARY), length())) {
+        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
         return
     }
 
