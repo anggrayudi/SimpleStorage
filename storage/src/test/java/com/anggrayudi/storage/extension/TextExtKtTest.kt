@@ -60,4 +60,12 @@ class TextExtKtTest {
         assertFalse("/path/Music".hasParent("/path/MusicMetal"))
         assertFalse("/path/Music".hasParent("/path/MusiC"))
     }
+
+    @Test
+    fun childOf() {
+        assertTrue("/path/Music/Pop".childOf("/path/Music"))
+
+        assertFalse("/path/Music/Pop".childOf("/path/Music/Rock"))
+        assertFalse("/path/Music".childOf("/path/Music/Rock"))
+    }
 }

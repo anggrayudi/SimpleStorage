@@ -34,6 +34,12 @@
 
         <include layout="@layout/incl_base_operation" />
 
+        <Button
+            android:id="@+id/btnCompressFiles"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Compress Files" />
+
         <include layout="@layout/view_divider" />
 
         <TextView

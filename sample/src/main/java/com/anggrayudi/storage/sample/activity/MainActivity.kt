@@ -105,6 +105,10 @@ class MainActivity : AppCompatActivity() {
             storageHelper.createFile("text/plain", "Test create file", REQUEST_CODE_CREATE_FILE)
         }
 
+        btnCompressFiles.setOnClickListener {
+            startActivity(Intent(this, FileCompressionActivity::class.java))
+        }
+
         setupFileCopy()
         setupFolderCopy()
         setupFileMove()

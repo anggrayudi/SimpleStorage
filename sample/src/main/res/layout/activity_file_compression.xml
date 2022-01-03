@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".activity.MainActivity"
+    tools:ignore="HardcodedText">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Media File 1"
+            android:textSize="14sp" />
+
+        <include
+            android:id="@+id/layoutCompressFiles_srcMedia1"
+            layout="@layout/view_file_picked" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Media File 2"
+            android:textSize="14sp" />
+
+        <include
+            android:id="@+id/layoutCompressFiles_srcMedia2"
+            layout="@layout/view_file_picked" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Folder 1"
+            android:textSize="14sp" />
+
+        <include
+            android:id="@+id/layoutCompressFiles_srcFolder1"
+            layout="@layout/view_file_picked" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Folder 2"
+            android:textSize="14sp" />
+
+        <include
+            android:id="@+id/layoutCompressFiles_srcFolder2"
+            layout="@layout/view_file_picked" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Destination ZIP file"
+            android:textSize="14sp" />
+
+        <include
+            android:id="@+id/layoutCompressFiles_destZipFile"
+            layout="@layout/view_file_picked" />
+
+        <Button
+            android:id="@+id/btnStartCompress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Start Compress" />
+    </LinearLayout>
+</ScrollView>

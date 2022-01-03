@@ -17,10 +17,7 @@ import androidx.core.content.FileProvider
 import androidx.core.content.MimeTypeFilter
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
-import com.anggrayudi.storage.callback.BaseFileCallback
-import com.anggrayudi.storage.callback.FileCallback
-import com.anggrayudi.storage.callback.FolderCallback
-import com.anggrayudi.storage.callback.MultipleFileCallback
+import com.anggrayudi.storage.callback.*
 import com.anggrayudi.storage.extension.*
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import com.anggrayudi.storage.file.StorageId.DATA
@@ -29,11 +26,10 @@ import com.anggrayudi.storage.media.FileDescription
 import com.anggrayudi.storage.media.MediaFile
 import com.anggrayudi.storage.media.MediaStoreCompat
 import kotlinx.coroutines.Job
-import java.io.File
-import java.io.InputStream
-import java.io.InterruptedIOException
-import java.io.OutputStream
+import java.io.*
 import java.util.*
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import kotlin.collections.ArrayList
 
 /**
@@ -959,6 +955,210 @@ private fun DocumentFile.walkFileTreeAndSkipEmptyFiles(): List<DocumentFile> {
     return fileTree
 }
 
+private fun DocumentFile.walkFileTreeAndGetFilesOnly(): List<DocumentFile> {
+    val fileTree = mutableListOf<DocumentFile>()
+    listFiles().forEach {
+        if (it.isFile) {
+            fileTree.add(it)
+        } else {
+            fileTree.addAll(it.walkFileTreeAndGetFilesOnly())
+        }
+    }
+    return fileTree
+}
+
+@WorkerThread
+fun List<DocumentFile>.compressToZip(
+    context: Context,
+    targetZipFile: DocumentFile,
+    deleteSourceWhenComplete: Boolean = false,
+    callback: ZipCompressionCallback
+) {
+    callback.uiScope.postToUi { callback.onCountingFiles() }
+    val treeFiles = ArrayList<DocumentFile>(size)
+    val mediaFiles = ArrayList<DocumentFile>(size)
+    var foldersBasePath = mutableListOf<String>()
+    val directories = mutableListOf<DocumentFile>()
+    for (srcFile in distinctBy { it.uri }) {
+        if (srcFile.exists()) {
+            if (!srcFile.canRead()) {
+                callback.uiScope.postToUi {
+                    callback.onFailed(ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED, "Can't read file: ${srcFile.uri}")
+                }
+                return
+            } else if (srcFile.isFile) {
+                if (srcFile.isTreeDocumentFile || srcFile.isRawFile) {
+                    treeFiles.add(srcFile)
+                } else {
+                    mediaFiles.add(srcFile)
+                }
+            } else if (srcFile.isDirectory) {
+                directories.add(srcFile)
+            }
+        } else {
+            callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE, "File not found: ${srcFile.uri}") }
+            return
+        }
+    }
+
+    /*
+    Given two folders:
+    /storage/emulated/0/Movies
+    /storage/emulated/0/Movies/Horror
+    Then eleminate /storage/emulated/0/Movies/Horror from the list and archive all files under /storage/emulated/0/Movies, included Horror
+     */
+    class EntryFile(val file: DocumentFile, var path: String) {
+
+        override fun equals(other: Any?) = this === other || other is EntryFile && path == other.path
+        override fun hashCode() = path.hashCode()
+    }
+
+    val srcFolders = directories.map { EntryFile(it, it.getAbsolutePath(context)) }.distinctBy { it.path }.toMutableList()
+    DocumentFileCompat.findUniqueParents(context, srcFolders.map { it.path }).forEach { parent ->
+        srcFolders.removeAll { it.path.childOf(parent) }
+    }
+    srcFolders.forEach {
+        // skip empty folders
+        treeFiles.addAll(it.file.walkFileTreeAndGetFilesOnly())
+        foldersBasePath.add(it.file.getBasePath(context))
+    }
+
+    // do not compress target ZIP file itself
+    val targetZipPath = targetZipFile.getAbsolutePath(context)
+    treeFiles.removeAll { it.uri == targetZipFile.uri || it.getAbsolutePath(context) == targetZipPath }
+    mediaFiles.removeAll { it.uri == targetZipFile.uri }
+
+    val totalFiles = treeFiles.size + mediaFiles.size
+    if (totalFiles == 0) {
+        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE, "No entry files found") }
+        return
+    }
+
+    var actualFilesSize = 0L
+
+    try {
+        treeFiles.forEach { actualFilesSize += it.length() }
+        mediaFiles.forEach { actualFilesSize += it.length() }
+        if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetZipFile.getStorageId(context)), actualFilesSize)) {
+            callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
+            return
+        }
+    } catch (e: Throwable) {
+        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        return
+    }
+
+    val entryFiles = ArrayList<EntryFile>(totalFiles)
+    treeFiles.forEach { entryFiles.add(EntryFile(it, it.getBasePath(context))) }
+    val parentPaths = DocumentFileCompat.findUniqueParents(context, entryFiles.map { "/" + it.path.substringBeforeLast('/') }).map { it.trim('/') }
+    foldersBasePath = DocumentFileCompat.findUniqueParents(context, foldersBasePath.map { "/$it" }).map { it.trim('/') }.toMutableList()
+    entryFiles.forEach { entry ->
+        for (parentPath in parentPaths) {
+            if (entry.path.startsWith(parentPath)) {
+                val delimiter = if (parentPath in foldersBasePath) {
+                    parentPath.substringBefore('/', "")
+                } else {
+                    parentPath
+                }
+                entry.path = entry.path.substringAfter(delimiter).trim('/')
+                break
+            }
+        }
+    }
+    mediaFiles.forEach { entryFiles.add(EntryFile(it, it.fullName)) }
+    val duplicateFiles = entryFiles.groupingBy { it }.eachCount().filterValues { it > 1 }
+    if (duplicateFiles.isNotEmpty()) {
+        callback.uiScope.postToUi {
+            callback.onFailed(ZipCompressionCallback.ErrorCode.DUPLICATE_ENTRY_FILE, "Found duplicate entry files: ${duplicateFiles.keys.map { it.file.uri }}")
+        }
+        return
+    }
+
+    var zipFile: DocumentFile? = targetZipFile
+    if (!targetZipFile.exists() || targetZipFile.isDirectory) {
+        zipFile = targetZipFile.parentFile?.makeFile(context, targetZipFile.fullName, MimeType.ZIP)
+    }
+    if (zipFile == null) {
+        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+        return
+    }
+    if (!zipFile.isWritable(context)) {
+        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED, "Destination ZIP file is not writable") }
+        return
+    }
+
+    // using timer on small file is useless. We set minimum 10MB.
+    val thread = Thread.currentThread()
+    val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(entryFiles.map { it.file }, thread) }
+    if (reportInterval < 0) return
+
+    var success = false
+    var bytesCompressed = 0L
+    var timer: Job? = null
+    var zos: ZipOutputStream? = null
+    try {
+        zos = ZipOutputStream(zipFile.openOutputStream(context))
+        var writeSpeed = 0
+        var fileCompressedCount = 0
+        if (reportInterval > 0 && actualFilesSize > 10 * FileSize.MB) {
+            timer = startCoroutineTimer(repeatMillis = reportInterval) {
+                val report = ZipCompressionCallback.Report(bytesCompressed * 100f / actualFilesSize, bytesCompressed, writeSpeed, fileCompressedCount)
+                callback.uiScope.postToUi { callback.onReport(report) }
+                writeSpeed = 0
+            }
+        }
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        entryFiles.forEach { entry ->
+            entry.file.openInputStream(context)?.use { input ->
+                zos.putNextEntry(ZipEntry(entry.path))
+                var bytes = input.read(buffer)
+                while (bytes >= 0) {
+                    zos.write(buffer, 0, bytes)
+                    bytesCompressed += bytes
+                    writeSpeed += bytes
+                    bytes = input.read(buffer)
+                }
+            } ?: throw FileNotFoundException("File ${entry.file.uri} is not found")
+            fileCompressedCount++
+        }
+        success = true
+    } catch (e: InterruptedIOException) {
+        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.CANCELED) }
+    } catch (e: FileNotFoundException) {
+        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE, e.message) }
+    } catch (e: IOException) {
+        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.UNKNOWN_IO_ERROR, e.message) }
+    } catch (e: SecurityException) {
+        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED, e.message) }
+    } finally {
+        timer?.cancel()
+        try {
+            zos?.closeEntry()
+        } catch (e: IOException) {
+            // ignore
+        }
+        zos.closeStream()
+    }
+    if (success) {
+        if (deleteSourceWhenComplete) {
+            callback.uiScope.postToUi { callback.onDeleteEntryFiles() }
+            forEach { it.deleteRecursively(context) }
+        }
+        val sizeReduction = (actualFilesSize - zipFile.length()).toFloat() / actualFilesSize * 100
+        callback.uiScope.postToUi { callback.onCompleted(zipFile, actualFilesSize, totalFiles, sizeReduction) }
+    } else {
+        zipFile.delete()
+    }
+}
+
+@WorkerThread
+fun DocumentFile.decompressZip(
+    context: Context,
+    targetFolder: DocumentFile
+) {
+    // TODO: 03/01/22 Decompress ZIP
+}
+
 @WorkerThread
 fun List<DocumentFile>.moveTo(
     context: Context,
@@ -1106,7 +1306,7 @@ private fun List<DocumentFile>.copyTo(
         }
     }
 
-    val buffer = ByteArray(1024)
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
     var success = true
 
     val copy: (DocumentFile, DocumentFile) -> Unit = { sourceFile, destFile ->
@@ -1512,7 +1712,7 @@ private fun DocumentFile.copyFolderTo(
 
     val targetFolderParentPath = "${writableTargetParentFolder.getAbsolutePath(context)}/$targetFolderParentName"
     val conflictedFiles = ArrayList<FolderCallback.FileConflict>(totalFilesToCopy)
-    val buffer = ByteArray(1024)
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
     var success = true
 
     val copy: (DocumentFile, DocumentFile) -> Unit = { sourceFile, destFile ->
@@ -1927,7 +2127,7 @@ private fun DocumentFile.copyFileStream(
                 writeSpeed = 0
             }
         }
-        val buffer = ByteArray(1024)
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
         var read = inputStream.read(buffer)
         while (read != -1) {
             outputStream.write(buffer, 0, read)

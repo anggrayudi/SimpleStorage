@@ -52,3 +52,15 @@ fun String.hasParent(parentPath: String): Boolean {
 
     return parentTree.size <= subFolderTree.size && subFolderTree.take(parentTree.size) == parentTree
 }
+
+fun String.childOf(parentPath: String): Boolean {
+    val parentTree = parentPath.split('/')
+        .map { it.trimFileSeparator() }
+        .filter { it.isNotEmpty() }
+
+    val subFolderTree = split('/')
+        .map { it.trimFileSeparator() }
+        .filter { it.isNotEmpty() }
+
+    return subFolderTree.size > parentTree.size && subFolderTree.take(parentTree.size) == parentTree
+}

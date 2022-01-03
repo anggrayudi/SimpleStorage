@@ -502,7 +502,7 @@ class MediaFile(context: Context, val uri: Uri) {
                     writeSpeed = 0
                 }
             }
-            val buffer = ByteArray(1024)
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
             var read = inputStream.read(buffer)
             while (read != -1) {
                 outputStream.write(buffer, 0, read)
