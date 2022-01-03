@@ -48,6 +48,10 @@
             android:name=".activity.FileCompressionActivity"
             android:screenOrientation="portrait" />
 
+        <activity
+            android:name=".activity.FileDecompressionActivity"
+            android:screenOrientation="portrait" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

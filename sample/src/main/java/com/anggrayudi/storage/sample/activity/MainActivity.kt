@@ -108,6 +108,9 @@ class MainActivity : AppCompatActivity() {
         btnCompressFiles.setOnClickListener {
             startActivity(Intent(this, FileCompressionActivity::class.java))
         }
+        btnDecompressFiles.setOnClickListener {
+            startActivity(Intent(this, FileDecompressionActivity::class.java))
+        }
 
         setupFileCopy()
         setupFolderCopy()

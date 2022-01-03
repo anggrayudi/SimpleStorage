@@ -3,20 +3,12 @@ package com.anggrayudi.storage.sample.activity
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.SimpleStorageHelper
 import com.anggrayudi.storage.callback.ZipCompressionCallback
-import com.anggrayudi.storage.file.MimeType
-import com.anggrayudi.storage.file.compressToZip
-import com.anggrayudi.storage.file.fullName
-import com.anggrayudi.storage.file.getAbsolutePath
+import com.anggrayudi.storage.file.*
 import com.anggrayudi.storage.sample.R
 import kotlinx.android.synthetic.main.activity_file_compression.*
 import kotlinx.android.synthetic.main.view_file_picked.view.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -24,23 +16,16 @@ import timber.log.Timber
  * Created on 03/01/22
  * @author Anggrayudi H
  */
-class FileCompressionActivity : AppCompatActivity() {
-
-    private val job = Job()
-    private val ioScope = CoroutineScope(Dispatchers.IO + job)
-    private val uiScope = CoroutineScope(Dispatchers.Main + job)
-
-    private val storageHelper = SimpleStorageHelper(this)
+class FileCompressionActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_file_compression)
-        setupSimpleStorage(savedInstanceState)
+        setupSimpleStorage()
         btnStartCompress.setOnClickListener { startCompress() }
     }
 
-    private fun setupSimpleStorage(savedInstanceState: Bundle?) {
-        savedInstanceState?.let { storageHelper.onRestoreInstanceState(it) }
+    private fun setupSimpleStorage() {
         storageHelper.onFileCreated = { _, file ->
             layoutCompressFiles_destZipFile.updateFileSelectionView(file)
         }
@@ -122,21 +107,6 @@ class FileCompressionActivity : AppCompatActivity() {
                 }
             })
         }
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        storageHelper.onSaveInstanceState(outState)
-        super.onSaveInstanceState(outState)
-    }
-
-    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        super.onRestoreInstanceState(savedInstanceState)
-        storageHelper.onRestoreInstanceState(savedInstanceState)
-    }
-
-    override fun onDestroy() {
-        job.cancel()
-        super.onDestroy()
     }
 
     companion object {

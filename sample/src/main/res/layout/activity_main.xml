@@ -40,6 +40,12 @@
             android:layout_height="wrap_content"
             android:text="Compress Files" />
 
+        <Button
+            android:id="@+id/btnDecompressFiles"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Decompress Files" />
+
         <include layout="@layout/view_divider" />
 
         <TextView
