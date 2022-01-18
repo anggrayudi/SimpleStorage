@@ -34,3 +34,25 @@ Use `isWritable()` extension function, because `DocumentFile.canWrite()` sometim
 
 ### What is the target branch for pull requests?
 Use branch `release/*` if exists, or use `master` instead.
+
+### I have Java projects, but this library is built in Kotlin. How can I use it?
+Kotlin is compatible with Java. You can read Kotlin functions as Java methods.
+Read: [Java Compatibility](https://github.com/anggrayudi/SimpleStorage/blob/master/JAVA_COMPATIBILITY.md)
+
+### Why does SimpleStorage use Kotlin?
+The main reasons why this library really needs Kotlin:
+* SimpleStorage requires thread suspension feature provided by [Kotlin Coroutines](https://github.com/Kotlin/kotlinx.coroutines).
+* SimpleStorage contains many `String` & `Collection` manipulations, and Kotlin can overcome them in simple and easy ways.
+
+Other reasons are:
+* Kotlin can shorten and simplify your code.
+* Writing code in Kotlin is faster, thus it saves your time and improves your productivity.
+* [Google is Kotlin first](https://techcrunch.com/2019/05/07/kotlin-is-now-googles-preferred-language-for-android-app-development/) now.
+
+### What are SimpleStorage alternatives?
+You can't run from the fact that Google is Kotlin First now. Even Google has created [ModernStorage](https://github.com/google/modernstorage) (alternative for SimpleStorage) in Kotlin.
+Learn Kotlin, or Google will leave you far behind.
+
+**We have no intention to create Java version of SimpleStorage.** It will double our works and requires a lot of effort.
+Keep in mind that we don't want to archive this library, even though Google has released the stable version of ModernStorage.
+This library has rich features that Google may not covers, e.g. moving, copying, compressing and scanning folders.
