@@ -15,32 +15,32 @@ import java.io.Reader
 /**
  * Closing stream safely
  */
-fun OutputStream?.closeStream() {
+fun OutputStream?.closeStreamQuietly() {
     try {
         this?.close()
     } catch (e: IOException) {
-        e.printStackTrace()
+        // ignore
     }
 }
 
 /**
  * Closing stream safely
  */
-fun InputStream?.closeStream() {
+fun InputStream?.closeStreamQuietly() {
     try {
         this?.close()
     } catch (e: IOException) {
-        e.printStackTrace()
+        // ignore
     }
 }
 
 /**
  * Closing stream safely
  */
-fun Reader?.closeStream() {
+fun Reader?.closeStreamQuietly() {
     try {
         this?.close()
     } catch (e: IOException) {
-        e.printStackTrace()
+        // ignore
     }
 }

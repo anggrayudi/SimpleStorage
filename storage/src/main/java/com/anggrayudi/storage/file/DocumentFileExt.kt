@@ -1137,7 +1137,7 @@ fun List<DocumentFile>.compressToZip(
         } catch (e: IOException) {
             // ignore
         }
-        zos.closeStream()
+        zos.closeStreamQuietly()
     }
     if (success) {
         if (deleteSourceWhenComplete) {
@@ -1270,7 +1270,7 @@ fun DocumentFile.decompressZip(
     } finally {
         timer?.cancel()
         zis?.closeEntryQuietly()
-        zis.closeStream()
+        zis.closeStreamQuietly()
     }
     if (success) {
         val zipSize = length()
@@ -1445,8 +1445,8 @@ private fun List<DocumentFile>.copyTo(
                     read = inputStream.read(buffer)
                 }
             } finally {
-                inputStream.closeStream()
-                outputStream.closeStream()
+                inputStream.closeStreamQuietly()
+                outputStream.closeStreamQuietly()
             }
         }
         totalCopiedFiles++
@@ -1846,8 +1846,8 @@ private fun DocumentFile.copyFolderTo(
                     read = inputStream.read(buffer)
                 }
             } finally {
-                inputStream.closeStream()
-                outputStream.closeStream()
+                inputStream.closeStreamQuietly()
+                outputStream.closeStreamQuietly()
             }
         }
         totalCopiedFiles++
@@ -2166,7 +2166,7 @@ private fun <Enum> createFileStreams(
 
     val inputStream = sourceFile.openInputStream(context)
     if (inputStream == null) {
-        outputStream.closeStream()
+        outputStream.closeStreamQuietly()
         val errorCode = when (callback) {
             is MultipleFileCallback -> MultipleFileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND
             is FolderCallback -> FolderCallback.ErrorCode.SOURCE_FILE_NOT_FOUND
@@ -2194,7 +2194,7 @@ private inline fun createFileStreams(
 
     val inputStream = sourceFile.openInputStream(context)
     if (inputStream == null) {
-        outputStream.closeStream()
+        outputStream.closeStreamQuietly()
         callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND) }
         return
     }
@@ -2260,8 +2260,8 @@ private fun DocumentFile.copyFileStream(
         callback.uiScope.postToUi { callback.onCompleted(targetFile) }
     } finally {
         timer?.cancel()
-        inputStream.closeStream()
-        outputStream.closeStream()
+        inputStream.closeStreamQuietly()
+        outputStream.closeStreamQuietly()
     }
 }
 

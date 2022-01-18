@@ -465,7 +465,7 @@ class MediaFile(context: Context, val uri: Uri) {
         val inputStream = openInputStream()
         if (inputStream == null) {
             callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND) }
-            outputStream.closeStream()
+            outputStream.closeStreamQuietly()
             return
         }
 
@@ -509,8 +509,8 @@ class MediaFile(context: Context, val uri: Uri) {
             callback.uiScope.postToUi { callback.onCompleted(targetFile) }
         } finally {
             timer?.cancel()
-            inputStream.closeStream()
-            outputStream.closeStream()
+            inputStream.closeStreamQuietly()
+            outputStream.closeStreamQuietly()
         }
     }
 
