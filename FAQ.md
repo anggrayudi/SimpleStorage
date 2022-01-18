@@ -41,7 +41,7 @@ Read: [Java Compatibility](https://github.com/anggrayudi/SimpleStorage/blob/mast
 
 ### Why does SimpleStorage use Kotlin?
 The main reasons why this library really needs Kotlin:
-* SimpleStorage requires thread suspension feature provided by [Kotlin Coroutines](https://github.com/Kotlin/kotlinx.coroutines).
+* SimpleStorage requires thread suspension feature, but this feature is only provided by [Kotlin Coroutines](https://github.com/Kotlin/kotlinx.coroutines).
 * SimpleStorage contains many `String` & `Collection` manipulations, and Kotlin can overcome them in simple and easy ways.
 
 Other reasons are:

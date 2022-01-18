@@ -1087,7 +1087,6 @@ fun List<DocumentFile>.compressToZip(
         return
     }
 
-    // using timer on small file is useless. We set minimum 10MB.
     val thread = Thread.currentThread()
     val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(entryFiles.map { it.file }, thread) }
     if (reportInterval < 0) return
@@ -1100,6 +1099,7 @@ fun List<DocumentFile>.compressToZip(
         zos = ZipOutputStream(zipFile.openOutputStream(context))
         var writeSpeed = 0
         var fileCompressedCount = 0
+        // using timer on small file is useless. We set minimum 10MB.
         if (reportInterval > 0 && actualFilesSize > 10 * FileSize.MB) {
             timer = startCoroutineTimer(repeatMillis = reportInterval) {
                 val report = ZipCompressionCallback.Report(bytesCompressed * 100f / actualFilesSize, bytesCompressed, writeSpeed, fileCompressedCount)
@@ -1214,13 +1214,13 @@ fun DocumentFile.decompressZip(
             }
         }
 
-        // using timer on small file is useless. We set minimum 10MB.
         val thread = Thread.currentThread()
         val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(this, thread) }
         if (reportInterval < 0) return
 
         zis = ZipInputStream(openInputStream(context))
         var writeSpeed = 0
+        // using timer on small file is useless. We set minimum 10MB.
         if (reportInterval > 0 && actualFilesSize > 10 * FileSize.MB) {
             timer = startCoroutineTimer(repeatMillis = reportInterval) {
                 val report = ZipDecompressionCallback.Report(bytesDecompressed * 100f / actualFilesSize, bytesDecompressed, writeSpeed, fileDecompressedCount)
