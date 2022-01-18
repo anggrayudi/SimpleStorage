@@ -400,7 +400,7 @@ Having trouble? Read the [Frequently Asked Questions](FAQ.md).
 
 ## License
 
-    Copyright © 2020-2021 Anggrayudi Hardiannicko A.
+    Copyright © 2020-2022 Anggrayudi Hardiannico A.
  
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
