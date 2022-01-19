@@ -6,6 +6,8 @@ import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.callback.ZipDecompressionCallback
 import com.anggrayudi.storage.file.MimeType
 import com.anggrayudi.storage.file.decompressZip
+import com.anggrayudi.storage.file.fullName
+import com.anggrayudi.storage.file.getAbsolutePath
 import com.anggrayudi.storage.sample.R
 import kotlinx.android.synthetic.main.activity_file_decompression.*
 import kotlinx.android.synthetic.main.view_file_picked.view.*
@@ -19,21 +21,28 @@ class FileDecompressionActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_file_compression)
+        setContentView(R.layout.activity_file_decompression)
         setupSimpleStorage()
         btnStartDecompress.setOnClickListener { startDecompress() }
     }
 
     private fun setupSimpleStorage() {
         storageHelper.onFileSelected = { _, files ->
-            layoutDecompressFile_srcZip.tag = files.first()
+            val file = files.first()
+            layoutDecompressFile_srcZip.run {
+                tag = file
+                tvFilePath.text = file.fullName
+            }
         }
         layoutDecompressFile_srcZip.btnBrowse.setOnClickListener {
             storageHelper.openFilePicker(filterMimeTypes = arrayOf(MimeType.ZIP))
         }
 
         storageHelper.onFolderSelected = { _, folder ->
-            layoutDecompressFile_destFolder.tag = folder
+            layoutDecompressFile_destFolder.run {
+                tag = folder
+                tvFilePath.text = folder.getAbsolutePath(context)
+            }
         }
         layoutDecompressFile_destFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker()
@@ -52,8 +61,20 @@ class FileDecompressionActivity : BaseActivity() {
             return
         }
         ioScope.launch {
-            zipFile.decompressZip(applicationContext, targetFolder, object : ZipDecompressionCallback() {
+            zipFile.decompressZip(applicationContext, targetFolder, object : ZipDecompressionCallback(uiScope) {
+                override fun onCompleted(
+                    zipFile: DocumentFile,
+                    targetFolder: DocumentFile,
+                    bytesDecompressed: Long,
+                    totalFilesDecompressed: Int,
+                    decompressionRate: Float
+                ) {
+                    Toast.makeText(applicationContext, "Decompressed $totalFilesDecompressed files from ${zipFile.name}", Toast.LENGTH_SHORT).show()
+                }
 
+                override fun onFailed(errorCode: ErrorCode) {
+                    Toast.makeText(applicationContext, "$errorCode", Toast.LENGTH_SHORT).show()
+                }
             })
         }
     }

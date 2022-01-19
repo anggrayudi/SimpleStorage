@@ -1189,41 +1189,29 @@ fun DocumentFile.decompressZip(
         return
     }
 
+    val zipSize = length()
+    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), zipSize)) {
+        callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
+        return
+    }
+
+    val thread = Thread.currentThread()
+    val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(this, thread) }
+    if (reportInterval < 0) return
+
     var success = false
     var bytesDecompressed = 0L
     var fileDecompressedCount = 0
-    var actualFilesSize = 0L
     var timer: Job? = null
     var zis: ZipInputStream? = null
     var targetFile: DocumentFile? = null
     try {
-        callback.uiScope.postToUi { callback.onCalculateFinalFileSize() }
-        ZipInputStream(openInputStream(context)).use {
-            var entry = it.nextEntry
-            while (entry != null) {
-                if (entry.size > 0) {
-                    actualFilesSize += entry.size
-                }
-                entry = it.nextEntry
-            }
-
-            if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), actualFilesSize)) {
-                callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
-                it.closeEntryQuietly()
-                return
-            }
-        }
-
-        val thread = Thread.currentThread()
-        val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(this, thread) }
-        if (reportInterval < 0) return
-
         zis = ZipInputStream(openInputStream(context))
         var writeSpeed = 0
         // using timer on small file is useless. We set minimum 10MB.
-        if (reportInterval > 0 && actualFilesSize > 10 * FileSize.MB) {
+        if (reportInterval > 0 && zipSize > 10 * FileSize.MB) {
             timer = startCoroutineTimer(repeatMillis = reportInterval) {
-                val report = ZipDecompressionCallback.Report(bytesDecompressed * 100f / actualFilesSize, bytesDecompressed, writeSpeed, fileDecompressedCount)
+                val report = ZipDecompressionCallback.Report(bytesDecompressed, writeSpeed, fileDecompressedCount)
                 callback.uiScope.postToUi { callback.onReport(report) }
                 writeSpeed = 0
             }
@@ -1235,7 +1223,11 @@ fun DocumentFile.decompressZip(
             if (entry.isDirectory) {
                 destFolder.makeFolder(context, entry.name, CreateMode.REUSE)
             } else {
-                targetFile = destFolder.makeFile(context, entry.name)
+                val folder = entry.name.substringBeforeLast('/', "").let {
+                    if (it.isEmpty()) destFolder else destFolder.makeFolder(context, it, CreateMode.REUSE)
+                } ?: throw IOException()
+                val fileName = entry.name.substringAfterLast('/')
+                targetFile = folder.makeFile(context, fileName)
                 if (targetFile == null) {
                     callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
                     canSuccess = false
@@ -1249,8 +1241,8 @@ fun DocumentFile.decompressZip(
                         writeSpeed += bytes
                         bytes = zis.read(buffer)
                     }
-                    fileDecompressedCount++
                 } ?: throw IOException()
+                fileDecompressedCount++
             }
             entry = zis.nextEntry
         }
@@ -1273,9 +1265,9 @@ fun DocumentFile.decompressZip(
         zis.closeStreamQuietly()
     }
     if (success) {
-        val zipSize = length()
-        val sizeExpansion = (actualFilesSize - zipSize).toFloat() / zipSize * 100
-        callback.uiScope.postToUi { callback.onCompleted(this, actualFilesSize, fileDecompressedCount, sizeExpansion) }
+        // Sometimes, the decompressed size is smaller than the compressed size, and you may get negative values. You should worry about this.
+        val sizeExpansion = (bytesDecompressed - zipSize).toFloat() / zipSize * 100
+        callback.uiScope.postToUi { callback.onCompleted(this, destFolder, bytesDecompressed, fileDecompressedCount, sizeExpansion) }
     } else {
         targetFile?.delete()
     }

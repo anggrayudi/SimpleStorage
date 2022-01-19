@@ -5,7 +5,10 @@ import android.view.View
 import android.widget.Toast
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.callback.ZipCompressionCallback
-import com.anggrayudi.storage.file.*
+import com.anggrayudi.storage.file.MimeType
+import com.anggrayudi.storage.file.compressToZip
+import com.anggrayudi.storage.file.fullName
+import com.anggrayudi.storage.file.getAbsolutePath
 import com.anggrayudi.storage.sample.R
 import kotlinx.android.synthetic.main.activity_file_compression.*
 import kotlinx.android.synthetic.main.view_file_picked.view.*

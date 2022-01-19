@@ -18,11 +18,6 @@ abstract class ZipDecompressionCallback(var uiScope: CoroutineScope = GlobalScop
         // default implementation
     }
 
-    @UiThread
-    open fun onCalculateFinalFileSize() {
-        // default implementation
-    }
-
     /**
      * @param zipFile files to be decompressed
      * @param workerThread Use [Thread.interrupt] to cancel the operation
@@ -36,13 +31,14 @@ abstract class ZipDecompressionCallback(var uiScope: CoroutineScope = GlobalScop
      * Given `freeSpace` and `fileSize`, then you decide whether the process will be continued or not.
      * You can give space tolerant here, e.g. 100MB
      *
-     * @param fileSize actual size after decompressed
      * @param freeSpace of target path
      * @return `true` to continue process
      */
     @WorkerThread
-    open fun onCheckFreeSpace(freeSpace: Long, fileSize: Long): Boolean {
-        return fileSize + 100 * FileSize.MB < freeSpace // Give tolerant 100MB
+    open fun onCheckFreeSpace(freeSpace: Long, zipFileSize: Long): Boolean {
+        // Give tolerant 100MB
+        // Estimate the final size of decompressed files is increased by 20%
+        return zipFileSize * 1.2 + 100 * FileSize.MB < freeSpace
     }
 
     @UiThread
@@ -54,7 +50,7 @@ abstract class ZipDecompressionCallback(var uiScope: CoroutineScope = GlobalScop
      * @param decompressionRate size expansion in percent, e.g. 23.5
      */
     @UiThread
-    open fun onCompleted(zipFile: DocumentFile, bytesCompressed: Long, totalFilesDecompressed: Int, decompressionRate: Float) {
+    open fun onCompleted(zipFile: DocumentFile, targetFolder: DocumentFile, bytesDecompressed: Long, totalFilesDecompressed: Int, decompressionRate: Float) {
         // default implementation
     }
 
@@ -63,7 +59,13 @@ abstract class ZipDecompressionCallback(var uiScope: CoroutineScope = GlobalScop
         // default implementation
     }
 
-    class Report(val progress: Float, val bytesDecompressed: Long, val writeSpeed: Int, val fileCount: Int)
+    /**
+     * Can't calculate write speed, progress and decompressed file size for the given period [onStart],
+     * because we can't get the final size of the decompressed files unless we unzip it first,
+     * so only `bytesDecompressed` and `fileCount` that can be provided.
+     * @param fileCount decompressed files in total
+     */
+    class Report(val bytesDecompressed: Long, val writeSpeed: Int, val fileCount: Int)
 
     enum class ErrorCode {
         STORAGE_PERMISSION_DENIED,
