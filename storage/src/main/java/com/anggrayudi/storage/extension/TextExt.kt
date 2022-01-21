@@ -64,3 +64,10 @@ fun String.childOf(parentPath: String): Boolean {
 
     return subFolderTree.size > parentTree.size && subFolderTree.take(parentTree.size) == parentTree
 }
+
+fun String.parent(): String {
+    val folderTree = split('/')
+        .map { it.trimFileSeparator() }
+        .filter { it.isNotEmpty() }
+    return folderTree.take(folderTree.size - 1).joinToString("/", "/")
+}

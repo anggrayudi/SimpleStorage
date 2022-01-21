@@ -181,14 +181,11 @@ fun File.makeFile(context: Context, name: String, mimeType: String? = MimeType.U
     val fullFileName = "$baseFileName.$extension".trimEnd('.')
 
     if (mode != CreateMode.CREATE_NEW) {
-        val existingFile = File(parent, fullFileName)
-        if (existingFile.exists()) {
-            return existingFile.let {
-                when {
-                    mode == CreateMode.REPLACE -> it.takeIf { it.recreateFile() }
-                    it.isFile -> it
-                    else -> null
-                }
+        File(parent, fullFileName).takeIf { it.exists() }?.let {
+            return when {
+                mode == CreateMode.REPLACE -> it.takeIf { it.recreateFile() }
+                it.isFile -> it
+                else -> null
             }
         }
     }

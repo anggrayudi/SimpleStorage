@@ -497,6 +497,13 @@ fun DocumentFile.getAbsolutePath(context: Context): String {
  */
 fun DocumentFile.getSimplePath(context: Context) = "${getStorageId(context)}:${getBasePath(context)}".removePrefix(":")
 
+@JvmOverloads
+fun DocumentFile.findParent(context: Context, requiresWriteAccess: Boolean = true): DocumentFile? {
+    return parentFile ?: if (isTreeDocumentFile) {
+        DocumentFileCompat.fromFullPath(context, getAbsolutePath(context).parent(), requiresWriteAccess = requiresWriteAccess)
+    } else null
+}
+
 /**
  * Delete this file and create new empty file using previous `filename` and `mimeType`.
  * It cannot be applied if current [DocumentFile] is a directory.
@@ -504,11 +511,11 @@ fun DocumentFile.getSimplePath(context: Context) = "${getStorageId(context)}:${g
 fun DocumentFile.recreateFile(context: Context): DocumentFile? {
     return if (exists() && (isRawFile || isExternalStorageDocument)) {
         val filename = name.orEmpty()
-        val parentFile = parentFile
-        if (parentFile?.isWritable(context) == true) {
+        val parent = findParent(context)
+        if (parent?.isWritable(context) == true) {
             val mimeType = type
             forceDelete(context)
-            parentFile.makeFile(context, filename, mimeType)
+            parent.makeFile(context, filename, mimeType)
         } else null
     } else null
 }
@@ -611,8 +618,8 @@ fun DocumentFile.makeFile(
     val fullFileName = "$baseFileName.$extension".trimEnd('.')
 
     if (mode != CreateMode.CREATE_NEW) {
-        parent.child(context, fullFileName)?.let {
-            when {
+        parent.child(context, fullFileName)?.takeIf { it.exists() }?.let {
+            return when {
                 mode == CreateMode.REPLACE -> it.recreateFile(context)
                 it.isFile -> it
                 else -> null
@@ -1076,7 +1083,7 @@ fun List<DocumentFile>.compressToZip(
 
     var zipFile: DocumentFile? = targetZipFile
     if (!targetZipFile.exists() || targetZipFile.isDirectory) {
-        zipFile = targetZipFile.parentFile?.makeFile(context, targetZipFile.fullName, MimeType.ZIP)
+        zipFile = targetZipFile.findParent(context)?.makeFile(context, targetZipFile.fullName, MimeType.ZIP)
     }
     if (zipFile == null) {
         callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
@@ -1182,7 +1189,7 @@ fun DocumentFile.decompressZip(
 
     var destFolder: DocumentFile? = targetFolder
     if (!targetFolder.exists() || targetFolder.isFile) {
-        destFolder = targetFolder.parentFile?.makeFolder(context, targetFolder.fullName)
+        destFolder = targetFolder.findParent(context)?.makeFolder(context, targetFolder.fullName)
     }
     if (destFolder == null || !destFolder.isWritable(context)) {
         callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
@@ -1565,7 +1572,7 @@ private fun List<DocumentFile>.copyTo(
             continue
         }
 
-        targetFile = conflict.target.parentFile?.makeFile(context, filename)
+        targetFile = conflict.target.findParent(context)?.makeFile(context, filename)
         if (targetFile == null) {
             notifyCanceled(MultipleFileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
             return
@@ -1931,11 +1938,7 @@ private fun DocumentFile.copyFolderTo(
             continue
         }
         val filename = conflict.target.name.orEmpty()
-        if (conflict.solution == FileCallback.ConflictResolution.REPLACE && conflict.target.let { !it.delete() || it.exists() }) {
-            continue
-        }
-
-        targetFile = conflict.target.parentFile?.makeFile(context, filename)
+        targetFile = conflict.target.findParent(context)?.makeFile(context, filename, mode = conflict.solution.toCreateMode())
         if (targetFile == null) {
             notifyCanceled(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
             return

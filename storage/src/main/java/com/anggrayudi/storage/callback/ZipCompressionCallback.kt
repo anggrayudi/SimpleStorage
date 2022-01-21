@@ -11,7 +11,7 @@ import kotlinx.coroutines.GlobalScope
  * Created on 02/01/22
  * @author Anggrayudi H
  */
-abstract class ZipCompressionCallback(var uiScope: CoroutineScope = GlobalScope) {
+abstract class ZipCompressionCallback @JvmOverloads constructor(var uiScope: CoroutineScope = GlobalScope) {
 
     @UiThread
     open fun onCountingFiles() {

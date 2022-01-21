@@ -245,7 +245,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             ioScope.launch {
-                sources.copyTo(applicationContext, targetFolder, callback = createMultipleFileCallback())
+                sources.moveTo(applicationContext, targetFolder, callback = createMultipleFileCallback())
             }
         }
     }
