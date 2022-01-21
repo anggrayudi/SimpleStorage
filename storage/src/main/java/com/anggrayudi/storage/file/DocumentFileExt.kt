@@ -984,7 +984,7 @@ fun List<DocumentFile>.compressToZip(
     context: Context,
     targetZipFile: DocumentFile,
     deleteSourceWhenComplete: Boolean = false,
-    callback: ZipCompressionCallback
+    callback: ZipCompressionCallback<DocumentFile>
 ) {
     callback.uiScope.postToUi { callback.onCountingFiles() }
     val treeFiles = ArrayList<DocumentFile>(size)
@@ -1139,11 +1139,7 @@ fun List<DocumentFile>.compressToZip(
         callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED, e.message) }
     } finally {
         timer?.cancel()
-        try {
-            zos?.closeEntry()
-        } catch (e: IOException) {
-            // ignore
-        }
+        zos.closeEntryQuietly()
         zos.closeStreamQuietly()
     }
     if (success) {
@@ -1166,7 +1162,7 @@ fun List<DocumentFile>.compressToZip(
 fun DocumentFile.decompressZip(
     context: Context,
     targetFolder: DocumentFile,
-    callback: ZipDecompressionCallback
+    callback: ZipDecompressionCallback<DocumentFile>
 ) {
     callback.uiScope.postToUi { callback.onValidate() }
     if (exists()) {
@@ -1268,7 +1264,7 @@ fun DocumentFile.decompressZip(
         callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
     } finally {
         timer?.cancel()
-        zis?.closeEntryQuietly()
+        zis.closeEntryQuietly()
         zis.closeStreamQuietly()
     }
     if (success) {
@@ -1277,14 +1273,6 @@ fun DocumentFile.decompressZip(
         callback.uiScope.postToUi { callback.onCompleted(this, destFolder, bytesDecompressed, fileDecompressedCount, sizeExpansion) }
     } else {
         targetFile?.delete()
-    }
-}
-
-private fun ZipInputStream.closeEntryQuietly() {
-    try {
-        closeEntry()
-    } catch (e: Exception) {
-        // ignore
     }
 }
 

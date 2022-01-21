@@ -88,7 +88,7 @@ class FileCompressionActivity : BaseActivity() {
         (layoutCompressFiles_srcFolder2.tag as? DocumentFile)?.let { files.add(it) }
 
         ioScope.launch {
-            files.compressToZip(applicationContext, targetZip, callback = object : ZipCompressionCallback(uiScope) {
+            files.compressToZip(applicationContext, targetZip, callback = object : ZipCompressionCallback<DocumentFile>(uiScope) {
                 override fun onCountingFiles() {
                     // show a notification or dialog with indeterminate progress bar
                 }

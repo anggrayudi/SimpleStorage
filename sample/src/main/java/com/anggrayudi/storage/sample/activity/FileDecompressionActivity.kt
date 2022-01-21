@@ -61,7 +61,7 @@ class FileDecompressionActivity : BaseActivity() {
             return
         }
         ioScope.launch {
-            zipFile.decompressZip(applicationContext, targetFolder, object : ZipDecompressionCallback(uiScope) {
+            zipFile.decompressZip(applicationContext, targetFolder, object : ZipDecompressionCallback<DocumentFile>(uiScope) {
                 override fun onCompleted(
                     zipFile: DocumentFile,
                     targetFolder: DocumentFile,

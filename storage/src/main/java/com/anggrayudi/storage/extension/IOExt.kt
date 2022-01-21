@@ -6,6 +6,8 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.io.Reader
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 /**
  * Created on 17/08/20
@@ -40,6 +42,22 @@ fun InputStream?.closeStreamQuietly() {
 fun Reader?.closeStreamQuietly() {
     try {
         this?.close()
+    } catch (e: IOException) {
+        // ignore
+    }
+}
+
+fun ZipInputStream?.closeEntryQuietly() {
+    try {
+        this?.closeEntry()
+    } catch (e: Exception) {
+        // ignore
+    }
+}
+
+fun ZipOutputStream?.closeEntryQuietly() {
+    try {
+        this?.closeEntry()
     } catch (e: IOException) {
         // ignore
     }

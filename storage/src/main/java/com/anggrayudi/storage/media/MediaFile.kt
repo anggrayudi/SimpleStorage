@@ -230,8 +230,6 @@ class MediaFile(context: Context, val uri: Uri) {
         }
     }
 
-    // TODO: 04/01/22 Zip & unzip media files
-
     /**
      * Please note that this function does not move file if you input `newName` as `Download/filename.mp4`.
      * If you want to move media files, please use [moveFileTo] instead.

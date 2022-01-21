@@ -4,6 +4,7 @@ import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.file.FileSize
+import com.anggrayudi.storage.media.MediaFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
 
@@ -11,7 +12,7 @@ import kotlinx.coroutines.GlobalScope
  * Created on 02/01/22
  * @author Anggrayudi H
  */
-abstract class ZipDecompressionCallback @JvmOverloads constructor(var uiScope: CoroutineScope = GlobalScope) {
+abstract class ZipDecompressionCallback<T> @JvmOverloads constructor(var uiScope: CoroutineScope = GlobalScope) {
 
     @UiThread
     open fun onValidate() {
@@ -19,17 +20,18 @@ abstract class ZipDecompressionCallback @JvmOverloads constructor(var uiScope: C
     }
 
     /**
-     * @param zipFile files to be decompressed
+     * @param zipFile files to be decompressed. Can be [DocumentFile] or [MediaFile]
      * @param workerThread Use [Thread.interrupt] to cancel the operation
      * @return Time interval to watch the progress in milliseconds, otherwise `0` if you don't want to watch at all.
      * Setting negative value will cancel the operation.
      */
     @UiThread
-    open fun onStart(zipFile: DocumentFile, workerThread: Thread): Long = 0
+    open fun onStart(zipFile: T, workerThread: Thread): Long = 0
 
     /**
      * Given `freeSpace` and `fileSize`, then you decide whether the process will be continued or not.
-     * You can give space tolerant here, e.g. 100MB
+     * You can give space tolerant here, e.g. 100MB.
+     * This function will not be triggered when decompressing [MediaFile].
      *
      * @param freeSpace of target path
      * @return `true` to continue process
@@ -47,10 +49,12 @@ abstract class ZipDecompressionCallback @JvmOverloads constructor(var uiScope: C
     }
 
     /**
-     * @param decompressionRate size expansion in percent, e.g. 23.5
+     * @param zipFile can be [DocumentFile] or [MediaFile]
+     * @param decompressionRate size expansion in percent, e.g. 23.5.
+     * But for decompressing [MediaFile], it is always `0` because we can't get the actual zip file size from SAF database.
      */
     @UiThread
-    open fun onCompleted(zipFile: DocumentFile, targetFolder: DocumentFile, bytesDecompressed: Long, totalFilesDecompressed: Int, decompressionRate: Float) {
+    open fun onCompleted(zipFile: T, targetFolder: DocumentFile, bytesDecompressed: Long, totalFilesDecompressed: Int, decompressionRate: Float) {
         // default implementation
     }
 

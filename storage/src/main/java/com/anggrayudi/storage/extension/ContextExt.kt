@@ -3,6 +3,7 @@
 package com.anggrayudi.storage.extension
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -15,18 +16,19 @@ import androidx.documentfile.provider.DocumentFile
  */
 fun Context.getAppDirectory(type: String? = null) = "${getExternalFilesDir(type)}"
 
-fun Intent?.hasActivityHandler(context: Context) =
-    this?.resolveActivity(context.packageManager) != null
-
 fun Context.startActivitySafely(intent: Intent) {
-    if (intent.hasActivityHandler(this)) {
+    try {
         startActivity(intent)
+    } catch (e: ActivityNotFoundException) {
+        // ignore
     }
 }
 
 fun Activity.startActivityForResultSafely(requestCode: Int, intent: Intent) {
-    if (intent.hasActivityHandler(this)) {
+    try {
         startActivityForResult(intent, requestCode)
+    } catch (e: ActivityNotFoundException) {
+        // ignore
     }
 }
 

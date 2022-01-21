@@ -4,6 +4,7 @@ import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.file.FileSize
+import com.anggrayudi.storage.media.MediaFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
 
@@ -11,7 +12,7 @@ import kotlinx.coroutines.GlobalScope
  * Created on 02/01/22
  * @author Anggrayudi H
  */
-abstract class ZipCompressionCallback @JvmOverloads constructor(var uiScope: CoroutineScope = GlobalScope) {
+abstract class ZipCompressionCallback<T> @JvmOverloads constructor(var uiScope: CoroutineScope = GlobalScope) {
 
     @UiThread
     open fun onCountingFiles() {
@@ -19,17 +20,18 @@ abstract class ZipCompressionCallback @JvmOverloads constructor(var uiScope: Cor
     }
 
     /**
-     * @param files files to be compressed
+     * @param files files to be compressed. Can be `List<DocumentFile>` or `List<MediaFile>`
      * @param workerThread Use [Thread.interrupt] to cancel the operation
      * @return Time interval to watch the progress in milliseconds, otherwise `0` if you don't want to watch at all.
      * Setting negative value will cancel the operation.
      */
     @UiThread
-    open fun onStart(files: List<DocumentFile>, workerThread: Thread): Long = 0
+    open fun onStart(files: List<T>, workerThread: Thread): Long = 0
 
     /**
      * Given `freeSpace` and `fileSize`, then you decide whether the process will be continued or not.
-     * You can give space tolerant here, e.g. 100MB
+     * You can give space tolerant here, e.g. 100MB.
+     * This function will not be triggered when compressing [MediaFile].
      *
      * @param freeSpace of target path
      * @return `true` to continue process
@@ -62,6 +64,9 @@ abstract class ZipCompressionCallback @JvmOverloads constructor(var uiScope: Cor
         // default implementation
     }
 
+    /**
+     * @param progress always `0` when compressing [MediaFile]
+     */
     class Report(val progress: Float, val bytesCompressed: Long, val writeSpeed: Int, val fileCount: Int)
 
     enum class ErrorCode {
