@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
 import android.text.format.Formatter
+import android.util.Log
 import androidx.annotation.RestrictTo
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
@@ -500,7 +501,23 @@ fun DocumentFile.getSimplePath(context: Context) = "${getStorageId(context)}:${g
 @JvmOverloads
 fun DocumentFile.findParent(context: Context, requiresWriteAccess: Boolean = true): DocumentFile? {
     return parentFile ?: if (isTreeDocumentFile) {
-        DocumentFileCompat.fromFullPath(context, getAbsolutePath(context).parent(), requiresWriteAccess = requiresWriteAccess)
+        val parentPath = getAbsolutePath(context).parent()
+        if (parentPath.isEmpty()) {
+            null
+        } else {
+            DocumentFileCompat.fromFullPath(context, parentPath, requiresWriteAccess = requiresWriteAccess)?.also {
+                try {
+                    val field = DocumentFile::class.java.getDeclaredField("mParent")
+                    field.isAccessible = true
+                    field.set(this, it)
+                } catch (e: Exception) {
+                    Log.w(
+                        "DocumentFileUtils", "Cannot modify field mParent in androidx.documentfile.provider.DocumentFile. " +
+                                "Please exclude DocumentFile from obfuscation.", e
+                    )
+                }
+            }
+        }
     } else null
 }
 

@@ -2,6 +2,8 @@
 
 package com.anggrayudi.storage.extension
 
+import androidx.annotation.RestrictTo
+import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 
 /**
@@ -41,6 +43,7 @@ fun String.replaceCompletely(match: String, replaceWith: String) = let {
     path
 }
 
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 fun String.hasParent(parentPath: String): Boolean {
     val parentTree = parentPath.split('/')
         .map { it.trimFileSeparator() }
@@ -53,6 +56,7 @@ fun String.hasParent(parentPath: String): Boolean {
     return parentTree.size <= subFolderTree.size && subFolderTree.take(parentTree.size) == parentTree
 }
 
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 fun String.childOf(parentPath: String): Boolean {
     val parentTree = parentPath.split('/')
         .map { it.trimFileSeparator() }
@@ -65,9 +69,19 @@ fun String.childOf(parentPath: String): Boolean {
     return subFolderTree.size > parentTree.size && subFolderTree.take(parentTree.size) == parentTree
 }
 
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 fun String.parent(): String {
     val folderTree = split('/')
         .map { it.trimFileSeparator() }
         .filter { it.isNotEmpty() }
-    return folderTree.take(folderTree.size - 1).joinToString("/", "/")
+    if (folderTree.isEmpty()) {
+        return ""
+    }
+    val parentPath = folderTree.take(folderTree.size - 1).joinToString("/", "/")
+    return if (parentPath == SimpleStorage.externalStoragePath || parentPath.matches(Regex("/storage/[A-Z0-9]{4}-[A-Z0-9]{4}"))) {
+        // for root path, use empty string
+        ""
+    } else {
+        parentPath
+    }
 }

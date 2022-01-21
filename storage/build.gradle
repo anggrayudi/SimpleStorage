@@ -29,7 +29,6 @@ dependencies {
     api deps.documentfile
     api deps.coroutines.core
     api deps.coroutines.android
-    implementation deps.timber
 
     testImplementation deps.junit
     testImplementation deps.mockk

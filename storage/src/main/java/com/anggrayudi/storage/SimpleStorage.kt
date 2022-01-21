@@ -13,6 +13,7 @@ import android.os.Environment
 import android.os.storage.StorageManager
 import android.provider.DocumentsContract
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
@@ -23,7 +24,6 @@ import com.anggrayudi.storage.callback.*
 import com.anggrayudi.storage.extension.*
 import com.anggrayudi.storage.file.*
 import com.anggrayudi.storage.file.StorageId.PRIMARY
-import timber.log.Timber
 import java.io.File
 import kotlin.concurrent.thread
 
@@ -473,6 +473,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         private const val KEY_REQUEST_CODE_FRAGMENT_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFragmentPicker"
         private const val KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST = BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedStorageTypeForAccessRequest"
         private const val KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST = BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedBasePathForAccessRequest"
+        private const val TAG = "SimpleStorage"
 
         @JvmStatic
         @Suppress("DEPRECATION")
@@ -553,7 +554,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                 persistedUris.forEach {
                     if (DocumentFileCompat.buildAbsolutePath(context, it.path.orEmpty().substringAfter("/tree/")) !in uniqueUriParents) {
                         resolver.releasePersistableUriPermission(it, writeFlags)
-                        Timber.d("Removed redundant URI permission => $it")
+                        Log.d(TAG, "Removed redundant URI permission => $it")
                     }
                 }
             }
