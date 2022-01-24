@@ -7,13 +7,14 @@ import com.anggrayudi.storage.callback.FileCallback.FileConflictAction
 import com.anggrayudi.storage.file.CreateMode
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 
 /**
  * Created on 3/1/21
  * @author Anggrayudi H
  */
-abstract class FolderCallback @JvmOverloads constructor(
+abstract class FolderCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
     uiScope: CoroutineScope = GlobalScope
 ) : BaseFileCallback<FolderCallback.ErrorCode, FolderCallback.Report, FolderCallback.Result>(uiScope) {
 

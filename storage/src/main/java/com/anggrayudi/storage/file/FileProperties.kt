@@ -4,6 +4,7 @@ import android.content.Context
 import android.text.format.Formatter
 import androidx.annotation.UiThread
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import java.util.*
 
@@ -27,6 +28,7 @@ data class FileProperties(
 
     abstract class CalculationCallback(
         val updateInterval: Long = 500, // 500ms
+        @OptIn(DelicateCoroutinesApi::class)
         var uiScope: CoroutineScope = GlobalScope
     ) {
 

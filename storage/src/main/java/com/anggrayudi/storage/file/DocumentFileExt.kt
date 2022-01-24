@@ -874,6 +874,7 @@ private fun DocumentFile.walkFileTreeForSearch(
 }
 
 /**
+ * @param childrenOnly `true` to delete the folder contents only
  * @see File.deleteRecursively
  */
 @WorkerThread
@@ -897,6 +898,7 @@ fun DocumentFile.deleteRecursively(context: Context, childrenOnly: Boolean = fal
 }
 
 /**
+ * @param childrenOnly `true` to delete the folder contents only
  * @return `true` if the file/folder was deleted or does not exist
  * @see File.forceDelete
  */
@@ -961,6 +963,8 @@ fun DocumentFile.openFileIntent(context: Context, authority: String) = Intent(In
     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
 fun DocumentFile.hasParent(context: Context, parent: DocumentFile) = getAbsolutePath(context).hasParent(parent.getAbsolutePath(context))
+
+fun DocumentFile.childOf(context: Context, parent: DocumentFile) = getAbsolutePath(context).childOf(parent.getAbsolutePath(context))
 
 private fun DocumentFile.walkFileTree(context: Context): List<DocumentFile> {
     val fileTree = mutableListOf<DocumentFile>()

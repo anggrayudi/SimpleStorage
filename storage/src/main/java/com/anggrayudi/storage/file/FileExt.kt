@@ -242,6 +242,7 @@ private fun File.walkFileTreeAndDeleteEmptyFolders(): List<File> {
 }
 
 /**
+ * @param childrenOnly `true` to delete the folder contents only
  * @see DocumentFile.deleteRecursively
  */
 @JvmOverloads

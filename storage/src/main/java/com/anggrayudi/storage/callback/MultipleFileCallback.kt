@@ -6,13 +6,14 @@ import com.anggrayudi.storage.callback.FileCallback.FileConflictAction
 import com.anggrayudi.storage.callback.FolderCallback.ConflictResolution
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 
 /**
  * Created on 31/05/21
  * @author Anggrayudi H
  */
-abstract class MultipleFileCallback @JvmOverloads constructor(
+abstract class MultipleFileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
     uiScope: CoroutineScope = GlobalScope
 ) : BaseFileCallback<MultipleFileCallback.ErrorCode, MultipleFileCallback.Report, MultipleFileCallback.Result>(uiScope) {
 

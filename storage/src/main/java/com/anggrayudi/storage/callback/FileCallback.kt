@@ -7,13 +7,14 @@ import com.anggrayudi.storage.file.CreateMode
 import com.anggrayudi.storage.media.MediaFile
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 
 /**
  * Created on 17/08/20
  * @author Anggrayudi H
  */
-abstract class FileCallback @JvmOverloads constructor(
+abstract class FileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
     uiScope: CoroutineScope = GlobalScope
 ) : BaseFileCallback<FileCallback.ErrorCode, FileCallback.Report, Any>(uiScope) {
 

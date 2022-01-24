@@ -6,13 +6,15 @@ import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.file.FileSize
 import com.anggrayudi.storage.media.MediaFile
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 
 /**
  * Created on 02/01/22
  * @author Anggrayudi H
  */
-abstract class ZipCompressionCallback<T> @JvmOverloads constructor(var uiScope: CoroutineScope = GlobalScope) {
+abstract class ZipCompressionCallback<T> @OptIn(DelicateCoroutinesApi::class)
+@JvmOverloads constructor(var uiScope: CoroutineScope = GlobalScope) {
 
     @UiThread
     open fun onCountingFiles() {
