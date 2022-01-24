@@ -404,13 +404,23 @@ fun DocumentFile.getBasePath(context: Context): String {
  * * `/storage/AAAA-BBBB/Music/Metal`
  * * `/storage/AAAA-BBBB/Music/Pop/Albums`
  */
-private fun DocumentFile.getSubPath(context: Context, otherFolderAbsolutePath: String): String {
-    val a = getAbsolutePath(context)
-    return when {
-        a.length > otherFolderAbsolutePath.length -> a.substringAfter(otherFolderAbsolutePath.substringAfterLast('/'), "").trimFileSeparator()
-        otherFolderAbsolutePath.length > a.length -> otherFolderAbsolutePath.substringAfter(a.substringAfterLast('/'), "").trimFileSeparator()
-        else -> ""
+private fun DocumentFile.getSubPath(context: Context, otherFolderAbsolutePath: String): String? {
+    val a = getAbsolutePath(context).split('/')
+        .filter { it.isNotEmpty() }
+    val b = otherFolderAbsolutePath.split('/')
+        .filter { it.isNotEmpty() }
+    val trimPath = { longPath: List<String>, shortPath: List<String> ->
+        if (longPath.take(shortPath.size) == shortPath) {
+            if (longPath.size == shortPath.size) {
+                ""
+            } else {
+                longPath.takeLast(longPath.size - shortPath.size).joinToString("/")
+            }
+        } else {
+            null
+        }
     }
+    return if (a.size > b.size) trimPath(a, b) else trimPath(b, a)
 }
 
 /**
@@ -1494,7 +1504,7 @@ private fun List<DocumentFile>.copyTo(
                 continue
             }
 
-            val targetFolderParentPath = "${writableTargetParentFolder.getAbsolutePath(context)}/${src.fullName}"
+            val srcParentAbsolutePath = src.getAbsolutePath(context)
 
             for (sourceFile in info.children) {
                 if (thread.isInterrupted) {
@@ -1505,8 +1515,9 @@ private fun List<DocumentFile>.copyTo(
                     continue
                 }
 
-                val subPath = sourceFile.getSubPath(context, targetFolderParentPath).substringBeforeLast('/', "")
-                val filename = ("$subPath/" + sourceFile.fullName).trimFileSeparator()
+                val filename = sourceFile.getSubPath(context, srcParentAbsolutePath) ?: sourceFile.fullName
+                if (filename.isEmpty()) continue
+
                 if (sourceFile.isDirectory) {
                     val newFolder = targetRootFile.makeFolder(context, filename, CreateMode.REUSE)
                     if (newFolder == null) {
@@ -1834,7 +1845,6 @@ private fun DocumentFile.copyFolderTo(
         }
     }
 
-    val targetFolderParentPath = "${writableTargetParentFolder.getAbsolutePath(context)}/$targetFolderParentName"
     val conflictedFiles = ArrayList<FolderCallback.FileConflict>(totalFilesToCopy)
     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
     var success = true
@@ -1870,6 +1880,7 @@ private fun DocumentFile.copyFolderTo(
         }
     }
 
+    val srcAbsolutePath = getAbsolutePath(context)
     for (sourceFile in filesToCopy) {
         try {
             if (Thread.currentThread().isInterrupted) {
@@ -1880,8 +1891,9 @@ private fun DocumentFile.copyFolderTo(
                 continue
             }
 
-            val subPath = sourceFile.getSubPath(context, targetFolderParentPath).substringBeforeLast('/', "")
-            val filename = ("$subPath/" + sourceFile.name.orEmpty()).trimFileSeparator()
+            val filename = sourceFile.getSubPath(context, srcAbsolutePath) ?: sourceFile.name
+            if (filename.isNullOrEmpty()) continue
+
             if (sourceFile.isDirectory) {
                 val newFolder = targetFolder.makeFolder(context, filename, CreateMode.REUSE)
                 if (newFolder == null) {

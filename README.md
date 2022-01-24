@@ -20,6 +20,7 @@
 * [`SimpleStorageHelper`](#simplestoragehelper)
 * [Move & Copy: Files & Folders](#move--copy-files--folders)
 * [FAQ](#faq)
+* [Other SimpleStorage Usage Examples](#other-simpleStorage-usage-examples)
 * [License](#license)
 
 ## Overview
@@ -397,6 +398,13 @@ Read `MainActivity` from the sample code if you want to mimic above dialogs.
 ## FAQ
 
 Having trouble? Read the [Frequently Asked Questions](FAQ.md).
+
+## Other SimpleStorage Usage Examples
+
+SimpleStorage is used in these open source projects.
+Check how these repositories use it:
+* [Snapdrop](https://github.com/anggrayudi/snapdrop-android)
+* [MaterialPreference](https://github.com/anggrayudi/MaterialPreference)
 
 ## License
 

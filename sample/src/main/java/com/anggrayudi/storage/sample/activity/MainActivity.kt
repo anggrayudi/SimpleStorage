@@ -154,8 +154,8 @@ class MainActivity : AppCompatActivity() {
                 REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MULTIPLE_COPY -> layoutCopyMultipleFiles_sourceFolder.updateFolderSelectionView(folder)
                 REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_COPY -> layoutCopyMultipleFiles_targetFolder.updateFolderSelectionView(folder)
 
-                REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MULTIPLE_MOVE -> layoutCopyMultipleFiles_sourceFolder.updateFolderSelectionView(folder)
-                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_MOVE -> layoutCopyMultipleFiles_targetFolder.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MULTIPLE_MOVE -> layoutMoveMultipleFiles_sourceFolder.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_MOVE -> layoutMoveMultipleFiles_targetFolder.updateFolderSelectionView(folder)
 
                 else -> Toast.makeText(baseContext, folder.getAbsolutePath(this), Toast.LENGTH_SHORT).show()
             }
