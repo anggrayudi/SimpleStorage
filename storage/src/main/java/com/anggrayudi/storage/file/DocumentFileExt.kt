@@ -32,7 +32,6 @@ import java.util.*
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
-import kotlin.collections.ArrayList
 
 /**
  * Created on 16/08/20
@@ -510,7 +509,7 @@ fun DocumentFile.getSimplePath(context: Context) = "${getStorageId(context)}:${g
 
 @JvmOverloads
 fun DocumentFile.findParent(context: Context, requiresWriteAccess: Boolean = true): DocumentFile? {
-    return parentFile ?: if (isTreeDocumentFile) {
+    return parentFile ?: if (isTreeDocumentFile || isRawFile) {
         val parentPath = getAbsolutePath(context).parent()
         if (parentPath.isEmpty()) {
             null

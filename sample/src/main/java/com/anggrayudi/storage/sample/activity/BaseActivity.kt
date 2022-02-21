@@ -18,6 +18,7 @@ open class BaseActivity : AppCompatActivity() {
     protected val uiScope = CoroutineScope(Dispatchers.Main + job)
 
     protected lateinit var storageHelper: SimpleStorageHelper
+        private set
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

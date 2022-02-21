@@ -7,7 +7,7 @@ buildscript {
     ext.kotlin_version = '1.6.10'
 
     dependencies {
-        classpath 'com.android.tools:r8:3.0.73'
+        classpath 'com.android.tools:r8:3.1.51'
         classpath 'com.android.tools.build:gradle:4.2.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.vanniktech:gradle-maven-publish-plugin:0.16.0'
@@ -36,12 +36,12 @@ allprojects {
 subprojects {
     afterEvaluate {
         android {
-            compileSdkVersion 30
+            compileSdkVersion 31
             buildToolsVersion '30.0.2'
 
             defaultConfig {
                 minSdkVersion 19
-                targetSdkVersion 30
+                targetSdkVersion 31
                 versionCode 1
                 versionName "$VERSION_NAME"
                 testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

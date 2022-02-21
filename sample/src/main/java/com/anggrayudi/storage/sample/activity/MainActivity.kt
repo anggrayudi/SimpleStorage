@@ -21,7 +21,9 @@ import com.afollestad.materialdialogs.customview.customView
 import com.afollestad.materialdialogs.customview.getCustomView
 import com.afollestad.materialdialogs.list.listItems
 import com.anggrayudi.storage.SimpleStorageHelper
-import com.anggrayudi.storage.callback.*
+import com.anggrayudi.storage.callback.FileCallback
+import com.anggrayudi.storage.callback.FolderCallback
+import com.anggrayudi.storage.callback.MultipleFileCallback
 import com.anggrayudi.storage.extension.launchOnUiThread
 import com.anggrayudi.storage.file.*
 import com.anggrayudi.storage.permission.ActivityPermissionRequest
