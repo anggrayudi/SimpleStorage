@@ -10,6 +10,7 @@ import android.provider.BaseColumns
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import androidx.documentfile.provider.DocumentFile
+import com.anggrayudi.storage.extension.getString
 import com.anggrayudi.storage.extension.trimFileName
 import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.*
@@ -340,11 +341,11 @@ object MediaStoreCompat {
 
     private fun fromCursorToMediaFiles(context: Context, mediaType: MediaType, cursor: Cursor): List<MediaFile> {
         if (cursor.moveToFirst()) {
-            val columnId = cursor.getColumnIndex(BaseColumns._ID)
             val mediaFiles = ArrayList<MediaFile>(cursor.count)
             do {
-                val mediaId = cursor.getString(columnId)
-                fromMediaId(context, mediaType, mediaId)?.let { mediaFiles.add(it) }
+                cursor.getString(BaseColumns._ID)
+                    ?.let { fromMediaId(context, mediaType, it) }
+                    ?.let { mediaFiles.add(it) }
             } while (cursor.moveToNext())
             return mediaFiles
         }
@@ -353,8 +354,7 @@ object MediaStoreCompat {
 
     private fun fromCursorToMediaFile(context: Context, mediaType: MediaType, cursor: Cursor): MediaFile? {
         return if (cursor.moveToFirst()) {
-            val mediaId = cursor.getString(cursor.getColumnIndex(BaseColumns._ID))
-            fromMediaId(context, mediaType, mediaId)
+            cursor.getString(BaseColumns._ID)?.let { fromMediaId(context, mediaType, it) }
         } else null
     }
 }

@@ -2,6 +2,7 @@
 
 package com.anggrayudi.storage.extension
 
+import android.database.Cursor
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -61,4 +62,10 @@ fun ZipOutputStream?.closeEntryQuietly() {
     } catch (e: IOException) {
         // ignore
     }
+}
+
+fun Cursor.getString(column: String) = try {
+    getString(getColumnIndexOrThrow(column))
+} catch (e: Exception) {
+    null
 }
