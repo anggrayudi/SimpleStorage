@@ -32,6 +32,13 @@ Because Android OS wants us to use URI, thus direct file path is useless. So you
 ### How to check if a folder/file is writable?
 Use `isWritable()` extension function, because `DocumentFile.canWrite()` sometimes buggy on API 30.
 
+### Which paths are writable with `java.io.File` on scoped storage?
+Accessing files in scoped storage requires URI, but the following paths are exception and no storage permission needed:
+* `/storage/emulated/0/Android/data/<your.app.package>`
+* `/storage/<SD card ID>/Android/data/<your.app.package>`
+* `/data/user/0/<your.app.package>` (API 24+)
+* `/data/data/<your.app.package>` (API 23-)
+
 ### What is the target branch for pull requests?
 Use branch `release/*` if exists, or use `master` instead.
 
