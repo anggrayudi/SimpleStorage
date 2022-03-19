@@ -1349,7 +1349,7 @@ private fun List<DocumentFile>.copyTo(
 
     class SourceInfo(val children: List<DocumentFile>, val size: Long, val totalFiles: Int, val conflictResolution: FolderCallback.ConflictResolution)
 
-    val sourceInfos = validSources.map { src ->
+    val sourceInfos = validSources.associateWith { src ->
         val children = if (skipEmptyFiles) src.walkFileTreeAndSkipEmptyFiles() else src.walkFileTree(context)
         var totalFilesToCopy = 0
         var totalSizeToCopy = 0L
@@ -1360,8 +1360,8 @@ private fun List<DocumentFile>.copyTo(
             }
         }
         val resolution = conflictResolutions.find { it.source == src }?.solution ?: FolderCallback.ConflictResolution.CREATE_NEW
-        Pair(src, SourceInfo(children, totalSizeToCopy, totalFilesToCopy, resolution))
-    }.toMap().toMutableMap()
+        SourceInfo(children, totalSizeToCopy, totalFilesToCopy, resolution)
+    }.toMutableMap()
 
     // key=src, value=result
     val results = mutableMapOf<DocumentFile, DocumentFile>()
