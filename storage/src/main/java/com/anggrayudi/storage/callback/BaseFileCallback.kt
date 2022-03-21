@@ -10,8 +10,8 @@ import kotlinx.coroutines.CoroutineScope
  * Created on 02/06/21
  * @author Anggrayudi H
  */
-@RestrictTo(RestrictTo.Scope.LIBRARY)
-abstract class BaseFileCallback<ErrorCode, Report, Result>(var uiScope: CoroutineScope) {
+abstract class BaseFileCallback<ErrorCode, Report, Result>
+@RestrictTo(RestrictTo.Scope.LIBRARY) constructor(var uiScope: CoroutineScope) {
 
     @UiThread
     open fun onValidate() {
