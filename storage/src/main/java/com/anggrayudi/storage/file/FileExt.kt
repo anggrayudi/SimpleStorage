@@ -119,8 +119,8 @@ fun File.shouldWritable(context: Context, requiresWriteAccess: Boolean) = requir
 fun File.takeIfWritable(context: Context, requiresWriteAccess: Boolean) = takeIf { it.shouldWritable(context, requiresWriteAccess) }
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun File.checkRequirements(context: Context, requiresWriteAccess: Boolean, considerRawFile: Boolean) = canRead() &&
-        (considerRawFile || isExternalStorageManager(context)) && shouldWritable(context, requiresWriteAccess)
+fun File.checkRequirements(context: Context, requiresWriteAccess: Boolean, considerRawFile: Boolean) = canRead() && shouldWritable(context, requiresWriteAccess)
+        && (considerRawFile || isExternalStorageManager(context))
 
 fun File.createNewFileIfPossible(): Boolean = try {
     isFile || createNewFile()

@@ -240,7 +240,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         val storageType = StorageType.fromStorageId(storageId)
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q) {
-            val selectedFolder = DocumentFile.fromTreeUri(context, uri) ?: return
+            val selectedFolder = context.fromTreeUri(uri) ?: return
             if (!expectedStorageTypeForAccessRequest.isExpected(storageType) ||
                 !expectedBasePathForAccessRequest.isNullOrEmpty() && selectedFolder.getBasePath(context) != expectedBasePathForAccessRequest
             ) {
