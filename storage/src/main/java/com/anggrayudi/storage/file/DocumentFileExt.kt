@@ -568,7 +568,7 @@ fun DocumentFile.isRootUriPermissionGranted(context: Context): Boolean {
     return isExternalStorageDocument && DocumentFileCompat.isStorageUriPermissionGranted(context, getStorageId(context))
 }
 
-fun DocumentFile.getFormattedSize(context: Context) = Formatter.formatFileSize(context, length())
+fun DocumentFile.getFormattedSize(context: Context): String = Formatter.formatFileSize(context, length())
 
 /**
  * Avoid duplicate file name.
