@@ -16,7 +16,7 @@
         android:id="@+id/btnRequestStorageAccess"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Request Storage Access" />
+        android:text="Request Storage Access (API 21+)" />
 
     <Button
         android:id="@+id/btnRequestFullStorageAccess"

@@ -1,6 +1,7 @@
 package com.anggrayudi.storage.sample.activity
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -76,14 +77,16 @@ class MainActivity : AppCompatActivity() {
         view.post(Runnable { scrollView?.scrollTo(0, view.top) })
     }
 
+    @SuppressLint("NewApi")
     private fun setupButtonActions() {
         btnRequestStoragePermission.run {
             setOnClickListener { permissionRequest.check() }
             isEnabled = Build.VERSION.SDK_INT in 23..28
         }
 
-        btnRequestStorageAccess.setOnClickListener {
-            storageHelper.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS)
+        btnRequestStorageAccess.run {
+            isEnabled = Build.VERSION.SDK_INT >= 21
+            setOnClickListener { storageHelper.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS) }
         }
 
         btnRequestFullStorageAccess.run {

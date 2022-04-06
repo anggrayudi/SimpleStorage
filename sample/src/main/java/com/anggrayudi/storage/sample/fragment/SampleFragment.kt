@@ -1,6 +1,7 @@
 package com.anggrayudi.storage.sample.fragment
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -57,6 +58,7 @@ class SampleFragment : Fragment() {
         return inflater.inflate(R.layout.incl_base_operation, container, false)
     }
 
+    @SuppressLint("NewApi")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupSimpleStorage(savedInstanceState)
@@ -66,8 +68,9 @@ class SampleFragment : Fragment() {
             isEnabled = Build.VERSION.SDK_INT in 23..28
         }
 
-        btnRequestStorageAccess.setOnClickListener {
-            storageHelper.requestStorageAccess(MainActivity.REQUEST_CODE_STORAGE_ACCESS)
+        btnRequestStorageAccess.run {
+            isEnabled = Build.VERSION.SDK_INT >= 21
+            setOnClickListener { storageHelper.requestStorageAccess(MainActivity.REQUEST_CODE_STORAGE_ACCESS) }
         }
 
         btnRequestFullStorageAccess.run {

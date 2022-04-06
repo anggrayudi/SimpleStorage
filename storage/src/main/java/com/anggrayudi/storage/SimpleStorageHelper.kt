@@ -1,6 +1,7 @@
 package com.anggrayudi.storage
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -9,6 +10,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
@@ -75,6 +77,7 @@ class SimpleStorageHelper {
                     callback?.invoke(requestCode, folder)
                 }
 
+                @SuppressLint("NewApi")
                 override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType) {
                     if (storageType == StorageType.UNKNOWN) {
                         onStoragePermissionDenied(requestCode)
@@ -159,6 +162,7 @@ class SimpleStorageHelper {
             }
         }
 
+    @SuppressLint("NewApi")
     private fun init(savedState: Bundle?) {
         savedState?.let { onRestoreInstanceState(it) }
         storage.storageAccessCallback = object : StorageAccessCallback {
@@ -326,6 +330,7 @@ class SimpleStorageHelper {
         }
     }
 
+    @RequiresApi(21)
     @JvmOverloads
     fun requestStorageAccess(
         requestCode: Int = storage.requestCodeStorageAccess,
@@ -338,6 +343,7 @@ class SimpleStorageHelper {
         storage.requestStorageAccess(requestCode, initialRootPath, expectedStorageType, expectedBasePath)
     }
 
+    @RequiresApi(21)
     @JvmOverloads
     fun createFile(mimeType: String, fileName: String? = null, requestCode: Int = storage.requestCodeCreateFile) {
         pickerToOpenOnceGranted = 0

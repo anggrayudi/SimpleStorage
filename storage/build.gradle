@@ -29,6 +29,7 @@ dependencies {
     api deps.documentfile
     api deps.coroutines.core
     api deps.coroutines.android
+    api 'com.afollestad.material-dialogs:files:3.3.0'
 
     testImplementation deps.junit
     testImplementation deps.mockk

@@ -18,8 +18,14 @@ import androidx.activity.ComponentActivity
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat.checkSelfPermission
+import androidx.core.content.MimeTypeFilter
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
+import com.afollestad.materialdialogs.MaterialDialog
+import com.afollestad.materialdialogs.callbacks.onCancel
+import com.afollestad.materialdialogs.files.FileFilter
+import com.afollestad.materialdialogs.files.fileChooser
+import com.afollestad.materialdialogs.files.folderChooser
 import com.anggrayudi.storage.callback.*
 import com.anggrayudi.storage.extension.*
 import com.anggrayudi.storage.file.*
@@ -142,6 +148,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      * trigger [StorageAccessCallback.onRootPathNotSelected]. Set to [StorageType.UNKNOWN] to accept any storage type.
      * @param expectedBasePath applicable for API 30+ only, because Android 11 does not allow selecting the root path.
      */
+    @RequiresApi(21)
     @JvmOverloads
     fun requestStorageAccess(
         requestCode: Int = requestCodeStorageAccess,
@@ -190,6 +197,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
     }
 
+    @RequiresApi(21)
     @JvmOverloads
     fun createFile(mimeType: String, fileName: String? = null, requestCode: Int = requestCodeCreateFile) {
         requestCodeCreateFile = requestCode
@@ -206,6 +214,22 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     @JvmOverloads
     fun openFolderPicker(requestCode: Int = requestCodeFolderPicker, initialPath: FileFullPath? = null) {
         requestCodeFolderPicker = requestCode
+
+        if (Build.VERSION.SDK_INT < 21) {
+            MaterialDialog(context).folderChooser(
+                context,
+                initialDirectory = initialPath?.let { File(it.absolutePath) } ?: lastVisitedFolder,
+                allowFolderCreation = true,
+                selection = { _, file ->
+                    lastVisitedFolder = file
+                    folderPickerCallback?.onFolderSelected(requestCode, DocumentFile.fromFile(file))
+                }
+            ).negativeButton(android.R.string.cancel, click = { it.cancel() })
+                .onCancel { folderPickerCallback?.onCanceledByUser(requestCode) }
+                .show()
+            return
+        }
+
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P || hasStoragePermission(context)) {
             val intent = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
                 Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
@@ -220,9 +244,36 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
     }
 
+    @Suppress("DEPRECATION")
+    private var lastVisitedFolder: File = Environment.getExternalStorageDirectory()
+
+    /**
+     * @param allowMultiple only takes effect for API 21+
+     */
     @JvmOverloads
     fun openFilePicker(requestCode: Int = requestCodeFilePicker, allowMultiple: Boolean = false, vararg filterMimeTypes: String) {
         requestCodeFilePicker = requestCode
+
+        if (Build.VERSION.SDK_INT < 21) {
+            val filter: FileFilter = {
+                it.canRead() && !it.isHidden &&
+                        (it.isDirectory || !MimeTypeFilter.matches(MimeType.getMimeTypeFromFileName(it.name), filterMimeTypes).isNullOrEmpty())
+            }
+            @Suppress("DEPRECATION")
+            MaterialDialog(context).fileChooser(
+                context,
+                filter = if (filterMimeTypes.isNullOrEmpty() || filterMimeTypes.contains("*/") || filterMimeTypes.contains(MimeType.BINARY_FILE)) null else filter,
+                initialDirectory = lastVisitedFolder,
+                selection = { _, file ->
+                    lastVisitedFolder = file.parentFile ?: Environment.getExternalStorageDirectory()
+                    filePickerCallback?.onFileSelected(requestCode, listOf(DocumentFile.fromFile(file)))
+                }
+            ).negativeButton(android.R.string.cancel, click = { it.cancel() })
+                .onCancel { filePickerCallback?.onCanceledByUser(requestCode) }
+                .show()
+            return
+        }
+
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
             .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple)
         if (filterMimeTypes.size > 1) {
@@ -423,6 +474,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
 
     fun onSaveInstanceState(outState: Bundle) {
+        outState.putString(KEY_LAST_VISITED_FOLDER, lastVisitedFolder.path)
         outState.putString(KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST, expectedBasePathForAccessRequest)
         outState.putInt(KEY_REQUEST_CODE_STORAGE_ACCESS, expectedStorageTypeForAccessRequest.ordinal)
         outState.putInt(KEY_REQUEST_CODE_STORAGE_ACCESS, requestCodeStorageAccess)
@@ -435,6 +487,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
 
     fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        savedInstanceState.getString(KEY_LAST_VISITED_FOLDER)?.let { lastVisitedFolder = File(it) }
         expectedBasePathForAccessRequest = savedInstanceState.getString(KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST)
         expectedStorageTypeForAccessRequest = StorageType.values()[savedInstanceState.getInt(KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST)]
         requestCodeStorageAccess = savedInstanceState.getInt(KEY_REQUEST_CODE_STORAGE_ACCESS)
@@ -473,6 +526,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         private const val KEY_REQUEST_CODE_FRAGMENT_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFragmentPicker"
         private const val KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST = BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedStorageTypeForAccessRequest"
         private const val KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST = BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedBasePathForAccessRequest"
+        private const val KEY_LAST_VISITED_FOLDER = BuildConfig.LIBRARY_PACKAGE_NAME + ".lastVisitedFolder"
         private const val TAG = "SimpleStorage"
 
         @JvmStatic
