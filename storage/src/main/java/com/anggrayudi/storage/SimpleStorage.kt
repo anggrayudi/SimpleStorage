@@ -18,13 +18,10 @@ import androidx.activity.ComponentActivity
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat.checkSelfPermission
-import androidx.core.content.MimeTypeFilter
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.callbacks.onCancel
-import com.afollestad.materialdialogs.files.FileFilter
-import com.afollestad.materialdialogs.files.fileChooser
 import com.afollestad.materialdialogs.files.folderChooser
 import com.anggrayudi.storage.callback.*
 import com.anggrayudi.storage.extension.*
@@ -247,35 +244,16 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     @Suppress("DEPRECATION")
     private var lastVisitedFolder: File = Environment.getExternalStorageDirectory()
 
-    /**
-     * @param allowMultiple only takes effect for API 21+
-     */
     @JvmOverloads
     fun openFilePicker(requestCode: Int = requestCodeFilePicker, allowMultiple: Boolean = false, vararg filterMimeTypes: String) {
         requestCodeFilePicker = requestCode
 
-        if (Build.VERSION.SDK_INT < 21) {
-            val filter: FileFilter = {
-                it.canRead() && !it.isHidden &&
-                        (it.isDirectory || !MimeTypeFilter.matches(MimeType.getMimeTypeFromFileName(it.name), filterMimeTypes).isNullOrEmpty())
-            }
-            @Suppress("DEPRECATION")
-            MaterialDialog(context).fileChooser(
-                context,
-                filter = if (filterMimeTypes.isNullOrEmpty() || filterMimeTypes.contains("*/") || filterMimeTypes.contains(MimeType.BINARY_FILE)) null else filter,
-                initialDirectory = lastVisitedFolder,
-                selection = { _, file ->
-                    lastVisitedFolder = file.parentFile ?: Environment.getExternalStorageDirectory()
-                    filePickerCallback?.onFileSelected(requestCode, listOf(DocumentFile.fromFile(file)))
-                }
-            ).negativeButton(android.R.string.cancel, click = { it.cancel() })
-                .onCancel { filePickerCallback?.onCanceledByUser(requestCode) }
-                .show()
-            return
+        val intent = if (Build.VERSION.SDK_INT < 21) {
+            Intent(Intent.ACTION_GET_CONTENT)
+        } else {
+            Intent(Intent.ACTION_OPEN_DOCUMENT)
         }
-
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-            .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple)
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple)
         if (filterMimeTypes.size > 1) {
             intent.setType(MimeType.UNKNOWN)
                 .putExtra(Intent.EXTRA_MIME_TYPES, filterMimeTypes)
