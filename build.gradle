@@ -53,6 +53,16 @@ subprojects {
                 targetCompatibility JavaVersion.VERSION_1_8
             }
         }
+        configurations.all {
+            resolutionStrategy {
+                // Force Kotlin to use current version
+                force "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+                force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+                force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+                force "org.jetbrains.kotlin:kotlin-stdlib-common:$kotlin_version"
+                force "org.jetbrains.kotlin:kotlin-android-extensions-runtime:$kotlin_version"
+            }
+        }
         // global dependencies for all modules
         dependencies {
             implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
