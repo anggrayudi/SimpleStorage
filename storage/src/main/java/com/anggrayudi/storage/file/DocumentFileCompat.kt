@@ -11,6 +11,7 @@ import android.system.Os
 import androidx.annotation.WorkerThread
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
+import com.anggrayudi.storage.FileWrapper
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.extension.*
 import com.anggrayudi.storage.file.StorageId.DATA
@@ -552,22 +553,22 @@ object DocumentFileCompat {
     }
 
     @JvmStatic
-    fun createDownloadWithMediaStoreFallback(context: Context, file: FileDescription): Uri? {
+    fun createDownloadWithMediaStoreFallback(context: Context, file: FileDescription): FileWrapper {
         val publicFolder = fromPublicFolder(context, PublicDirectory.DOWNLOADS, requiresWriteAccess = true)
         return if (publicFolder == null && Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
-            MediaStoreCompat.createDownload(context, file)?.uri
+            FileWrapper(MediaStoreCompat.createDownload(context, file))
         } else {
-            publicFolder?.makeFile(context, file.name, file.mimeType)?.uri
+            FileWrapper(publicFolder?.makeFile(context, file.name, file.mimeType))
         }
     }
 
     @JvmStatic
-    fun createPictureWithMediaStoreFallback(context: Context, file: FileDescription): Uri? {
+    fun createPictureWithMediaStoreFallback(context: Context, file: FileDescription): FileWrapper {
         val publicFolder = fromPublicFolder(context, PublicDirectory.PICTURES, requiresWriteAccess = true)
         return if (publicFolder == null && Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
-            MediaStoreCompat.createImage(context, file)?.uri
+            FileWrapper(MediaStoreCompat.createImage(context, file))
         } else {
-            publicFolder?.makeFile(context, file.name, file.mimeType)?.uri
+            FileWrapper(publicFolder?.makeFile(context, file.name, file.mimeType))
         }
     }
 
