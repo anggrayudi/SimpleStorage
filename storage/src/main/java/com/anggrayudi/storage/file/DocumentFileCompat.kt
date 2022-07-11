@@ -45,6 +45,8 @@ object DocumentFileCompat {
      */
     const val DOWNLOADS_TREE_URI = "content://$DOWNLOADS_FOLDER_AUTHORITY/tree/downloads"
 
+    const val DOCUMENTS_TREE_URI = "content://$EXTERNAL_STORAGE_AUTHORITY/tree/home%3A"
+
     val FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION = Regex("(.*?) \\(\\d+\\)\\.[a-zA-Z0-9]+")
 
     val FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION = Regex("(.*?) \\(\\d+\\)")
@@ -53,6 +55,7 @@ object DocumentFileCompat {
     fun isRootUri(uri: Uri): Boolean {
         val path = uri.path ?: return false
         return uri.isExternalStorageDocument && path.indexOf(':') == path.length - 1
+                && !path.startsWith("/tree/home:") // Do not treat Documents folder as root
     }
 
     /**
@@ -217,8 +220,18 @@ object DocumentFileCompat {
             return DocumentFile.fromFile(rawFile)
         }
 
-        val folder = if (type == PublicDirectory.DOWNLOADS) {
-            /*
+        val fileFromUriOrAbsolutePath: (String) -> DocumentFile? = { treeRootUri ->
+            val downloadFolder = context.fromTreeUri(Uri.parse(treeRootUri))
+            if (downloadFolder?.canRead() == true) {
+                downloadFolder.child(context, subFile, requiresWriteAccess)
+            } else {
+                fromFullPath(context, rawFile.absolutePath, considerRawFile = false)
+            }
+        }
+
+        val folder = when (type) {
+            PublicDirectory.DOWNLOADS -> {
+                /*
             Root path will be                   => content://com.android.providers.downloads.documents/tree/downloads/document/downloads
             Get file/listFiles() will be        => content://com.android.providers.downloads.documents/tree/downloads/document/msf%3A268
             When creating files with makeFile() => content://com.android.providers.downloads.documents/tree/downloads/document/147
@@ -230,14 +243,11 @@ object DocumentFileCompat {
             but unfortunately cannot create file in the directory. So creating directory with this authority is useless.
             Hence, convert it to writable URI with DocumentFile.toWritableDownloadsDocumentFile()
             */
-            val downloadFolder = context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))
-            if (downloadFolder?.canRead() == true) {
-                downloadFolder.child(context, subFile, requiresWriteAccess)
-            } else {
-                fromFullPath(context, rawFile.absolutePath, considerRawFile = false)
+                fileFromUriOrAbsolutePath(DOWNLOADS_TREE_URI)
             }
-        } else {
-            fromFullPath(context, rawFile.absolutePath, considerRawFile = false)
+
+            PublicDirectory.DOCUMENTS -> fileFromUriOrAbsolutePath(DOCUMENTS_TREE_URI)
+            else -> fromFullPath(context, rawFile.absolutePath, considerRawFile = false)
         }
         return folder?.takeIf { it.canRead() && (requiresWriteAccess && folder.isWritable(context) || !requiresWriteAccess) }
     }
@@ -300,13 +310,16 @@ object DocumentFileCompat {
         }
         if (storageId.isNotEmpty()) {
             val cleanBasePath = getBasePath(context, fullPath)
-            val downloadPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
             context.contentResolver.persistedUriPermissions
                 // For instance, content://com.android.externalstorage.documents/tree/primary%3AMusic
                 .filter { it.isReadPermission && it.isWritePermission && it.uri.isTreeDocumentFile }
                 .forEach {
-                    if (fullPath.startsWith(downloadPath) && it.uri.isDownloadsDocument) {
+                    if (it.uri.isDownloadsDocument && fullPath.startsWith(PublicDirectory.DOWNLOADS.absolutePath)) {
                         return context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))
+                    }
+
+                    if (it.uri.isDocumentsDocument && fullPath.startsWith(PublicDirectory.DOCUMENTS.absolutePath)) {
+                        return context.fromTreeUri(Uri.parse(DOCUMENTS_TREE_URI))
                     }
 
                     val uriPath = it.uri.path // e.g. /tree/primary:Music
@@ -396,19 +409,21 @@ object DocumentFileCompat {
      *
      * Persisted URIs revoked whenever the related folders deleted. Hence, you need to request URI permission again even though the folder
      * recreated by user. However, you should not worry about this on API 28 and lower, because URI permission always granted for root path
-     * and rooth path itself can't be deleted.
+     * and root path itself can't be deleted.
      */
     @JvmOverloads
     @JvmStatic
-    fun isStorageUriPermissionGranted(context: Context, storageId: String, basePath: String = ""): Boolean {
-        val root = createDocumentUri(storageId, basePath)
-        return context.contentResolver.persistedUriPermissions.any { it.isReadPermission && it.isWritePermission && it.uri == root }
-    }
+    fun isStorageUriPermissionGranted(context: Context, storageId: String, basePath: String = "") =
+        isUriPermissionGranted(context, createDocumentUri(storageId, basePath))
 
     @JvmStatic
-    fun isDownloadsUriPermissionGranted(context: Context): Boolean {
-        val uri = Uri.parse(DOWNLOADS_TREE_URI)
-        return context.contentResolver.persistedUriPermissions.any { it.isReadPermission && it.isWritePermission && it.uri == uri }
+    fun isDownloadsUriPermissionGranted(context: Context) = isUriPermissionGranted(context, Uri.parse(DOWNLOADS_TREE_URI))
+
+    @JvmStatic
+    fun isDocumentsUriPermissionGranted(context: Context) = isUriPermissionGranted(context, Uri.parse(DOCUMENTS_TREE_URI))
+
+    private fun isUriPermissionGranted(context: Context, uri: Uri) = context.contentResolver.persistedUriPermissions.any {
+        it.isReadPermission && it.isWritePermission && it.uri == uri
     }
 
     /**

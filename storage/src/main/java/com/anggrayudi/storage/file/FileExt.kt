@@ -101,7 +101,7 @@ val File.mimeType: String?
 @JvmOverloads
 fun File.getRootRawFile(context: Context, requiresWriteAccess: Boolean = false) = getRootPath(context).let {
     if (it.isEmpty()) null else File(it).run {
-        if (canRead()) takeIfWritable(context, requiresWriteAccess) else null
+        takeIfWritable(context, requiresWriteAccess)
     }
 }
 
@@ -116,7 +116,7 @@ val File.isEmpty: Boolean
 fun File.shouldWritable(context: Context, requiresWriteAccess: Boolean) = requiresWriteAccess && isWritable(context) || !requiresWriteAccess
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun File.takeIfWritable(context: Context, requiresWriteAccess: Boolean) = takeIf { it.shouldWritable(context, requiresWriteAccess) }
+fun File.takeIfWritable(context: Context, requiresWriteAccess: Boolean) = takeIf { it.canRead() && it.shouldWritable(context, requiresWriteAccess) }
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 fun File.checkRequirements(context: Context, requiresWriteAccess: Boolean, considerRawFile: Boolean) = canRead() && shouldWritable(context, requiresWriteAccess)

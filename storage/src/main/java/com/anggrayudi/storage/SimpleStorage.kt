@@ -347,6 +347,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             return
         }
         if (uri.toString() == DocumentFileCompat.DOWNLOADS_TREE_URI
+            || Build.VERSION.SDK_INT == 29 && uri.isDocumentsDocument
             || DocumentFileCompat.isRootUri(uri)
             && (Build.VERSION.SDK_INT < Build.VERSION_CODES.N && storageType == StorageType.SD_CARD || Build.VERSION.SDK_INT == Build.VERSION_CODES.Q)
             && !DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)

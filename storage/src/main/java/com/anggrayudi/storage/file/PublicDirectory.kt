@@ -65,5 +65,9 @@ enum class PublicDirectory(val folderName: String) {
      * Returns `null` if you have no URI permissions for read and write in Android 10.
      * @see DocumentFileCompat.fromPublicFolder
      */
-    DOCUMENTS(Environment.DIRECTORY_DOCUMENTS)
+    DOCUMENTS(Environment.DIRECTORY_DOCUMENTS);
+
+    @Suppress("DEPRECATION")
+    val absolutePath: String
+        get() = Environment.getExternalStoragePublicDirectory(folderName).absolutePath
 }

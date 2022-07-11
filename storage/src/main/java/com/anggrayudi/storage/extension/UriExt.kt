@@ -26,8 +26,8 @@ fun Uri.getStorageId(context: Context): String {
     return if (isRawFile) {
         File(path).getStorageId(context)
     } else when {
+        isDownloadsDocument || isDocumentsDocument -> PRIMARY
         isExternalStorageDocument -> path.substringBefore(':', "").substringAfterLast('/')
-        isDownloadsDocument -> PRIMARY
         else -> ""
     }
 }
@@ -40,6 +40,9 @@ val Uri.isExternalStorageDocument: Boolean
 
 val Uri.isDownloadsDocument: Boolean
     get() = authority == DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY
+
+val Uri.isDocumentsDocument: Boolean
+    get() = isExternalStorageDocument && path?.startsWith("/tree/home:") == true
 
 val Uri.isMediaDocument: Boolean
     get() = authority == DocumentFileCompat.MEDIA_FOLDER_AUTHORITY

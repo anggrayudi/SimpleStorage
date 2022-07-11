@@ -54,6 +54,9 @@ val DocumentFile.isExternalStorageDocument: Boolean
 val DocumentFile.isDownloadsDocument: Boolean
     get() = uri.isDownloadsDocument
 
+val DocumentFile.isDocumentsDocument: Boolean
+    get() = uri.isDocumentsDocument
+
 val DocumentFile.isMediaDocument: Boolean
     get() = uri.isMediaDocument
 
@@ -80,7 +83,7 @@ val DocumentFile.fullName: String
 fun DocumentFile.inSameMountPointWith(context: Context, file: DocumentFile): Boolean {
     val storageId1 = getStorageId(context)
     val storageId2 = file.getStorageId(context)
-    return storageId1 == storageId2 || (storageId1 == PRIMARY || storageId1 == DATA) && (storageId2 == PRIMARY || storageId2 == DATA)
+    return storageId1 == storageId2 || inInternalStorage(storageId1) && inInternalStorage(storageId2)
 }
 
 @SuppressLint("NewApi")
@@ -184,7 +187,9 @@ fun DocumentFile.getStorageType(context: Context): StorageType {
     }
 }
 
-fun DocumentFile.inInternalStorage(context: Context) = getStorageId(context).let { it == PRIMARY || it == DATA }
+private fun inInternalStorage(storageId: String) = storageId == PRIMARY || storageId == DATA
+
+fun DocumentFile.inInternalStorage(context: Context) = inInternalStorage(getStorageId(context))
 
 /**
  * `true` if this file located in primary storage, i.e. external storage.
@@ -351,6 +356,10 @@ fun DocumentFile.getBasePath(context: Context): String {
     return when {
         isRawFile -> File(path).getBasePath(context)
 
+        isDocumentsDocument -> {
+            "Documents/${path.substringAfterLast("/document/home:", "")}".trimEnd('/')
+        }
+
         isExternalStorageDocument && path.contains("/document/$storageID:") -> {
             path.substringAfterLast("/document/$storageID:", "").trimFileSeparator()
         }
@@ -457,6 +466,11 @@ fun DocumentFile.getAbsolutePath(context: Context): String {
     val storageID = getStorageId(context)
     return when {
         isRawFile -> path
+
+        isDocumentsDocument -> {
+            val basePath = path.substringAfterLast("/document/home:", "").trimFileSeparator()
+            "${PublicDirectory.DOCUMENTS.absolutePath}/$basePath".trimEnd('/')
+        }
 
         isExternalStorageDocument && path.contains("/document/$storageID:") -> {
             val basePath = path.substringAfterLast("/document/$storageID:", "").trimFileSeparator()
