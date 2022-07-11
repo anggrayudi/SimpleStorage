@@ -174,8 +174,13 @@ class SimpleStorageHelper {
                 expectedStorageType: StorageType
             ) {
                 val storageType = if (expectedStorageType.isExpected(selectedStorageType)) selectedStorageType else expectedStorageType
-                val messageRes =
-                    if (storageType == StorageType.SD_CARD) R.string.ss_please_select_root_storage_sdcard else R.string.ss_please_select_root_storage_primary
+                val messageRes = if (rootPath.isEmpty()) {
+                    storage.context.getString(if (storageType == StorageType.SD_CARD) R.string.ss_please_select_root_storage_sdcard else R.string.ss_please_select_root_storage_primary)
+                } else {
+                    val resId =
+                        if (storageType == StorageType.SD_CARD) R.string.ss_please_select_root_storage_sdcard_with_location else R.string.ss_please_select_root_storage_primary_with_location
+                    storage.context.getString(resId, rootPath)
+                }
                 AlertDialog.Builder(storage.context)
                     .setCancelable(false)
                     .setMessage(messageRes)

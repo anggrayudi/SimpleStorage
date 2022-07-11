@@ -317,12 +317,14 @@ object DocumentFileCompat {
                 // For instance, content://com.android.externalstorage.documents/tree/primary%3AMusic
                 .filter { it.isReadPermission && it.isWritePermission && it.uri.isTreeDocumentFile }
                 .forEach {
-                    if (it.uri.isDownloadsDocument && fullPath.startsWith(PublicDirectory.DOWNLOADS.absolutePath)) {
-                        return context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))
-                    }
+                    if (Build.VERSION.SDK_INT < 30) {
+                        if (it.uri.isDownloadsDocument && fullPath.startsWith(PublicDirectory.DOWNLOADS.absolutePath)) {
+                            return context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))
+                        }
 
-                    if (it.uri.isDocumentsDocument && fullPath.startsWith(PublicDirectory.DOCUMENTS.absolutePath)) {
-                        return context.fromTreeUri(Uri.parse(DOCUMENTS_TREE_URI))
+                        if (it.uri.isDocumentsDocument && fullPath.startsWith(PublicDirectory.DOCUMENTS.absolutePath)) {
+                            return context.fromTreeUri(Uri.parse(DOCUMENTS_TREE_URI))
+                        }
                     }
 
                     val uriPath = it.uri.path // e.g. /tree/primary:Music
