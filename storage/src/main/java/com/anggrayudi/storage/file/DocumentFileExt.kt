@@ -482,14 +482,14 @@ fun DocumentFile.getAbsolutePath(context: Context): String {
         }
 
         uri.toString().let { it == DocumentFileCompat.DOWNLOADS_TREE_URI || it == "${DocumentFileCompat.DOWNLOADS_TREE_URI}/document/downloads" } ->
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
+            PublicDirectory.DOWNLOADS.absolutePath
 
         isDownloadsDocument -> {
             when {
                 // API 26 - 27 => content://com.android.providers.downloads.documents/document/22
                 Build.VERSION.SDK_INT < Build.VERSION_CODES.P && path.matches(Regex("/document/\\d+")) -> {
                     val fileName = MediaFile(context, uri).name ?: return ""
-                    File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileName).absolutePath
+                    File(PublicDirectory.DOWNLOADS.file, fileName).absolutePath
                 }
 
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && path.matches(Regex("(.*?)/ms[f,d]:\\d+(.*?)")) -> {

@@ -13,9 +13,11 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.list.listItems
+import com.anggrayudi.storage.extension.isDocumentsDocument
 import com.anggrayudi.storage.extension.isDownloadsDocument
 import com.anggrayudi.storage.extension.isTreeDocumentFile
 import com.anggrayudi.storage.file.DocumentFileCompat
+import com.anggrayudi.storage.file.PublicDirectory
 import com.anggrayudi.storage.file.StorageId.PRIMARY
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -69,9 +71,9 @@ class StorageInfoAdapter(
             .filter { it.isReadPermission && it.isWritePermission && it.uri.isTreeDocumentFile }
             .map {
                 if (it.uri.isDownloadsDocument) {
-                    if (filterStorageId == PRIMARY) {
-                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
-                    } else ""
+                    if (filterStorageId == PRIMARY) PublicDirectory.DOWNLOADS.absolutePath else ""
+                } else if (it.uri.isDocumentsDocument) {
+                    if (filterStorageId == PRIMARY) PublicDirectory.DOCUMENTS.absolutePath else ""
                 } else {
                     val uriPath = it.uri.path!! // e.g. /tree/primary:Music
                     val storageId = uriPath.substringBefore(':').substringAfterLast('/')

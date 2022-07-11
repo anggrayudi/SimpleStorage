@@ -1,10 +1,19 @@
 package com.anggrayudi.storage.sample.fragment;
 
+import com.anggrayudi.storage.SimpleStorageHelper;
+import com.anggrayudi.storage.callback.FileCallback;
+import com.anggrayudi.storage.file.DocumentFileCompat;
+import com.anggrayudi.storage.file.DocumentFileType;
+import com.anggrayudi.storage.file.DocumentFileUtils;
+import com.anggrayudi.storage.file.PublicDirectory;
+import com.anggrayudi.storage.media.FileDescription;
+import com.anggrayudi.storage.media.MediaFile;
+import com.anggrayudi.storage.sample.R;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -14,16 +23,6 @@ import androidx.documentfile.provider.DocumentFile;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
-
-import com.anggrayudi.storage.SimpleStorageHelper;
-import com.anggrayudi.storage.callback.FileCallback;
-import com.anggrayudi.storage.file.DocumentFileCompat;
-import com.anggrayudi.storage.file.DocumentFileType;
-import com.anggrayudi.storage.file.DocumentFileUtils;
-import com.anggrayudi.storage.media.FileDescription;
-import com.anggrayudi.storage.media.MediaFile;
-import com.anggrayudi.storage.sample.R;
-
 import timber.log.Timber;
 
 /**
@@ -46,7 +45,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(requireContext());
         // Use 'Download' as default save location
-        String downloadsFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getPath();
+        String downloadsFolder = PublicDirectory.DOWNLOADS.getAbsolutePath();
         Preference saveLocationPref = findPreference(PREF_SAVE_LOCATION);
         saveLocationPref.setSummary(preferences.getString(PREF_SAVE_LOCATION, downloadsFolder));
         saveLocationPref.setOnPreferenceClickListener(preference -> {
@@ -70,7 +69,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
     @WorkerThread
     private void moveFileToSaveLocation(@NonNull DocumentFile sourceFile) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(requireContext());
-        String downloadsFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getPath();
+        String downloadsFolder = PublicDirectory.DOWNLOADS.getAbsolutePath();
         String saveLocationPath = preferences.getString(PREF_SAVE_LOCATION, downloadsFolder);
         DocumentFile saveLocationFolder = DocumentFileCompat.fromFullPath(requireContext(), saveLocationPath, DocumentFileType.FOLDER, true);
         if (saveLocationFolder != null) {

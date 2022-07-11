@@ -1,6 +1,7 @@
 package com.anggrayudi.storage.file
 
 import android.os.Environment
+import java.io.File
 
 /**
  * Created on 05/09/20
@@ -68,6 +69,9 @@ enum class PublicDirectory(val folderName: String) {
     DOCUMENTS(Environment.DIRECTORY_DOCUMENTS);
 
     @Suppress("DEPRECATION")
+    val file: File
+        get() = Environment.getExternalStoragePublicDirectory(folderName)
+
     val absolutePath: String
-        get() = Environment.getExternalStoragePublicDirectory(folderName).absolutePath
+        get() = file.absolutePath
 }

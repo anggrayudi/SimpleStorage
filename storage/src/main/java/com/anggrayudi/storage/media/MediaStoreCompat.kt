@@ -195,7 +195,7 @@ object MediaStoreCompat {
     fun fromFileName(context: Context, mediaType: MediaType, name: String): MediaFile? {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             @Suppress("DEPRECATION")
-            File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), name).let {
+            File(PublicDirectory.DOWNLOADS.file, name).let {
                 if (it.isFile && it.canRead()) MediaFile(context, it) else null
             }
         } else {

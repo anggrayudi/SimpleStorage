@@ -45,6 +45,9 @@ object DocumentFileCompat {
      */
     const val DOWNLOADS_TREE_URI = "content://$DOWNLOADS_FOLDER_AUTHORITY/tree/downloads"
 
+    /**
+     * Only available on API 24 to 29.
+     */
     const val DOCUMENTS_TREE_URI = "content://$EXTERNAL_STORAGE_AUTHORITY/tree/home%3A"
 
     val FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION = Regex("(.*?) \\(\\d+\\)\\.[a-zA-Z0-9]+")
@@ -212,7 +215,7 @@ object DocumentFileCompat {
         requiresWriteAccess: Boolean = false,
         considerRawFile: Boolean = true
     ): DocumentFile? {
-        var rawFile = Environment.getExternalStoragePublicDirectory(type.folderName)
+        var rawFile = type.file
         if (subFile.isNotEmpty()) {
             rawFile = File("$rawFile/$subFile".trimEnd('/'))
         }

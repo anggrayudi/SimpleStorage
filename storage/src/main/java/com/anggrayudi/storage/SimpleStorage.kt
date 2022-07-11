@@ -295,7 +295,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             } else {
                 storageAccessCallback?.onRootPathNotSelected(
                     requestCode,
-                    "$externalStoragePath/${Environment.DIRECTORY_DOWNLOADS}",
+                    PublicDirectory.DOWNLOADS.absolutePath,
                     uri,
                     StorageType.EXTERNAL,
                     expectedStorageTypeForAccessRequest
@@ -303,6 +303,23 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             }
             return
         }
+
+        if (uri.isDocumentsDocument) {
+            if (uri.toString() == DocumentFileCompat.DOCUMENTS_TREE_URI) {
+                saveUriPermission(uri)
+                storageAccessCallback?.onRootPathPermissionGranted(requestCode, context.fromTreeUri(uri) ?: return)
+            } else {
+                storageAccessCallback?.onRootPathNotSelected(
+                    requestCode,
+                    PublicDirectory.DOCUMENTS.absolutePath,
+                    uri,
+                    StorageType.EXTERNAL,
+                    expectedStorageTypeForAccessRequest
+                )
+            }
+            return
+        }
+
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R && !uri.isExternalStorageDocument) {
             storageAccessCallback?.onRootPathNotSelected(requestCode, externalStoragePath, uri, StorageType.EXTERNAL, expectedStorageTypeForAccessRequest)
             return
@@ -346,8 +363,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             folderPickerCallback?.onStorageAccessDenied(requestCode, folder, storageType)
             return
         }
-        if (uri.toString() == DocumentFileCompat.DOWNLOADS_TREE_URI
-            || Build.VERSION.SDK_INT == 29 && uri.isDocumentsDocument
+        if (uri.toString().let { it == DocumentFileCompat.DOWNLOADS_TREE_URI || it == DocumentFileCompat.DOCUMENTS_TREE_URI }
             || DocumentFileCompat.isRootUri(uri)
             && (Build.VERSION.SDK_INT < Build.VERSION_CODES.N && storageType == StorageType.SD_CARD || Build.VERSION.SDK_INT == Build.VERSION_CODES.Q)
             && !DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)
@@ -356,7 +372,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageType == StorageType.EXTERNAL
             || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && saveUriPermission(uri)
-            || !uri.isExternalStorageDocument && folder.canModify(context)
+            || folder.canModify(context) && (uri.isDocumentsDocument || !uri.isExternalStorageDocument)
             || DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)
         ) {
             folderPickerCallback?.onFolderSelected(requestCode, folder)
