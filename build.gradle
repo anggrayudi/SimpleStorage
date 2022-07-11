@@ -36,12 +36,11 @@ allprojects {
 subprojects {
     afterEvaluate {
         android {
-            compileSdkVersion 31
-            buildToolsVersion '30.0.3'
+            compileSdkVersion 33
 
             defaultConfig {
                 minSdkVersion 19
-                targetSdkVersion 31
+                targetSdkVersion 33
                 versionCode 1
                 versionName "$VERSION_NAME"
                 testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
