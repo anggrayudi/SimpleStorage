@@ -573,22 +573,22 @@ object DocumentFileCompat {
     }
 
     @JvmStatic
-    fun createDownloadWithMediaStoreFallback(context: Context, file: FileDescription): FileWrapper {
+    fun createDownloadWithMediaStoreFallback(context: Context, file: FileDescription): FileWrapper? {
         val publicFolder = fromPublicFolder(context, PublicDirectory.DOWNLOADS, requiresWriteAccess = true)
         return if (publicFolder == null && Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
-            FileWrapper(MediaStoreCompat.createDownload(context, file))
+            MediaStoreCompat.createDownload(context, file)?.let { FileWrapper.Media(it) }
         } else {
-            FileWrapper(publicFolder?.makeFile(context, file.name, file.mimeType))
+            publicFolder?.makeFile(context, file.name, file.mimeType)?.let { FileWrapper.Document(it) }
         }
     }
 
     @JvmStatic
-    fun createPictureWithMediaStoreFallback(context: Context, file: FileDescription): FileWrapper {
+    fun createPictureWithMediaStoreFallback(context: Context, file: FileDescription): FileWrapper? {
         val publicFolder = fromPublicFolder(context, PublicDirectory.PICTURES, requiresWriteAccess = true)
         return if (publicFolder == null && Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
-            FileWrapper(MediaStoreCompat.createImage(context, file))
+            MediaStoreCompat.createImage(context, file)?.let { FileWrapper.Media(it) }
         } else {
-            FileWrapper(publicFolder?.makeFile(context, file.name, file.mimeType))
+            publicFolder?.makeFile(context, file.name, file.mimeType)?.let { FileWrapper.Document(it) }
         }
     }
 
