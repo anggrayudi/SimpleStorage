@@ -357,7 +357,7 @@ fun DocumentFile.getBasePath(context: Context): String {
         isRawFile -> File(path).getBasePath(context)
 
         isDocumentsDocument -> {
-            "Documents/${path.substringAfterLast("/document/home:", "")}".trimEnd('/')
+            "${Environment.DIRECTORY_DOCUMENTS}/${path.substringAfterLast("/document/home:", "")}".trimEnd('/')
         }
 
         isExternalStorageDocument && path.contains("/document/$storageID:") -> {

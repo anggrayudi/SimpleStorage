@@ -13,7 +13,14 @@ class FileDescription @JvmOverloads constructor(
     private var _mimeType: String? = MimeType.BINARY_FILE
 
     val mimeType: String
-        get() = _mimeType ?: MimeType.getMimeTypeFromFileName(name)
+        get() {
+            var type = _mimeType
+            if (type.isNullOrEmpty() || MimeType.hasExtension(name) && (type == MimeType.BINARY_FILE || type == MimeType.UNKNOWN)) {
+                type = MimeType.getMimeTypeFromFileName(name)
+            }
+            _mimeType = type
+            return type
+        }
 
     constructor(name: String, subFolder: String, mimeType: String?) : this(name, subFolder) {
         _mimeType = mimeType?.takeIf { !it.contains("*") }

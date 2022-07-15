@@ -82,7 +82,7 @@ object MimeType {
      */
     @JvmStatic
     fun getMimeTypeFromExtension(fileExtension: String): String {
-        return if (fileExtension == "bin") BINARY_FILE else MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileExtension) ?: UNKNOWN
+        return if (fileExtension.equals("bin", ignoreCase = true)) BINARY_FILE else MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileExtension) ?: UNKNOWN
     }
 
     @JvmStatic
