@@ -471,7 +471,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     fun onSaveInstanceState(outState: Bundle) {
         outState.putString(KEY_LAST_VISITED_FOLDER, lastVisitedFolder.path)
         outState.putString(KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST, expectedBasePathForAccessRequest)
-        outState.putInt(KEY_REQUEST_CODE_STORAGE_ACCESS, expectedStorageTypeForAccessRequest.ordinal)
+        outState.putInt(KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST, expectedStorageTypeForAccessRequest.ordinal)
         outState.putInt(KEY_REQUEST_CODE_STORAGE_ACCESS, requestCodeStorageAccess)
         outState.putInt(KEY_REQUEST_CODE_FOLDER_PICKER, requestCodeFolderPicker)
         outState.putInt(KEY_REQUEST_CODE_FILE_PICKER, requestCodeFilePicker)
