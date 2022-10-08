@@ -71,7 +71,11 @@ abstract class FileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads c
         SKIP;
 
         @RestrictTo(RestrictTo.Scope.LIBRARY)
-        fun toCreateMode() = if (this == REPLACE) CreateMode.REPLACE else CreateMode.CREATE_NEW
+        fun toCreateMode(allowReuseFile: Boolean = false) = when (this) {
+            REPLACE -> CreateMode.REPLACE
+            CREATE_NEW -> CreateMode.CREATE_NEW
+            SKIP -> if (allowReuseFile) CreateMode.REUSE else CreateMode.CREATE_NEW
+        }
     }
 
     enum class ErrorCode {

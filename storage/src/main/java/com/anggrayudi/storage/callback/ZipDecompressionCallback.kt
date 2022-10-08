@@ -13,8 +13,9 @@ import kotlinx.coroutines.GlobalScope
  * Created on 02/01/22
  * @author Anggrayudi H
  */
-abstract class ZipDecompressionCallback<T> @OptIn(DelicateCoroutinesApi::class)
-@JvmOverloads constructor(var uiScope: CoroutineScope = GlobalScope) {
+abstract class ZipDecompressionCallback<T> @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
+    uiScope: CoroutineScope = GlobalScope
+) : FileConflictCallback<DocumentFile>(uiScope) {
 
     @UiThread
     open fun onValidate() {
@@ -52,11 +53,10 @@ abstract class ZipDecompressionCallback<T> @OptIn(DelicateCoroutinesApi::class)
 
     /**
      * @param zipFile can be [DocumentFile] or [MediaFile]
-     * @param decompressionRate size expansion in percent, e.g. 23.5.
      * But for decompressing [MediaFile], it is always `0` because we can't get the actual zip file size from SAF database.
      */
     @UiThread
-    open fun onCompleted(zipFile: T, targetFolder: DocumentFile, bytesDecompressed: Long, totalFilesDecompressed: Int, decompressionRate: Float) {
+    open fun onCompleted(zipFile: T, targetFolder: DocumentFile, decompressionInfo: DecompressionInfo) {
         // default implementation
     }
 
@@ -72,6 +72,13 @@ abstract class ZipDecompressionCallback<T> @OptIn(DelicateCoroutinesApi::class)
      * @param fileCount decompressed files in total
      */
     class Report(val bytesDecompressed: Long, val writeSpeed: Int, val fileCount: Int)
+
+    /**
+     * @param decompressionRate size expansion in percent, e.g. 23.5.
+     * @param skippedDecompressedBytes total skipped bytes because the file already exists and the user has selected [FileCallback.ConflictResolution.SKIP]
+     * @param bytesDecompressed total decompressed bytes, excluded skipped files
+     */
+    class DecompressionInfo(val bytesDecompressed: Long, val skippedDecompressedBytes: Long, val totalFilesDecompressed: Int, val decompressionRate: Float)
 
     enum class ErrorCode {
         STORAGE_PERMISSION_DENIED,

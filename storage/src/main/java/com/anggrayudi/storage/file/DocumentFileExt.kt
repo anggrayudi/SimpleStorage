@@ -628,6 +628,7 @@ fun DocumentFile.createBinaryFile(context: Context, name: String, mode: CreateMo
  *
  * @param mimeType use [MimeType.UNKNOWN] if you're not sure about the file type
  * @param name you can input `My Video`, `My Video.mp4` or `My Folder/Sub Folder/My Video.mp4`
+ * @param onConflict when this callback is set and `mode` is not [CreateMode.CREATE_NEW], then the user will be asked for resolution if conflict happens
  */
 @WorkerThread
 @JvmOverloads
@@ -635,7 +636,8 @@ fun DocumentFile.makeFile(
     context: Context,
     name: String,
     mimeType: String? = MimeType.UNKNOWN,
-    mode: CreateMode = CreateMode.CREATE_NEW
+    mode: CreateMode = CreateMode.CREATE_NEW,
+    onConflict: FileConflictCallback<DocumentFile>? = null
 ): DocumentFile? {
     if (!isDirectory || !isWritable(context)) {
         return null
@@ -657,11 +659,22 @@ fun DocumentFile.makeFile(
     val baseFileName = filename.removeSuffix(".$extension")
     val fullFileName = "$baseFileName.$extension".trimEnd('.')
 
-    if (mode != CreateMode.CREATE_NEW) {
-        parent.child(context, fullFileName)?.takeIf { it.exists() }?.let {
+    var createMode = mode
+    var existingFile: DocumentFile? = null
+    if (onConflict != null) {
+        parent.child(context, fullFileName)?.let { targetFile ->
+            existingFile = targetFile
+            createMode = awaitUiResultWithPending<FileCallback.ConflictResolution>(onConflict.uiScope) {
+                onConflict.onFileConflict(targetFile, FileCallback.FileConflictAction(it))
+            }.toCreateMode(true)
+        }
+    }
+
+    if (createMode != CreateMode.CREATE_NEW) {
+        (existingFile ?: parent.child(context, fullFileName))?.let {
             return when {
-                mode == CreateMode.REPLACE -> it.recreateFile(context)
-                it.isFile -> it
+                createMode == CreateMode.REPLACE -> it.recreateFile(context)
+                createMode != CreateMode.SKIP_IF_EXISTS && it.isFile -> it
                 else -> null
             }
         }
@@ -669,7 +682,7 @@ fun DocumentFile.makeFile(
 
     if (isRawFile) {
         // RawDocumentFile does not avoid duplicate file name, but TreeDocumentFile does.
-        return DocumentFile.fromFile(toRawFile(context)?.makeFile(context, cleanName, mimeType, mode) ?: return null)
+        return DocumentFile.fromFile(toRawFile(context)?.makeFile(context, cleanName, mimeType, createMode) ?: return null)
     }
 
     val correctMimeType = MimeType.getMimeTypeFromExtension(extension).let {
@@ -691,7 +704,11 @@ fun DocumentFile.makeFile(
  */
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.makeFolder(context: Context, name: String, mode: CreateMode = CreateMode.CREATE_NEW): DocumentFile? {
+fun DocumentFile.makeFolder(
+    context: Context,
+    name: String,
+    mode: CreateMode = CreateMode.CREATE_NEW
+): DocumentFile? {
     if (!isDirectory || !isWritable(context)) {
         return null
     }
@@ -711,7 +728,7 @@ fun DocumentFile.makeFolder(context: Context, name: String, mode: CreateMode = C
     } else if (mode == CreateMode.REPLACE) {
         folderLevel1.forceDelete(context, true)
         if (folderLevel1.isDirectory) folderLevel1 else currentDirectory.createDirectory(folderNameLevel1) ?: return null
-    } else if (folderLevel1.isDirectory && folderLevel1.canRead()) {
+    } else if (mode != CreateMode.SKIP_IF_EXISTS && folderLevel1.isDirectory && folderLevel1.canRead()) {
         folderLevel1
     } else {
         return null
@@ -1248,6 +1265,7 @@ fun DocumentFile.decompressZip(
 
     var success = false
     var bytesDecompressed = 0L
+    var skippedDecompressedBytes = 0L
     var fileDecompressedCount = 0
     var timer: Job? = null
     var zis: ZipInputStream? = null
@@ -1274,11 +1292,17 @@ fun DocumentFile.decompressZip(
                     if (it.isEmpty()) destFolder else destFolder.makeFolder(context, it, CreateMode.REUSE)
                 } ?: throw IOException()
                 val fileName = entry.name.substringAfterLast('/')
-                targetFile = folder.makeFile(context, fileName)
+                targetFile = folder.makeFile(context, fileName, onConflict = callback)
                 if (targetFile == null) {
                     callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
                     canSuccess = false
                     break
+                }
+                if (targetFile.length() > 0 && targetFile.isFile) {
+                    // user has selected 'SKIP'
+                    skippedDecompressedBytes += targetFile.length()
+                    entry = zis.nextEntry
+                    continue
                 }
                 targetFile.openOutputStream(context)?.use { output ->
                     var bytes = zis.read(buffer)
@@ -1314,7 +1338,8 @@ fun DocumentFile.decompressZip(
     if (success) {
         // Sometimes, the decompressed size is smaller than the compressed size, and you may get negative values. You should worry about this.
         val sizeExpansion = (bytesDecompressed - zipSize).toFloat() / zipSize * 100
-        callback.uiScope.postToUi { callback.onCompleted(this, destFolder, bytesDecompressed, fileDecompressedCount, sizeExpansion) }
+        val info = ZipDecompressionCallback.DecompressionInfo(bytesDecompressed, skippedDecompressedBytes, fileDecompressedCount, sizeExpansion)
+        callback.uiScope.postToUi { callback.onCompleted(this, destFolder, info) }
     } else {
         targetFile?.delete()
     }

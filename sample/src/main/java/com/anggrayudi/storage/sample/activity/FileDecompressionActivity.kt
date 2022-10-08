@@ -3,6 +3,10 @@ package com.anggrayudi.storage.sample.activity
 import android.os.Bundle
 import android.widget.Toast
 import androidx.documentfile.provider.DocumentFile
+import com.afollestad.materialdialogs.MaterialDialog
+import com.afollestad.materialdialogs.checkbox.checkBoxPrompt
+import com.afollestad.materialdialogs.list.listItems
+import com.anggrayudi.storage.callback.FileCallback
 import com.anggrayudi.storage.callback.ZipDecompressionCallback
 import com.anggrayudi.storage.file.MimeType
 import com.anggrayudi.storage.file.decompressZip
@@ -62,14 +66,40 @@ class FileDecompressionActivity : BaseActivity() {
         }
         ioScope.launch {
             zipFile.decompressZip(applicationContext, targetFolder, object : ZipDecompressionCallback<DocumentFile>(uiScope) {
+                var actionForAllConflicts: FileCallback.ConflictResolution? = null
+
+                override fun onFileConflict(destinationFile: DocumentFile, action: FileCallback.FileConflictAction) {
+                    actionForAllConflicts?.let {
+                        action.confirmResolution(it)
+                        return
+                    }
+
+                    var doForAll = false
+                    MaterialDialog(this@FileDecompressionActivity)
+                        .cancelable(false)
+                        .title(text = "Conflict Found")
+                        .message(text = "File \"${destinationFile.name}\" already exists in destination. What's your action?")
+                        .checkBoxPrompt(text = "Apply to all") { doForAll = it }
+                        .listItems(items = mutableListOf("Replace", "Create New", "Skip Duplicate")) { _, index, _ ->
+                            val resolution = FileCallback.ConflictResolution.values()[index]
+                            if (doForAll) {
+                                actionForAllConflicts = resolution
+                            }
+                            action.confirmResolution(resolution)
+                        }
+                        .show()
+                }
+
                 override fun onCompleted(
                     zipFile: DocumentFile,
                     targetFolder: DocumentFile,
-                    bytesDecompressed: Long,
-                    totalFilesDecompressed: Int,
-                    decompressionRate: Float
+                    decompressionInfo: DecompressionInfo
                 ) {
-                    Toast.makeText(applicationContext, "Decompressed $totalFilesDecompressed files from ${zipFile.name}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        applicationContext,
+                        "Decompressed ${decompressionInfo.totalFilesDecompressed} files from ${zipFile.name}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
 
                 override fun onFailed(errorCode: ErrorCode) {

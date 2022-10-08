@@ -11,6 +11,8 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.callback.FileCallback
+import com.anggrayudi.storage.callback.FileConflictCallback
+import com.anggrayudi.storage.extension.awaitUiResultWithPending
 import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import com.anggrayudi.storage.file.StorageId.DATA
@@ -156,10 +158,17 @@ val Context.writableDirs: Set<File>
 
 /**
  * Create file and if exists, increment file name.
+ * @param onConflict when this callback is set and `mode` is not [CreateMode.CREATE_NEW], then the user will be asked for resolution if conflict happens
  */
 @WorkerThread
 @JvmOverloads
-fun File.makeFile(context: Context, name: String, mimeType: String? = MimeType.UNKNOWN, mode: CreateMode = CreateMode.CREATE_NEW): File? {
+fun File.makeFile(
+    context: Context,
+    name: String,
+    mimeType: String? = MimeType.UNKNOWN,
+    mode: CreateMode = CreateMode.CREATE_NEW,
+    onConflict: FileConflictCallback<File>? = null
+): File? {
     if (!isDirectory || !isWritable(context)) {
         return null
     }
@@ -167,7 +176,7 @@ fun File.makeFile(context: Context, name: String, mimeType: String? = MimeType.U
     val cleanName = name.removeForbiddenCharsFromFilename().trimFileSeparator()
     val subFolder = cleanName.substringBeforeLast('/', "")
     val parent = if (subFolder.isEmpty()) this else {
-        File(this, subFolder).apply { mkdirs() }
+        makeFolder(context, subFolder, mode) ?: return null
     }
 
     val filename = cleanName.substringAfterLast('/')
@@ -180,13 +189,19 @@ fun File.makeFile(context: Context, name: String, mimeType: String? = MimeType.U
     val baseFileName = filename.removeSuffix(".$extension")
     val fullFileName = "$baseFileName.$extension".trimEnd('.')
 
-    if (mode != CreateMode.CREATE_NEW) {
-        File(parent, fullFileName).takeIf { it.exists() }?.let {
-            return when {
-                mode == CreateMode.REPLACE -> it.takeIf { it.recreateFile() }
-                it.isFile -> it
-                else -> null
-            }
+    var createMode = mode
+    val targetFile = File(parent, fullFileName)
+    if (onConflict != null && targetFile.exists()) {
+        createMode = awaitUiResultWithPending<FileCallback.ConflictResolution>(onConflict.uiScope) {
+            onConflict.onFileConflict(targetFile, FileCallback.FileConflictAction(it))
+        }.toCreateMode(true)
+    }
+
+    if (createMode != CreateMode.CREATE_NEW && targetFile.exists()) {
+        return when {
+            createMode == CreateMode.REPLACE -> targetFile.takeIf { it.recreateFile() }
+            createMode != CreateMode.SKIP_IF_EXISTS && targetFile.isFile -> targetFile
+            else -> null
         }
     }
 
@@ -214,6 +229,8 @@ fun File.makeFolder(context: Context, name: String, mode: CreateMode = CreateMod
 
     if (mode == CreateMode.REPLACE) {
         folderLevel1.forceDelete(true)
+    } else if (mode == CreateMode.SKIP_IF_EXISTS && folderLevel1.exists()) {
+        return null
     }
     folderLevel1.mkdir()
 
