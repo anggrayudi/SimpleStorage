@@ -47,5 +47,10 @@ enum class CreateMode {
      * * If folder `A` already exists under this folder and you're trying to create `A`, then return `A (1)`.
      * * If folder `A/B` already exists under this folder and you're trying to create `A/B`, then return `A (1)/B`.
      */
-    CREATE_NEW;
+    CREATE_NEW,
+
+    /**
+     * If the file already exists, then return null.
+     */
+    SKIP_IF_EXISTS;
 }

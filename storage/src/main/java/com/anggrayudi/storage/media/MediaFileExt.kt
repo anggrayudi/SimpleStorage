@@ -143,6 +143,7 @@ fun MediaFile.decompressZip(
 
     var success = false
     var bytesDecompressed = 0L
+    var skippedDecompressedBytes = 0L
     var fileDecompressedCount = 0
     var timer: Job? = null
     var zis: ZipInputStream? = null
@@ -173,6 +174,12 @@ fun MediaFile.decompressZip(
                     callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
                     canSuccess = false
                     break
+                }
+                if (targetFile.length() > 0 && targetFile.isFile) {
+                    // user has selected 'SKIP'
+                    skippedDecompressedBytes += targetFile.length()
+                    entry = zis.nextEntry
+                    continue
                 }
                 targetFile.openOutputStream(context)?.use { output ->
                     var bytes = zis.read(buffer)
@@ -206,7 +213,8 @@ fun MediaFile.decompressZip(
         zis.closeStreamQuietly()
     }
     if (success) {
-        callback.uiScope.postToUi { callback.onCompleted(this, destFolder, bytesDecompressed, fileDecompressedCount, 0f) }
+        val info = ZipDecompressionCallback.DecompressionInfo(bytesDecompressed, skippedDecompressedBytes, fileDecompressedCount, 0f)
+        callback.uiScope.postToUi { callback.onCompleted(this, destFolder, info) }
     } else {
         targetFile?.delete()
     }
