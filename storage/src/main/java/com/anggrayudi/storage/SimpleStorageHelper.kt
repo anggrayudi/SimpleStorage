@@ -88,7 +88,7 @@ class SimpleStorageHelper {
                         .setMessage(R.string.ss_storage_access_denied_confirm)
                         .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
                         .setPositiveButton(android.R.string.ok) { _, _ ->
-                            storage.requestStorageAccess(initialRootPath = storageType)
+                            storage.requestStorageAccess(initialPath = FileFullPath(storage.context, storageType))
                         }.show()
                 }
 
@@ -186,7 +186,7 @@ class SimpleStorageHelper {
                     .setMessage(messageRes)
                     .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
                     .setPositiveButton(android.R.string.ok) { _, _ ->
-                        storage.requestStorageAccess(initialRootPath = storageType, expectedStorageType = expectedStorageType)
+                        storage.requestStorageAccess(initialPath = FileFullPath(storage.context, storageType), expectedStorageType = expectedStorageType)
                     }.show()
             }
 
@@ -247,7 +247,7 @@ class SimpleStorageHelper {
                     .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
                     .setPositiveButton(android.R.string.ok) { _, _ ->
                         storage.requestStorageAccess(
-                            initialRootPath = expectedStorageType,
+                            initialPath = FileFullPath(storage.context, expectedStorageType),
                             expectedStorageType = expectedStorageType,
                             expectedBasePath = expectedBasePath
                         )
@@ -326,12 +326,17 @@ class SimpleStorageHelper {
     }
 
     @JvmOverloads
-    fun openFilePicker(requestCode: Int = storage.requestCodeFilePicker, allowMultiple: Boolean = false, vararg filterMimeTypes: String) {
+    fun openFilePicker(
+        requestCode: Int = storage.requestCodeFilePicker,
+        allowMultiple: Boolean = false,
+        initialPath: FileFullPath? = null,
+        vararg filterMimeTypes: String
+    ) {
         pickerToOpenOnceGranted = TYPE_FILE_PICKER
         originalRequestCode = requestCode
         filterMimeTypes.toSet().let {
             this.filterMimeTypes = it
-            storage.openFilePicker(requestCode, allowMultiple, *it.toTypedArray())
+            storage.openFilePicker(requestCode, allowMultiple, initialPath, *it.toTypedArray())
         }
     }
 
@@ -339,22 +344,26 @@ class SimpleStorageHelper {
     @JvmOverloads
     fun requestStorageAccess(
         requestCode: Int = storage.requestCodeStorageAccess,
-        initialRootPath: StorageType = StorageType.EXTERNAL,
-        initialBasePath: String = "",
+        initialPath: FileFullPath? = null,
         expectedStorageType: StorageType = StorageType.UNKNOWN,
         expectedBasePath: String = ""
     ) {
         pickerToOpenOnceGranted = 0
         originalRequestCode = requestCode
-        storage.requestStorageAccess(requestCode, initialRootPath, initialBasePath, expectedStorageType, expectedBasePath)
+        storage.requestStorageAccess(requestCode, initialPath, expectedStorageType, expectedBasePath)
     }
 
     @RequiresApi(21)
     @JvmOverloads
-    fun createFile(mimeType: String, fileName: String? = null, requestCode: Int = storage.requestCodeCreateFile) {
+    fun createFile(
+        mimeType: String,
+        fileName: String? = null,
+        initialPath: FileFullPath? = null,
+        requestCode: Int = storage.requestCodeCreateFile
+    ) {
         pickerToOpenOnceGranted = 0
         originalRequestCode = requestCode
-        storage.createFile(mimeType, fileName, requestCode)
+        storage.createFile(mimeType, fileName, initialPath, requestCode)
     }
 
     fun onSaveInstanceState(outState: Bundle) {

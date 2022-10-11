@@ -107,7 +107,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnCreateFile.setOnClickListener {
-            storageHelper.createFile("text/plain", "Test create file", REQUEST_CODE_CREATE_FILE)
+            storageHelper.createFile("text/plain", "Test create file", requestCode = REQUEST_CODE_CREATE_FILE)
         }
 
         btnCompressFiles.setOnClickListener {
