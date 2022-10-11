@@ -141,6 +141,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      * Managing files in direct storage requires root access. Thus we need to make sure users select root path.
      *
      * @param initialRootPath it has no effect on API 23 and lower
+     * @param initialBasePath only takes effect on API 30+
      * @param expectedStorageType for example, if you set [StorageType.SD_CARD] but the user selects [StorageType.EXTERNAL], then
      * trigger [StorageAccessCallback.onRootPathNotSelected]. Set to [StorageType.UNKNOWN] to accept any storage type.
      * @param expectedBasePath applicable for API 30+ only, because Android 11 does not allow selecting the root path.
@@ -150,6 +151,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     fun requestStorageAccess(
         requestCode: Int = requestCodeStorageAccess,
         initialRootPath: StorageType = StorageType.EXTERNAL,
+        initialBasePath: String = "",
         expectedStorageType: StorageType = StorageType.UNKNOWN,
         expectedBasePath: String = ""
     ) {
@@ -174,6 +176,19 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         } else {
             externalStorageRootAccessIntent
         }
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q && initialBasePath.isNotEmpty()) {
+            val sm = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
+            val initialStorageId = if (initialRootPath == StorageType.SD_CARD) {
+                sm.storageVolumes.firstOrNull { it.isRemovable }?.mediaStoreVolumeName
+            } else {
+                PRIMARY
+            }
+            if (initialStorageId != null) {
+                val initialUri = DocumentFileCompat.createDocumentUri(initialStorageId, initialBasePath)
+                DocumentFile.fromTreeUri(context, initialUri)?.uri?.let { intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, it) }
+            }
+        }
+
         if (wrapper.startActivityForResult(intent, requestCode)) {
             requestCodeStorageAccess = requestCode
             expectedStorageTypeForAccessRequest = expectedStorageType

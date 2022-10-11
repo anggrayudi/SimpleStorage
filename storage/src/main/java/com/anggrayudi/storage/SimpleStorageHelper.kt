@@ -340,12 +340,13 @@ class SimpleStorageHelper {
     fun requestStorageAccess(
         requestCode: Int = storage.requestCodeStorageAccess,
         initialRootPath: StorageType = StorageType.EXTERNAL,
+        initialBasePath: String = "",
         expectedStorageType: StorageType = StorageType.UNKNOWN,
         expectedBasePath: String = ""
     ) {
         pickerToOpenOnceGranted = 0
         originalRequestCode = requestCode
-        storage.requestStorageAccess(requestCode, initialRootPath, expectedStorageType, expectedBasePath)
+        storage.requestStorageAccess(requestCode, initialRootPath, initialBasePath, expectedStorageType, expectedBasePath)
     }
 
     @RequiresApi(21)
