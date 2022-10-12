@@ -140,7 +140,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     /**
      * Managing files in direct storage requires root access. Thus we need to make sure users select root path.
      *
-     * @param initialRootPath it has no effect on API 23 and lower
+     * @param initialPath only takes effect on API 30+
      * @param expectedStorageType for example, if you set [StorageType.SD_CARD] but the user selects [StorageType.EXTERNAL], then
      * trigger [StorageAccessCallback.onRootPathNotSelected]. Set to [StorageType.UNKNOWN] to accept any storage type.
      * @param expectedBasePath applicable for API 30+ only, because Android 11 does not allow selecting the root path.
@@ -149,11 +149,12 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     @JvmOverloads
     fun requestStorageAccess(
         requestCode: Int = requestCodeStorageAccess,
-        initialRootPath: StorageType = StorageType.EXTERNAL,
+        initialPath: FileFullPath? = null,
         expectedStorageType: StorageType = StorageType.UNKNOWN,
         expectedBasePath: String = ""
     ) {
-        if (initialRootPath == StorageType.DATA || expectedStorageType == StorageType.DATA) {
+        initialPath?.checkIfStorageIdIsAccessibleInSafSelector()
+        if (expectedStorageType == StorageType.DATA) {
             throw IllegalArgumentException("Cannot use StorageType.DATA because it is never available in Storage Access Framework's folder selector.")
         }
 
@@ -162,18 +163,28 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             return
         }
 
-        if (initialRootPath == StorageType.EXTERNAL && expectedStorageType.isExpected(initialRootPath) && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !isSdCardPresent) {
+        val initialStorageType = if (initialPath != null) StorageType.fromStorageId(initialPath.storageId) else StorageType.EXTERNAL
+
+        if (initialPath?.storageId == PRIMARY
+            && expectedStorageType.isExpected(initialStorageType)
+            && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+            && !isSdCardPresent
+        ) {
             val root = DocumentFileCompat.getRootDocumentFile(context, PRIMARY, true) ?: return
             saveUriPermission(root.uri)
             storageAccessCallback?.onRootPathPermissionGranted(requestCode, root)
             return
         }
 
-        val intent = if (initialRootPath == StorageType.SD_CARD && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        val intent = if (initialStorageType == StorageType.SD_CARD && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             sdCardRootAccessIntent
         } else {
             externalStorageRootAccessIntent
         }
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q) {
+            addInitialPathToIntent(intent, initialPath)
+        }
+
         if (wrapper.startActivityForResult(intent, requestCode)) {
             requestCodeStorageAccess = requestCode
             expectedStorageTypeForAccessRequest = expectedStorageType
@@ -194,11 +205,21 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
     }
 
+    /**
+     * @param initialPath only takes effect on API 26+
+     */
     @RequiresApi(21)
     @JvmOverloads
-    fun createFile(mimeType: String, fileName: String? = null, requestCode: Int = requestCodeCreateFile) {
+    fun createFile(
+        mimeType: String,
+        fileName: String? = null,
+        initialPath: FileFullPath? = null,
+        requestCode: Int = requestCodeCreateFile
+    ) {
+        initialPath?.checkIfStorageIdIsAccessibleInSafSelector()
         requestCodeCreateFile = requestCode
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).setType(mimeType)
+        addInitialPathToIntent(intent, initialPath)
         fileName?.let { intent.putExtra(Intent.EXTRA_TITLE, it) }
         if (!wrapper.startActivityForResult(intent, requestCode))
             createFileCallback?.onActivityHandlerNotFound(requestCode, intent)
@@ -210,6 +231,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     @SuppressLint("InlinedApi")
     @JvmOverloads
     fun openFolderPicker(requestCode: Int = requestCodeFolderPicker, initialPath: FileFullPath? = null) {
+        initialPath?.checkIfStorageIdIsAccessibleInSafSelector()
         requestCodeFolderPicker = requestCode
 
         if (Build.VERSION.SDK_INT < 21) {
@@ -233,7 +255,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             } else {
                 externalStorageRootAccessIntent
             }
-            initialPath?.uri?.let { intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, context.fromTreeUri(it)?.uri) }
+            addInitialPathToIntent(intent, initialPath)
             if (!wrapper.startActivityForResult(intent, requestCode))
                 folderPickerCallback?.onActivityHandlerNotFound(requestCode, intent)
         } else {
@@ -244,8 +266,17 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     @Suppress("DEPRECATION")
     private var lastVisitedFolder: File = Environment.getExternalStorageDirectory()
 
+    /**
+     * @param initialPath only takes effect on API 26+
+     */
     @JvmOverloads
-    fun openFilePicker(requestCode: Int = requestCodeFilePicker, allowMultiple: Boolean = false, vararg filterMimeTypes: String) {
+    fun openFilePicker(
+        requestCode: Int = requestCodeFilePicker,
+        allowMultiple: Boolean = false,
+        initialPath: FileFullPath? = null,
+        vararg filterMimeTypes: String
+    ) {
+        initialPath?.checkIfStorageIdIsAccessibleInSafSelector()
         requestCodeFilePicker = requestCode
 
         val intent = if (Build.VERSION.SDK_INT < 21) {
@@ -260,8 +291,15 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         } else {
             intent.type = filterMimeTypes.firstOrNull() ?: MimeType.UNKNOWN
         }
+        addInitialPathToIntent(intent, initialPath)
         if (!wrapper.startActivityForResult(intent, requestCode))
             filePickerCallback?.onActivityHandlerNotFound(requestCode, intent)
+    }
+
+    private fun addInitialPathToIntent(intent: Intent, initialPath: FileFullPath?) {
+        if (Build.VERSION.SDK_INT >= 26) {
+            initialPath?.toDocumentUri(context)?.let { intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, it) }
+        }
     }
 
     private fun handleActivityResultForStorageAccess(requestCode: Int, uri: Uri) {

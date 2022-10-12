@@ -2,20 +2,38 @@ package com.anggrayudi.storage.file
 
 import android.content.Context
 import android.net.Uri
+import android.os.storage.StorageManager
+import androidx.annotation.RequiresApi
+import androidx.annotation.RestrictTo
 import com.anggrayudi.storage.SimpleStorage
+import com.anggrayudi.storage.extension.fromTreeUri
 import com.anggrayudi.storage.extension.trimFileSeparator
 import java.io.File
 
 /**
- * Created on 21/09/21
+ * If you're using the following functions:
+ * * [SimpleStorage.createFile]
+ * * [SimpleStorage.openFilePicker]
+ * * [SimpleStorage.openFolderPicker]
+ * * [SimpleStorage.requestFullStorageAccess]
+ *
+ * then please construct [FileFullPath] with [StorageType], for example:
+ * ```
+ * val fullPath = FileFullPath(context, StorageType.EXTERNAL, "DCIM")
+ * storageHelper.requestStorageAccess(initialPath = fullPath)
+ * storageHelper.openFolderPicker(initialPath = fullPath)
+ * ```
+ *
  * @author Anggrayudi H
  */
 class FileFullPath {
 
-    val absolutePath: String
-    val simplePath: String
     val storageId: String
     val basePath: String
+    lateinit var absolutePath: String
+        private set
+    lateinit var simplePath: String
+        private set
 
     /**
      * @param fullPath can be simple path or absolute path
@@ -48,27 +66,61 @@ class FileFullPath {
             simplePath = fullPath
             storageId = fullPath.substringBefore(':', "").substringAfterLast('/')
             basePath = fullPath.substringAfter(':', "").trimFileSeparator()
-            absolutePath = when (storageId) {
-                StorageId.PRIMARY -> "${SimpleStorage.externalStoragePath}/$basePath".trimEnd('/')
-                StorageId.DATA -> "${context.dataDirectory.path}/$basePath".trimEnd('/')
-                else -> "/storage/$storageId/$basePath".trimEnd('/')
-            }
+            absolutePath = buildAbsolutePath(context, storageId, basePath)
         }
     }
 
     constructor(context: Context, storageId: String, basePath: String) {
         this.storageId = storageId
         this.basePath = basePath.trimFileSeparator()
-        simplePath = "$storageId:$basePath"
-        absolutePath = when (storageId) {
-            StorageId.PRIMARY -> "${SimpleStorage.externalStoragePath}/$basePath".trimEnd('/')
-            StorageId.DATA -> "${context.dataDirectory.path}/$basePath".trimEnd('/')
-            else -> "/storage/$storageId/$basePath".trimEnd('/')
+        buildBaseAndAbsolutePaths(context)
+    }
+
+    @RequiresApi(24)
+    constructor(context: Context, storageType: StorageType, basePath: String = "") {
+        this.basePath = basePath.trimFileSeparator()
+        val sm = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
+        storageId = when (storageType) {
+            StorageType.SD_CARD -> sm.storageVolumes.firstOrNull { it.isRemovable }?.mediaStoreVolumeName.orEmpty()
+            StorageType.EXTERNAL -> StorageId.PRIMARY
+            StorageType.DATA -> StorageId.DATA
+            else -> ""
         }
+        buildBaseAndAbsolutePaths(context)
     }
 
     constructor(context: Context, file: File) : this(context, file.path.orEmpty())
 
-    val uri: Uri
-        get() = DocumentFileCompat.createDocumentUri(storageId, basePath)
+    private fun buildAbsolutePath(context: Context, storageId: String, basePath: String) = if (storageId.isEmpty()) "" else when (storageId) {
+        StorageId.PRIMARY -> "${SimpleStorage.externalStoragePath}/$basePath".trimEnd('/')
+        StorageId.DATA -> "${context.dataDirectory.path}/$basePath".trimEnd('/')
+        else -> "/storage/$storageId/$basePath".trimEnd('/')
+    }
+
+    private fun buildBaseAndAbsolutePaths(context: Context) {
+        if (storageId.isEmpty()) {
+            simplePath = ""
+            absolutePath = ""
+        } else {
+            simplePath = "$storageId:$basePath"
+            absolutePath = buildAbsolutePath(context, storageId, basePath)
+        }
+    }
+
+    val uri: Uri?
+        get() = if (storageId.isEmpty()) null else DocumentFileCompat.createDocumentUri(storageId, basePath)
+
+    fun toDocumentUri(context: Context): Uri? {
+        return context.fromTreeUri(uri ?: return null)?.uri
+    }
+
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    fun checkIfStorageIdIsAccessibleInSafSelector() {
+        if (storageId.isEmpty()) {
+            throw IllegalArgumentException("Empty storage ID")
+        }
+        if (storageId == StorageId.DATA) {
+            throw IllegalArgumentException("Cannot use StorageType.DATA because it is never available in Storage Access Framework's folder selector.")
+        }
+    }
 }

@@ -91,7 +91,7 @@ class SampleFragment : Fragment() {
         }
 
         btnCreateFile.setOnClickListener {
-            storageHelper.createFile("text/plain", "Test create file", MainActivity.REQUEST_CODE_CREATE_FILE)
+            storageHelper.createFile("text/plain", "Test create file", requestCode = MainActivity.REQUEST_CODE_CREATE_FILE)
         }
     }
 

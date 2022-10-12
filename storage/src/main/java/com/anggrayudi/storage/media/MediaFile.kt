@@ -38,7 +38,7 @@ class MediaFile(context: Context, val uri: Uri) {
     interface AccessCallback {
 
         /**
-         * When this function called, you can ask user's concent to modify other app's files.
+         * When this function called, you can ask user's consent to modify other app's files.
          * @see RecoverableSecurityException
          * @see [android.app.Activity.startIntentSenderForResult]
          */
