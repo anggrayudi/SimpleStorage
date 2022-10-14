@@ -15,6 +15,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import com.anggrayudi.storage.callback.*
+import com.anggrayudi.storage.extension.getStorageId
 import com.anggrayudi.storage.file.FileFullPath
 import com.anggrayudi.storage.file.StorageType
 import com.anggrayudi.storage.file.getAbsolutePath
@@ -78,7 +79,7 @@ class SimpleStorageHelper {
                 }
 
                 @SuppressLint("NewApi")
-                override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType) {
+                override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType, storageId: String) {
                     if (storageType == StorageType.UNKNOWN) {
                         onStoragePermissionDenied(requestCode)
                         return
@@ -88,7 +89,7 @@ class SimpleStorageHelper {
                         .setMessage(R.string.ss_storage_access_denied_confirm)
                         .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
                         .setPositiveButton(android.R.string.ok) { _, _ ->
-                            storage.requestStorageAccess(initialPath = FileFullPath(storage.context, storageType))
+                            storage.requestStorageAccess(initialPath = FileFullPath(storage.context, storageId, ""))
                         }.show()
                 }
 
@@ -186,7 +187,10 @@ class SimpleStorageHelper {
                     .setMessage(messageRes)
                     .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
                     .setPositiveButton(android.R.string.ok) { _, _ ->
-                        storage.requestStorageAccess(initialPath = FileFullPath(storage.context, storageType), expectedStorageType = expectedStorageType)
+                        storage.requestStorageAccess(
+                            initialPath = FileFullPath(storage.context, uri.getStorageId(storage.context), ""),
+                            expectedStorageType = expectedStorageType
+                        )
                     }.show()
             }
 
@@ -247,7 +251,7 @@ class SimpleStorageHelper {
                     .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
                     .setPositiveButton(android.R.string.ok) { _, _ ->
                         storage.requestStorageAccess(
-                            initialPath = FileFullPath(storage.context, expectedStorageType),
+                            initialPath = FileFullPath(storage.context, expectedStorageType, expectedBasePath),
                             expectedStorageType = expectedStorageType,
                             expectedBasePath = expectedBasePath
                         )

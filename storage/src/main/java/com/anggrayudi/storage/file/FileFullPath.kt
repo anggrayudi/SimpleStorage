@@ -17,9 +17,14 @@ import java.io.File
  * * [SimpleStorage.openFolderPicker]
  * * [SimpleStorage.requestFullStorageAccess]
  *
- * then please construct [FileFullPath] with [StorageType], for example:
+ * then you can construct [FileFullPath]:
  * ```
+ * // for API 30+
  * val fullPath = FileFullPath(context, StorageType.EXTERNAL, "DCIM")
+ *
+ * // for API 29-, define storage ID explicitly
+ * val fullPath = FileFullPath(context, StorageId.PRIMARY, "DCIM")
+ *
  * storageHelper.requestStorageAccess(initialPath = fullPath)
  * storageHelper.openFolderPicker(initialPath = fullPath)
  * ```
@@ -76,7 +81,7 @@ class FileFullPath {
         buildBaseAndAbsolutePaths(context)
     }
 
-    @RequiresApi(24)
+    @RequiresApi(30)
     constructor(context: Context, storageType: StorageType, basePath: String = "") {
         this.basePath = basePath.trimFileSeparator()
         val sm = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
@@ -108,6 +113,9 @@ class FileFullPath {
     fun toDocumentUri(context: Context): Uri? {
         return context.fromTreeUri(uri ?: return null)?.uri
     }
+
+    val storageType: StorageType
+        get() = StorageType.fromStorageId(storageId)
 
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     fun checkIfStorageIdIsAccessibleInSafSelector() {

@@ -27,7 +27,7 @@ interface FolderPickerCallback {
      * @param folder selected folder that has no read and write permission
      * @param storageType `null` if `folder`'s authority is not [DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY]
      */
-    fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType)
+    fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType, storageId: String)
 
     fun onFolderSelected(requestCode: Int, folder: DocumentFile)
 }

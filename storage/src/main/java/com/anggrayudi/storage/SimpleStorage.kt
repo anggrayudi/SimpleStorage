@@ -158,31 +158,26 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             throw IllegalArgumentException("Cannot use StorageType.DATA because it is never available in Storage Access Framework's folder selector.")
         }
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !hasStoragePermission(context)) {
-            storageAccessCallback?.onStoragePermissionDenied(requestCode)
-            return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            if (hasStoragePermission(context)) {
+                if (expectedStorageType == StorageType.EXTERNAL && !isSdCardPresent) {
+                    val root = DocumentFileCompat.getRootDocumentFile(context, PRIMARY, true) ?: return
+                    saveUriPermission(root.uri)
+                    storageAccessCallback?.onRootPathPermissionGranted(requestCode, root)
+                    return
+                }
+            } else {
+                storageAccessCallback?.onStoragePermissionDenied(requestCode)
+                return
+            }
         }
 
-        val initialStorageType = if (initialPath != null) StorageType.fromStorageId(initialPath.storageId) else StorageType.EXTERNAL
-
-        if (initialPath?.storageId == PRIMARY
-            && expectedStorageType.isExpected(initialStorageType)
-            && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
-            && !isSdCardPresent
-        ) {
-            val root = DocumentFileCompat.getRootDocumentFile(context, PRIMARY, true) ?: return
-            saveUriPermission(root.uri)
-            storageAccessCallback?.onRootPathPermissionGranted(requestCode, root)
-            return
-        }
-
-        val intent = if (initialStorageType == StorageType.SD_CARD && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            externalStorageRootAccessIntent.also { addInitialPathToIntent(it, initialPath) }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && expectedStorageType == StorageType.SD_CARD) {
             sdCardRootAccessIntent
         } else {
             externalStorageRootAccessIntent
-        }
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q) {
-            addInitialPathToIntent(intent, initialPath)
         }
 
         if (wrapper.startActivityForResult(intent, requestCode)) {
@@ -398,7 +393,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         val storageType = StorageType.fromStorageId(storageId)
 
         if (folder == null || !folder.canModify(context)) {
-            folderPickerCallback?.onStorageAccessDenied(requestCode, folder, storageType)
+            folderPickerCallback?.onStorageAccessDenied(requestCode, folder, storageType, storageId)
             return
         }
         if (uri.toString().let { it == DocumentFileCompat.DOWNLOADS_TREE_URI || it == DocumentFileCompat.DOCUMENTS_TREE_URI }
@@ -415,7 +410,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         ) {
             folderPickerCallback?.onFolderSelected(requestCode, folder)
         } else {
-            folderPickerCallback?.onStorageAccessDenied(requestCode, folder, storageType)
+            folderPickerCallback?.onStorageAccessDenied(requestCode, folder, storageType, storageId)
         }
     }
 
