@@ -103,7 +103,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      * It returns an intent to be dispatched via [Activity.startActivityForResult] to access to
      * the first removable no primary storage. This function requires at least Nougat
      * because on previous Android versions there's no reliable way to get the
-     * volume/path of SdCard, and no, SdCard != External Storage.
+     * volume/path of SdCard, and of course, SdCard != External Storage.
      */
     private val sdCardRootAccessIntent: Intent
         @Suppress("DEPRECATION")
@@ -128,7 +128,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      * Even though storage permission has been granted via [hasStoragePermission], read and write access may have not been granted yet.
      *
      * @param storageId Use [PRIMARY] for external storage. Or use SD Card storage ID.
-     * @return `true` if storage pemissions and URI permissions are granted for read and write access.
+     * @return `true` if storage permissions and URI permissions are granted for read and write access.
      * @see [DocumentFileCompat.getStorageIds]
      */
     fun isStorageAccessGranted(storageId: String) = DocumentFileCompat.isAccessGranted(context, storageId)

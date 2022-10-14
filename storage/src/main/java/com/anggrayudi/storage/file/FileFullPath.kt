@@ -98,13 +98,8 @@ class FileFullPath {
     }
 
     private fun buildBaseAndAbsolutePaths(context: Context) {
-        if (storageId.isEmpty()) {
-            simplePath = ""
-            absolutePath = ""
-        } else {
-            simplePath = "$storageId:$basePath"
-            absolutePath = buildAbsolutePath(context, storageId, basePath)
-        }
+        absolutePath = buildAbsolutePath(context, storageId, basePath)
+        simplePath = if (storageId.isEmpty()) "" else "$storageId:$basePath"
     }
 
     val uri: Uri?

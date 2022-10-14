@@ -4,24 +4,24 @@
  **/
 ext.deps = [:]
 def versions = [:]
-versions.activity = "1.5.0"
-versions.appcompat = "1.4.2"
+versions.activity = "1.6.0"
+versions.appcompat = "1.5.1"
 versions.atsl_core = "1.2.0"
 versions.atsl_junit = "1.1.2"
 versions.atsl_rules = "1.2.0"
 versions.atsl_runner = "1.2.0"
-versions.core_ktx = "1.8.0"
-versions.coroutines = "1.5.2"
+versions.core_ktx = "1.9.0"
+versions.coroutines = "1.6.4"
 versions.documentfile = "1.0.1"
 versions.espresso = "3.3.0"
-versions.fragment = "1.5.0"
-versions.junit = "5.7.1"
+versions.fragment = "1.5.3"
+versions.junit = "5.9.1"
 versions.material_dialogs = "3.3.0"
 versions.material_progressbar = "1.6.1"
-versions.mockk = "1.11.0"
+versions.mockk = "1.13.2"
 versions.multidex = "2.0.1"
 versions.robolectric = "4.4"
-versions.timber = "4.7.1"
+versions.timber = "5.0.1"
 
 ext.versions = versions
 
