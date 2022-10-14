@@ -6,14 +6,9 @@ ext.deps = [:]
 def versions = [:]
 versions.activity = "1.6.0"
 versions.appcompat = "1.5.1"
-versions.atsl_core = "1.2.0"
-versions.atsl_junit = "1.1.2"
-versions.atsl_rules = "1.2.0"
-versions.atsl_runner = "1.2.0"
 versions.core_ktx = "1.9.0"
 versions.coroutines = "1.6.4"
 versions.documentfile = "1.0.1"
-versions.espresso = "3.3.0"
 versions.fragment = "1.5.3"
 versions.junit = "5.9.1"
 versions.material_dialogs = "3.3.0"
@@ -35,13 +30,6 @@ deps.core_ktx = "androidx.core:core-ktx:$versions.core_ktx"
 deps.multidex = "androidx.multidex:multidex:$versions.multidex"
 deps.documentfile = "androidx.documentfile:documentfile:$versions.documentfile"
 
-def atsl = [:]
-atsl.core = "androidx.test:core:$versions.atsl_core"
-atsl.ext_junit = "androidx.test.ext:junit:$versions.atsl_junit"
-atsl.runner = "androidx.test:runner:$versions.atsl_runner"
-atsl.rules = "androidx.test:rules:$versions.atsl_rules"
-deps.atsl = atsl
-
 def coroutines = [:]
 coroutines.core = "org.jetbrains.kotlinx:kotlinx-coroutines-core:$versions.coroutines"
 coroutines.android = "org.jetbrains.kotlinx:kotlinx-coroutines-android:$versions.coroutines"
@@ -50,7 +38,6 @@ deps.coroutines = coroutines
 
 // Testing ------------------------------
 deps.junit = "org.junit.jupiter:junit-jupiter-engine:$versions.junit"
-deps.espresso = "androidx.test.espresso:espresso-core:$versions.espresso"
 deps.robolectric = "org.robolectric:robolectric:$versions.robolectric"
 deps.mockk = "io.mockk:mockk:$versions.mockk"
 
