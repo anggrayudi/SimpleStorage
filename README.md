@@ -171,8 +171,11 @@ class MainActivity : AppCompatActivity() {
                     .message(text = "Please select $rootPath")
                     .negativeButton(android.R.string.cancel)
                     .positiveButton {
-                        val initialRoot = if (expectedStorageType.isExpected(selectedStorageType)) selectedStorageType else expectedStorageType
-                        storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, initialRoot, expectedStorageType)
+                      storage.requestStorageAccess(
+                        REQUEST_CODE_STORAGE_ACCESS,
+                        initialPath = FileFullPath(storage.context, uri.getStorageId(storage.context), ""),
+                        expectedStorageType = expectedStorageType
+                      )
                     }.show()
             }
 
@@ -233,7 +236,7 @@ private fun setupFolderPickerCallback() {
             requestStoragePermission()
         }
 
-        override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType) {
+        override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType, storageId: String) {
             if (storageType == StorageType.UNKNOWN) {
                 requestStoragePermission()
                 return
@@ -245,7 +248,7 @@ private fun setupFolderPickerCallback() {
                 )
                 .negativeButton(android.R.string.cancel)
                 .positiveButton {
-                    storage.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS, storageType)
+                  storage.requestStorageAccess(initialPath = FileFullPath(baseContext, storageId, ""))
                 }.show()
         }
 
