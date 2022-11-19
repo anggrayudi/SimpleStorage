@@ -4,14 +4,14 @@ buildscript {
 
     addRepos(repositories)
 
-    ext.kotlin_version = '1.7.10'
+    ext.kotlin_version = '1.7.20'
 
     dependencies {
         classpath 'com.android.tools:r8:3.3.75'
-        classpath 'com.android.tools.build:gradle:7.2.2'
+        classpath 'com.android.tools.build:gradle:7.3.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath 'com.vanniktech:gradle-maven-publish-plugin:0.16.0'
-        classpath "org.jetbrains.dokka:dokka-gradle-plugin:1.6.21"
+        classpath 'com.vanniktech:gradle-maven-publish-plugin:0.22.0'
+        classpath "org.jetbrains.dokka:dokka-gradle-plugin:1.7.20"
     }
 }
 
@@ -21,19 +21,25 @@ allprojects {
     //Support @JvmDefault
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
         kotlinOptions {
-            freeCompilerArgs = ['-Xjvm-default=all', '-Xopt-in=kotlin.RequiresOptIn']
+            freeCompilerArgs = ['-Xjvm-default=all', '-opt-in=kotlin.RequiresOptIn']
             jvmTarget = '1.8'
-        }
-    }
-
-    plugins.withId("com.vanniktech.maven.publish") {
-        mavenPublish {
-            sonatypeHost = null
         }
     }
 }
 
 subprojects {
+    if (name != 'sample') {
+        apply plugin: "com.vanniktech.maven.publish"
+
+        repositories {
+            maven {
+                url = version.toString().endsWith("SNAPSHOT")
+                        ? 'https://oss.sonatype.org/content/repositories/snapshots/'
+                        : 'https://oss.sonatype.org/service/local/staging/deploy/maven2'
+            }
+        }
+    }
+
     afterEvaluate {
         android {
             compileSdkVersion 33
