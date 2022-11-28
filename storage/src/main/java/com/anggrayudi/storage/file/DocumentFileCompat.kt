@@ -493,8 +493,10 @@ object DocumentFileCompat {
         if (currentDirectory.isRawFile) {
             return tryCreateWithRawFile()
         }
+        val rootBasePath = currentDirectory.getAbsolutePath(context)
+        val nextBasePath = fullPath.replaceFirst(rootBasePath, "").trimFileSeparator()
         val resolver = context.contentResolver
-        getDirectorySequence(getBasePath(context, fullPath)).forEach {
+        getDirectorySequence(nextBasePath).forEach {
             try {
                 val directory = currentDirectory.quickFindTreeFile(context, resolver, it)
                 currentDirectory = when {

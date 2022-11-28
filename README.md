@@ -82,9 +82,9 @@ You can read file with helper functions in `DocumentFileCompat` and `MediaStoreC
 
 #### Example
 ```kotlin
-val fileFromExternalStorage = DocumentFileCompat.fromSimplePath(context, basePath = "Downloads/MyMovie.mp4")
+val fileFromExternalStorage = DocumentFileCompat.fromSimplePath(context, basePath = "Download/MyMovie.mp4")
 
-val fileFromSdCard = DocumentFileCompat.fromSimplePath(context, storageId = "9016-4EF8", basePath = "Downloads/MyMovie.mp4")
+val fileFromSdCard = DocumentFileCompat.fromSimplePath(context, storageId = "9016-4EF8", basePath = "Download/MyMovie.mp4")
 ```
 
 ### `MediaStoreCompat`
@@ -259,7 +259,8 @@ whenever a conflict is found via `onConflict()`. Here're screenshots of the samp
 ![Alt text](art/parent-folder-conflict.png?raw=true "Parent Folder Conflict")
 ![Alt text](art/folder-content-conflict.png?raw=true "Folder Content Conflict")
 
-Read `MainActivity` from the sample code if you want to mimic above dialogs.
+Read [`MainActivity`](https://github.com/anggrayudi/SimpleStorage/blob/master/sample/src/main/java/com/anggrayudi/storage/sample/activity/MainActivity.kt)
+from the sample code if you want to mimic above dialogs.
 
 ## FAQ
 

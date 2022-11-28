@@ -116,7 +116,7 @@ object MediaStoreCompat {
                     }
                     if (mode == CreateMode.REPLACE) {
                         existingMedia.delete()
-                        return MediaFile(context, context.contentResolver.insert(mediaType.writeUri!!, contentValues) ?: return null)
+                        return tryInsertMediaFile(context, mediaType, contentValues)
                     }
 
                     if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
@@ -138,9 +138,9 @@ object MediaStoreCompat {
                             ?.let { return it }
                     }
 
-                    MediaFile(context, context.contentResolver.insert(mediaType.writeUri!!, contentValues) ?: return null)
+                    tryInsertMediaFile(context, mediaType, contentValues)
                 }
-                else -> MediaFile(context, context.contentResolver.insert(mediaType.writeUri!!, contentValues) ?: return null)
+                else -> tryInsertMediaFile(context, mediaType, contentValues)
             }
         } else {
             @Suppress("DEPRECATION")
@@ -162,6 +162,15 @@ object MediaStoreCompat {
             } else {
                 null
             }
+        }
+    }
+
+    private fun tryInsertMediaFile(context: Context, mediaType: MediaType, contentValues: ContentValues): MediaFile? {
+        return try {
+            MediaFile(context, context.contentResolver.insert(mediaType.writeUri!!, contentValues) ?: return null)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
 
