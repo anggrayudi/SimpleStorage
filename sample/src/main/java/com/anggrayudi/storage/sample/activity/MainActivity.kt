@@ -20,6 +20,7 @@ import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.checkbox.checkBoxPrompt
 import com.afollestad.materialdialogs.customview.customView
 import com.afollestad.materialdialogs.customview.getCustomView
+import com.afollestad.materialdialogs.input.input
 import com.afollestad.materialdialogs.list.listItems
 import com.anggrayudi.storage.SimpleStorageHelper
 import com.anggrayudi.storage.callback.FileCallback
@@ -71,10 +72,18 @@ class MainActivity : AppCompatActivity() {
 
         setupSimpleStorage(savedInstanceState)
         setupButtonActions()
+        displayOsInfo()
     }
 
     private fun scrollToView(view: View) {
         view.post(Runnable { scrollView?.scrollTo(0, view.top) })
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun displayOsInfo() {
+        tvOsName.text = "OS name: Android " + Build.VERSION.RELEASE
+        tvApiLevel.text = "API level: " + Build.VERSION.SDK_INT
+        layoutOsInfo.visibility = View.VISIBLE
     }
 
     @SuppressLint("NewApi")
@@ -116,6 +125,12 @@ class MainActivity : AppCompatActivity() {
         btnDecompressFiles.setOnClickListener {
             startActivity(Intent(this, FileDecompressionActivity::class.java))
         }
+        btnRenameFile.setOnClickListener {
+            storageHelper.openFilePicker(REQUEST_CODE_PICK_FILE_FOR_RENAME)
+        }
+        btnDeleteFiles.setOnClickListener {
+            storageHelper.openFilePicker(REQUEST_CODE_PICK_FILE_FOR_DELETE, allowMultiple = true)
+        }
 
         setupFileCopy()
         setupFolderCopy()
@@ -141,6 +156,8 @@ class MainActivity : AppCompatActivity() {
                 REQUEST_CODE_PICK_SOURCE_FILE_FOR_MOVE -> layoutMove_srcFile.updateFileSelectionView(file)
                 REQUEST_CODE_PICK_SOURCE_FILE_FOR_MULTIPLE_COPY -> layoutCopyMultipleFiles_sourceFile.updateFileSelectionView(file)
                 REQUEST_CODE_PICK_SOURCE_FILE_FOR_MULTIPLE_MOVE -> layoutMoveMultipleFiles_sourceFile.updateFileSelectionView(file)
+                REQUEST_CODE_PICK_FILE_FOR_RENAME -> renameFile(file)
+                REQUEST_CODE_PICK_FILE_FOR_DELETE -> deleteFiles(files)
                 else -> {
                     val names = files.joinToString(", ") { it.fullName }
                     Toast.makeText(baseContext, "File selected: $names", Toast.LENGTH_SHORT).show()
@@ -183,6 +200,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun renameFile(file: DocumentFile) {
+        MaterialDialog(this)
+            .title(text = "Rename file")
+            .input(prefill = file.baseName, hint = "New name", callback = { _, text ->
+                ioScope.launch {
+                    val newName = file.changeName(baseContext, text.toString())?.name
+                    uiScope.launch {
+                        val message = if (newName != null) "File renamed to $newName" else "Failed to rename ${file.fullName}"
+                        Toast.makeText(baseContext, message, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            })
+            .negativeButton(android.R.string.cancel)
+            .show()
+    }
+
+    private fun deleteFiles(files: List<DocumentFile>) {
+        ioScope.launch {
+            val deleted = files.count { it.delete() }
+            uiScope.launch {
+                Toast.makeText(baseContext, "Deleted $deleted of ${files.size} files", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private fun View.updateFolderSelectionView(folder: DocumentFile) {
         tag = folder
         tvFilePath.text = folder.getAbsolutePath(context)
@@ -219,7 +261,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             ioScope.launch {
-                sources.copyTo(applicationContext, targetFolder, callback = createMultipleFileCallback())
+                sources.copyTo(applicationContext, targetFolder, callback = createMultipleFileCallback(false))
             }
         }
     }
@@ -250,12 +292,13 @@ class MainActivity : AppCompatActivity() {
             }
 
             ioScope.launch {
-                sources.moveTo(applicationContext, targetFolder, callback = createMultipleFileCallback())
+                sources.moveTo(applicationContext, targetFolder, callback = createMultipleFileCallback(true))
             }
         }
     }
 
-    private fun createMultipleFileCallback() = object : MultipleFileCallback(uiScope) {
+    private fun createMultipleFileCallback(isMoveFileMode: Boolean) = object : MultipleFileCallback(uiScope) {
+        val mode = if (isMoveFileMode) "Moved" else "Copied"
 
         override fun onStart(files: List<DocumentFile>, totalFilesToCopy: Int, workerThread: Thread): Long {
             return 1000 // update progress every 1 second
@@ -279,11 +322,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onReport(report: Report) {
-            Timber.d("onReport() -> ${report.progress.toInt()}% | Copied ${report.fileCount} files")
+            Timber.d("onReport() -> ${report.progress.toInt()}% | $mode ${report.fileCount} files")
         }
 
         override fun onCompleted(result: Result) {
-            Toast.makeText(baseContext, "Copied ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
+            Toast.makeText(baseContext, "$mode ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
         }
 
         override fun onFailed(errorCode: ErrorCode) {
@@ -310,7 +353,7 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             ioScope.launch {
-                folder.copyFolderTo(applicationContext, targetFolder, false, callback = createFolderCallback())
+                folder.copyFolderTo(applicationContext, targetFolder, false, callback = createFolderCallback(false))
             }
         }
     }
@@ -334,12 +377,14 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             ioScope.launch {
-                folder.moveFolderTo(applicationContext, targetFolder, false, callback = createFolderCallback())
+                folder.moveFolderTo(applicationContext, targetFolder, false, callback = createFolderCallback(true))
             }
         }
     }
 
-    private fun createFolderCallback() = object : FolderCallback(uiScope) {
+    private fun createFolderCallback(isMoveFileMode: Boolean) = object : FolderCallback(uiScope) {
+        val mode = if (isMoveFileMode) "Moved" else "Copied"
+
         override fun onPrepare() {
             // Show notification or progress bar dialog with indeterminate state
         }
@@ -365,11 +410,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onReport(report: Report) {
-            Timber.d("onReport() -> ${report.progress.toInt()}% | Copied ${report.fileCount} files")
+            Timber.d("onReport() -> ${report.progress.toInt()}% | $mode ${report.fileCount} files")
         }
 
         override fun onCompleted(result: Result) {
-            Toast.makeText(baseContext, "Copied ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
+            Toast.makeText(baseContext, "$mode ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
         }
 
         override fun onFailed(errorCode: ErrorCode) {
@@ -683,6 +728,9 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_CODE_PICK_SOURCE_FILE_FOR_MULTIPLE_MOVE = 16
         const val REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MULTIPLE_MOVE = 17
         const val REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_MOVE = 18
+
+        const val REQUEST_CODE_PICK_FILE_FOR_RENAME = 19
+        const val REQUEST_CODE_PICK_FILE_FOR_DELETE = 20
 
         fun writeTestFile(context: Context, requestCode: Int, file: DocumentFile) {
             thread {

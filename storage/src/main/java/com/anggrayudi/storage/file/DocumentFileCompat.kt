@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Environment
 import android.os.StatFs
 import android.system.Os
+import androidx.annotation.RestrictTo
 import androidx.annotation.WorkerThread
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
@@ -50,9 +51,13 @@ object DocumentFileCompat {
      */
     const val DOCUMENTS_TREE_URI = "content://$EXTERNAL_STORAGE_AUTHORITY/tree/home%3A"
 
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
     val FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION = Regex("(.*?) \\(\\d+\\)\\.[a-zA-Z0-9]+")
 
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
     val FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION = Regex("(.*?) \\(\\d+\\)")
+
+    val SD_CARD_STORAGE_ID_REGEX = Regex("[A-Z0-9]{4}-[A-Z0-9]{4}")
 
     @JvmStatic
     fun isRootUri(uri: Uri): Boolean {

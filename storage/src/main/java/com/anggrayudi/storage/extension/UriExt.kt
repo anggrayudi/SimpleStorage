@@ -45,7 +45,7 @@ val Uri.isDownloadsDocument: Boolean
  * For URI [DocumentFileCompat.DOCUMENTS_TREE_URI]
  */
 val Uri.isDocumentsDocument: Boolean
-    get() = isExternalStorageDocument && path?.startsWith("/tree/home:") == true
+    get() = isExternalStorageDocument && path?.let { it.startsWith("/tree/home:") || it.startsWith("/document/home:") } == true
 
 val Uri.isMediaDocument: Boolean
     get() = authority == DocumentFileCompat.MEDIA_FOLDER_AUTHORITY

@@ -41,4 +41,16 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Create File" />
+
+    <Button
+        android:id="@+id/btnRenameFile"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Rename File" />
+
+    <Button
+        android:id="@+id/btnDeleteFiles"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Delete Files" />
 </LinearLayout>

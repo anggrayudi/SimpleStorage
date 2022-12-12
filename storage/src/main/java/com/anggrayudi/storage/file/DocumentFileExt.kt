@@ -201,8 +201,7 @@ fun DocumentFile.inPrimaryStorage(context: Context) = isTreeDocumentFile && getS
 /**
  * `true` if this file located in SD Card
  */
-fun DocumentFile.inSdCardStorage(context: Context) = isTreeDocumentFile && getStorageId(context) != PRIMARY
-        || isRawFile && uri.path.orEmpty().startsWith("/storage/${getStorageId(context)}")
+fun DocumentFile.inSdCardStorage(context: Context) = getStorageId(context).matches(DocumentFileCompat.SD_CARD_STORAGE_ID_REGEX)
 
 fun DocumentFile.inDataStorage(context: Context) = isRawFile && File(uri.path!!).inDataStorage(context)
 
@@ -216,13 +215,13 @@ val DocumentFile.isRawFile: Boolean
  * Filename without extension
  */
 val DocumentFile.baseName: String
-    get() = MimeType.getBaseFileName(fullName)
+    get() = if (isFile) MimeType.getBaseFileName(fullName) else name.orEmpty()
 
 /**
  * File extension
  */
 val DocumentFile.extension: String
-    get() = MimeType.getExtensionFromFileName(fullName)
+    get() = if (isFile) MimeType.getExtensionFromFileName(fullName) else ""
 
 /**
  * Advanced version of [DocumentFile.getType]. Returns:
@@ -262,10 +261,50 @@ fun DocumentFile.toRawDocumentFile(context: Context): DocumentFile? {
 fun DocumentFile.toTreeDocumentFile(context: Context): DocumentFile? {
     return if (isRawFile) {
         DocumentFileCompat.fromFile(context, toRawFile(context) ?: return null, considerRawFile = false)
-    } else takeIf { it.isTreeDocumentFile }
+    } else if (isTreeDocumentFile) {
+        this
+    } else {
+        val path = getAbsolutePath(context)
+        if (path.isEmpty()) null else {
+            DocumentFileCompat.fromFullPath(context, path, requiresWriteAccess = true)
+        }
+    }
 }
 
 fun DocumentFile.toMediaFile(context: Context) = if (isTreeDocumentFile) null else MediaFile(context, uri)
+
+/**
+ * Rename a file without changing its extension. It will try converting [androidx.documentfile.provider.SingleDocumentFile]
+ * to [androidx.documentfile.provider.TreeDocumentFile] if possible, because `SingleDocumentFile` can't do rename operation.
+ * It is also a safer option compared to [androidx.documentfile.provider.DocumentFile.renameTo], because `renameTo()`
+ * has some issues prior to scoped storage on SD card path.
+ * @see toTreeDocumentFile
+ */
+fun DocumentFile.changeName(context: Context, newBaseName: String): DocumentFile? {
+    val newName = "$newBaseName.${extension}".trimEnd('.')
+    if (newName.isEmpty()) {
+        return null
+    }
+    if (isRawFile && renameTo(newName)) {
+        return this
+    }
+    val file = toTreeDocumentFile(context) ?: return null
+    val parentFolder = file.findParent(context, true) ?: return null
+    return if (Build.VERSION.SDK_INT < 29 && file.inSdCardStorage(context)) {
+        //  Renaming files in SD card always throws FileNotFoundException, so we have a workaround here.
+        if (parentFolder.child(context, newName, true) == null) {
+            file.renameTo(newName)
+            parentFolder.child(context, newName, true)
+        } else {
+            // Conflict with existing file
+            null
+        }
+    } else {
+        // Returning 'this' will lead to null getName(), false canWrite(), and other problems.
+        // So we will create a new instance of the renamed file to avoid those issues.
+        if (file.renameTo(newName)) parentFolder.child(context, newName, true) else null
+    }
+}
 
 /**
  * It's faster than [DocumentFile.findFile]
@@ -357,7 +396,7 @@ fun DocumentFile.getBasePath(context: Context): String {
         isRawFile -> File(path).getBasePath(context)
 
         isDocumentsDocument -> {
-            "${Environment.DIRECTORY_DOCUMENTS}/${path.substringAfterLast("/document/home:", "")}".trimEnd('/')
+            "${Environment.DIRECTORY_DOCUMENTS}/${path.substringAfterLast("/home:", "")}".trimEnd('/')
         }
 
         isExternalStorageDocument && path.contains("/document/$storageID:") -> {
@@ -468,7 +507,7 @@ fun DocumentFile.getAbsolutePath(context: Context): String {
         isRawFile -> path
 
         isDocumentsDocument -> {
-            val basePath = path.substringAfterLast("/document/home:", "").trimFileSeparator()
+            val basePath = path.substringAfterLast("/home:", "").trimFileSeparator()
             "${PublicDirectory.DOCUMENTS.absolutePath}/$basePath".trimEnd('/')
         }
 

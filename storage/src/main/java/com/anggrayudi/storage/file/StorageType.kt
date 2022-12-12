@@ -29,7 +29,7 @@ enum class StorageType {
         fun fromStorageId(storageId: String) = when {
             storageId == StorageId.PRIMARY -> EXTERNAL
             storageId == StorageId.DATA -> DATA
-            storageId.matches(Regex("[A-Z0-9]{4}-[A-Z0-9]{4}")) -> SD_CARD
+            storageId.matches(DocumentFileCompat.SD_CARD_STORAGE_ID_REGEX) -> SD_CARD
             else -> UNKNOWN
         }
     }

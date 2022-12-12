@@ -15,6 +15,38 @@
         android:paddingHorizontal="24dp"
         android:paddingVertical="16dp">
 
+        <LinearLayout
+            android:id="@+id/layoutOsInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                style="@style/TextAppearance.AppCompat.Title.Inverse"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="OS Information"
+                android:textColor="@android:color/black" />
+
+            <TextView
+                android:id="@+id/tvOsName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="14sp"
+                tools:text="OS name: KitKat 4.4" />
+
+            <TextView
+                android:id="@+id/tvApiLevel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="14sp"
+                tools:text="API level: 19" />
+        </LinearLayout>
+
         <TextView
             style="@style/TextAppearance.AppCompat.Title.Inverse"
             android:layout_width="wrap_content"
