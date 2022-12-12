@@ -518,7 +518,7 @@ class MediaFile(context: Context, val uri: Uri) {
         callback: FileCallback
     ): FileCallback.ConflictResolution {
         targetFolder.child(context, fileName)?.let { targetFile ->
-            val resolution = awaitUiResultWithPending<FileCallback.ConflictResolution>(callback.uiScope) {
+            val resolution = awaitUiResultWithPending(callback.uiScope) {
                 callback.onConflict(targetFile, FileCallback.FileConflictAction(it))
             }
             if (resolution == FileCallback.ConflictResolution.REPLACE) {

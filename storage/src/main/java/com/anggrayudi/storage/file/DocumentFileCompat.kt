@@ -57,7 +57,14 @@ object DocumentFileCompat {
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     val FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION = Regex("(.*?) \\(\\d+\\)")
 
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
     val SD_CARD_STORAGE_ID_REGEX = Regex("[A-Z0-9]{4}-[A-Z0-9]{4}")
+
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    val SD_CARD_STORAGE_PATH_REGEX = Regex("[A-Z0-9]{4}-[A-Z0-9]{4}(.*?)")
+
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    fun getKitkatSdCardRootFile(basePath: String = "") = File(SimpleStorage.KITKAT_SD_CARD_PATH + "/$basePath".trimEnd('/'))
 
     @JvmStatic
     fun isRootUri(uri: Uri): Boolean {
@@ -110,7 +117,13 @@ object DocumentFileCompat {
         return when {
             uri.isRawFile -> File(uri.path ?: return null).run { if (canRead()) DocumentFile.fromFile(this) else null }
             uri.isTreeDocumentFile -> context.fromTreeUri(uri)?.run { if (isDownloadsDocument) toWritableDownloadsDocumentFile(context) else this }
-            else -> context.fromSingleUri(uri)
+            else -> context.fromSingleUri(uri)?.let {
+                if (Build.VERSION.SDK_INT < 21 && it.getStorageId(context).matches(SD_CARD_STORAGE_ID_REGEX)) {
+                    DocumentFile.fromFile(getKitkatSdCardRootFile(it.getBasePath(context)))
+                } else {
+                    it
+                }
+            }
         }
     }
 
@@ -193,7 +206,7 @@ object DocumentFileCompat {
         requiresWriteAccess: Boolean = false,
         considerRawFile: Boolean = true
     ): DocumentFile? {
-        return if (file.checkRequirements(context, requiresWriteAccess, considerRawFile)) {
+        return if (file.checkRequirements(context, requiresWriteAccess, considerRawFile || Build.VERSION.SDK_INT < 21)) {
             if (documentType == DocumentFileType.FILE && !file.isFile || documentType == DocumentFileType.FOLDER && !file.isDirectory)
                 null
             else
@@ -279,6 +292,9 @@ object DocumentFileCompat {
         if (storageId == DATA) {
             return DocumentFile.fromFile(context.dataDirectory)
         }
+        if (storageId.isKitkatSdCardStorageId()) {
+            return DocumentFile.fromFile(getKitkatSdCardRootFile()).takeIf { it.canWrite() }
+        }
         val file = if (considerRawFile) {
             getRootRawFile(context, storageId, requiresWriteAccess)?.let { DocumentFile.fromFile(it) }
                 ?: context.fromTreeUri(createDocumentUri(storageId))
@@ -357,9 +373,10 @@ object DocumentFileCompat {
     @JvmStatic
     @Suppress("DEPRECATION")
     fun getRootRawFile(context: Context, storageId: String, requiresWriteAccess: Boolean = false): File? {
-        val rootFile = when (storageId) {
-            PRIMARY -> Environment.getExternalStorageDirectory()
-            DATA -> context.dataDirectory
+        val rootFile = when {
+            storageId == PRIMARY -> Environment.getExternalStorageDirectory()
+            storageId == DATA -> context.dataDirectory
+            storageId.isKitkatSdCardStorageId() -> getKitkatSdCardRootFile()
             else -> File("/storage/$storageId")
         }
         return rootFile.takeIf { rootFile.canRead() && (requiresWriteAccess && rootFile.isWritable(context) || !requiresWriteAccess) }
@@ -534,17 +551,18 @@ object DocumentFileCompat {
         val dataDir = context.dataDirectory.path
         val results = arrayOfNulls<DocumentFile>(fullPaths.size)
         val cleanedFullPaths = fullPaths.map { buildAbsolutePath(context, it) }
+        val shouldUseRawFile = considerRawFile || Build.VERSION.SDK_INT < 21
         for (path in findUniqueDeepestSubFolders(context, cleanedFullPaths)) {
             // use java.io.File for faster performance
             val folder = File(path).apply { mkdirs() }
-            if (considerRawFile && folder.isDirectory && folder.canRead() || path.startsWith(dataDir)) {
+            if (shouldUseRawFile && folder.isDirectory && folder.canRead() || path.startsWith(dataDir)) {
                 cleanedFullPaths.forEachIndexed { index, s ->
                     if (path.hasParent(s)) {
                         results[index] = DocumentFile.fromFile(File(getDirectorySequence(s).joinToString(prefix = "/", separator = "/")))
                     }
                 }
             } else {
-                var currentDirectory = getAccessibleRootDocumentFile(context, path, requiresWriteAccess, considerRawFile) ?: continue
+                var currentDirectory = getAccessibleRootDocumentFile(context, path, requiresWriteAccess, shouldUseRawFile) ?: continue
                 val isRawFile = currentDirectory.isRawFile
                 val resolver = context.contentResolver
                 getDirectorySequence(getBasePath(context, path)).forEach {
@@ -612,8 +630,12 @@ object DocumentFileCompat {
         mimeType: String = MimeType.UNKNOWN,
         considerRawFile: Boolean = true
     ): DocumentFile? {
-        return if (storageId == DATA || considerRawFile && storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            val file = File(buildAbsolutePath(context, storageId, basePath))
+        return if (storageId == DATA || storageId.isKitkatSdCardStorageId() || considerRawFile && storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            val file = if (storageId.isKitkatSdCardStorageId()) {
+                getKitkatSdCardRootFile(basePath)
+            } else {
+                File(buildAbsolutePath(context, storageId, basePath))
+            }
             file.parentFile?.mkdirs()
             if (create(file)) DocumentFile.fromFile(file) else null
         } else try {
@@ -647,7 +669,11 @@ object DocumentFileCompat {
         mimeType: String = MimeType.UNKNOWN,
         considerRawFile: Boolean = true
     ): DocumentFile? {
-        val file = File(buildAbsolutePath(context, storageId, basePath))
+        val file = if (storageId.isKitkatSdCardStorageId()) {
+            getKitkatSdCardRootFile(basePath)
+        } else {
+            File(buildAbsolutePath(context, storageId, basePath))
+        }
         file.delete()
         file.parentFile?.mkdirs()
         if ((considerRawFile || storageId == DATA) && create(file)) {
@@ -684,6 +710,12 @@ object DocumentFileCompat {
         requiresWriteAccess: Boolean,
         considerRawFile: Boolean
     ): DocumentFile? {
+        if (storageId.isKitkatSdCardStorageId()) {
+            return DocumentFile.fromFile(getKitkatSdCardRootFile(basePath)).takeIf {
+                it.canWrite() && (documentType == DocumentFileType.ANY || documentType == DocumentFileType.FILE && it.isFile
+                        || documentType == DocumentFileType.FOLDER && it.isDirectory)
+            }
+        }
         val rawFile = File(buildAbsolutePath(context, storageId, basePath))
         if ((considerRawFile || storageId == DATA) && rawFile.canRead() && rawFile.shouldWritable(context, requiresWriteAccess)) {
             return if (documentType == DocumentFileType.ANY || documentType == DocumentFileType.FILE && rawFile.isFile
@@ -875,6 +907,9 @@ object DocumentFileCompat {
             DATA -> DocumentFile.fromFile(context.dataDirectory)
 
             else -> {
+                if (storageId.isKitkatSdCardStorageId()) {
+                    return DocumentFile.fromFile(getKitkatSdCardRootFile())
+                }
                 // /storage/131D-261A/Android/data/com.anggrayudi.storage.sample/files
                 val folder = File("/storage/$storageId/Android/data/${context.packageName}/files")
                 folder.mkdirs()

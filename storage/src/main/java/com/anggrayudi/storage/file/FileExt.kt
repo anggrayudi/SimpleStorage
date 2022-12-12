@@ -13,6 +13,7 @@ import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.callback.FileCallback
 import com.anggrayudi.storage.callback.FileConflictCallback
 import com.anggrayudi.storage.extension.awaitUiResultWithPending
+import com.anggrayudi.storage.extension.isKitkatSdCardStorageId
 import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import com.anggrayudi.storage.file.StorageId.DATA
@@ -85,6 +86,7 @@ fun File.getRootPath(context: Context): String {
     return when {
         storageId == PRIMARY -> SimpleStorage.externalStoragePath
         storageId == DATA -> context.dataDirectory.path
+        storageId.isKitkatSdCardStorageId() -> SimpleStorage.KITKAT_SD_CARD_PATH
         storageId.isNotEmpty() -> "/storage/$storageId"
         else -> ""
     }
@@ -136,13 +138,19 @@ fun File.createNewFileIfPossible(): Boolean = try {
  */
 fun File.isWritable(context: Context) = canWrite() && (isFile || isExternalStorageManager(context))
 
+@RestrictTo(RestrictTo.Scope.LIBRARY)
+fun File.inKitkatSdCard() =
+    Build.VERSION.SDK_INT < 21 && (path.startsWith(StorageId.KITKAT_SDCARD) || path.matches(DocumentFileCompat.SD_CARD_STORAGE_PATH_REGEX))
+
 /**
  * @return `true` if you have full disk access
  * @see Environment.isExternalStorageManager
  */
 @Suppress("DEPRECATION")
 fun File.isExternalStorageManager(context: Context) = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q && Environment.isExternalStorageManager(this)
-        || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && path.startsWith(SimpleStorage.externalStoragePath) && SimpleStorage.hasStoragePermission(context)
+        || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+        (path.startsWith(SimpleStorage.externalStoragePath) || Build.VERSION.SDK_INT < 21 && path.startsWith(StorageId.KITKAT_SDCARD))
+        && SimpleStorage.hasStoragePermission(context)
         || context.writableDirs.any { path.startsWith(it.path) }
 
 /**
@@ -192,7 +200,7 @@ fun File.makeFile(
     var createMode = mode
     val targetFile = File(parent, fullFileName)
     if (onConflict != null && targetFile.exists()) {
-        createMode = awaitUiResultWithPending<FileCallback.ConflictResolution>(onConflict.uiScope) {
+        createMode = awaitUiResultWithPending(onConflict.uiScope) {
             onConflict.onFileConflict(targetFile, FileCallback.FileConflictAction(it))
         }.toCreateMode(true)
     }

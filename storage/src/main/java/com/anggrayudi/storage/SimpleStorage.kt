@@ -427,8 +427,13 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             if (uri.isDownloadsDocument && Build.VERSION.SDK_INT < 28 && uri.path?.startsWith("/document/raw:") == true) {
                 val fullPath = uri.path.orEmpty().substringAfterLast("/document/raw:")
                 DocumentFile.fromFile(File(fullPath))
-            } else {
-                context.fromSingleUri(uri)
+            } else context.fromSingleUri(uri)?.let { file ->
+                // content://com.android.externalstorage.documents/document/15FA-160C%3Aabc.txt
+                if (Build.VERSION.SDK_INT < 21 && file.getStorageId(context).matches(DocumentFileCompat.SD_CARD_STORAGE_ID_REGEX)) {
+                    DocumentFile.fromFile(DocumentFileCompat.getKitkatSdCardRootFile(file.getBasePath(context)))
+                } else {
+                    file
+                }
             }
         }.filter { it.isFile }
     }
@@ -557,6 +562,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         private const val KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST = BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedBasePathForAccessRequest"
         private const val KEY_LAST_VISITED_FOLDER = BuildConfig.LIBRARY_PACKAGE_NAME + ".lastVisitedFolder"
         private const val TAG = "SimpleStorage"
+
+        const val KITKAT_SD_CARD_PATH = "/storage/sdcard"
 
         @JvmStatic
         @Suppress("DEPRECATION")

@@ -70,6 +70,11 @@ val DocumentFile.rootId: String
 
 fun DocumentFile.isExternalStorageManager(context: Context) = isRawFile && File(uri.path!!).isExternalStorageManager(context)
 
+@RestrictTo(RestrictTo.Scope.LIBRARY)
+fun DocumentFile.inKitkatSdCard() = Build.VERSION.SDK_INT < 21 && uri.path?.let {
+    it.startsWith(StorageId.KITKAT_SDCARD) || it.matches(DocumentFileCompat.SD_CARD_STORAGE_PATH_REGEX)
+} == true
+
 /**
  * Some media files do not return file extension from [DocumentFile.getName]. This function helps you to fix this kind of issue.
  */
@@ -201,7 +206,8 @@ fun DocumentFile.inPrimaryStorage(context: Context) = isTreeDocumentFile && getS
 /**
  * `true` if this file located in SD Card
  */
-fun DocumentFile.inSdCardStorage(context: Context) = getStorageId(context).matches(DocumentFileCompat.SD_CARD_STORAGE_ID_REGEX)
+fun DocumentFile.inSdCardStorage(context: Context) =
+    getStorageId(context).let { it.matches(DocumentFileCompat.SD_CARD_STORAGE_ID_REGEX) || Build.VERSION.SDK_INT < 21 && it == StorageId.KITKAT_SDCARD }
 
 fun DocumentFile.inDataStorage(context: Context) = isRawFile && File(uri.path!!).inDataStorage(context)
 
@@ -249,8 +255,15 @@ fun DocumentFile.toRawFile(context: Context): File? {
     return when {
         isRawFile -> File(uri.path ?: return null)
         inPrimaryStorage(context) -> File("${SimpleStorage.externalStoragePath}/${getBasePath(context)}")
-        getStorageId(context).isNotEmpty() -> File("/storage/${getStorageId(context)}/${getBasePath(context)}")
-        else -> null
+        else -> getStorageId(context).let { storageId ->
+            if (storageId.isKitkatSdCardStorageId()) {
+                DocumentFileCompat.getKitkatSdCardRootFile(getBasePath(context))
+            } else if (storageId.isNotEmpty()) {
+                File("/storage/$storageId/${getBasePath(context)}")
+            } else {
+                null
+            }
+        }
     }
 }
 
@@ -280,8 +293,10 @@ fun DocumentFile.toMediaFile(context: Context) = if (isTreeDocumentFile) null el
  * has some issues prior to scoped storage on SD card path.
  * @see toTreeDocumentFile
  */
-fun DocumentFile.changeName(context: Context, newBaseName: String): DocumentFile? {
-    val newName = "$newBaseName.${extension}".trimEnd('.')
+@JvmOverloads
+fun DocumentFile.changeName(context: Context, newBaseName: String, newExtension: String? = null): DocumentFile? {
+    val newFileExtension = newExtension ?: extension
+    val newName = "$newBaseName.$newFileExtension".trimEnd('.')
     if (newName.isEmpty()) {
         return null
     }
@@ -703,7 +718,7 @@ fun DocumentFile.makeFile(
     if (onConflict != null) {
         parent.child(context, fullFileName)?.let { targetFile ->
             existingFile = targetFile
-            createMode = awaitUiResultWithPending<FileCallback.ConflictResolution>(onConflict.uiScope) {
+            createMode = awaitUiResultWithPending(onConflict.uiScope) {
                 onConflict.onFileConflict(targetFile, FileCallback.FileConflictAction(it))
             }.toCreateMode(true)
         }
@@ -2638,7 +2653,7 @@ private fun handleFileConflict(
     callback: FileCallback
 ): FileCallback.ConflictResolution {
     targetFolder.child(context, targetFileName)?.let { targetFile ->
-        val resolution = awaitUiResultWithPending<FileCallback.ConflictResolution>(callback.uiScope) {
+        val resolution = awaitUiResultWithPending(callback.uiScope) {
             callback.onConflict(targetFile, FileCallback.FileConflictAction(it))
         }
         if (resolution == FileCallback.ConflictResolution.REPLACE) {
