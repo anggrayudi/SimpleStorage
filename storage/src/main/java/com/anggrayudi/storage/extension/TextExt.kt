@@ -45,43 +45,32 @@ fun String.replaceCompletely(match: String, replaceWith: String) = let {
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 fun String.hasParent(parentPath: String): Boolean {
-    val parentTree = parentPath.split('/')
-        .map { it.trimFileSeparator() }
-        .filter { it.isNotEmpty() }
-
-    val subFolderTree = split('/')
-        .map { it.trimFileSeparator() }
-        .filter { it.isNotEmpty() }
-
+    val parentTree = parentPath.getFolderTree()
+    val subFolderTree = getFolderTree()
     return parentTree.size <= subFolderTree.size && subFolderTree.take(parentTree.size) == parentTree
 }
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 fun String.childOf(parentPath: String): Boolean {
-    val parentTree = parentPath.split('/')
-        .map { it.trimFileSeparator() }
-        .filter { it.isNotEmpty() }
-
-    val subFolderTree = split('/')
-        .map { it.trimFileSeparator() }
-        .filter { it.isNotEmpty() }
-
+    val parentTree = parentPath.getFolderTree()
+    val subFolderTree = getFolderTree()
     return subFolderTree.size > parentTree.size && subFolderTree.take(parentTree.size) == parentTree
 }
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 fun String.parent(): String {
-    val folderTree = split('/')
-        .map { it.trimFileSeparator() }
-        .filter { it.isNotEmpty() }
+    val folderTree = getFolderTree()
     if (folderTree.isEmpty()) {
         return ""
     }
     val parentPath = folderTree.take(folderTree.size - 1).joinToString("/", "/")
-    return if (parentPath == SimpleStorage.externalStoragePath || parentPath.matches(Regex("/storage/[A-Z0-9]{4}-[A-Z0-9]{4}"))) {
-        // for root path, use empty string
-        ""
-    } else {
+    return if (parentPath.startsWith(SimpleStorage.externalStoragePath) || parentPath.matches(Regex("/storage/[A-Z0-9]{4}-[A-Z0-9]{4}(.*?)"))) {
         parentPath
+    } else {
+        ""
     }
 }
+
+private fun String.getFolderTree() = split('/')
+    .map { it.trimFileSeparator() }
+    .filter { it.isNotEmpty() }

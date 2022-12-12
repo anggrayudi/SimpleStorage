@@ -1,7 +1,12 @@
 package com.anggrayudi.storage.extension
 
+import android.os.Environment
+import io.mockk.every
+import io.mockk.mockkStatic
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
+import java.io.File
 
 /**
  * Created on 20/08/20
@@ -9,6 +14,12 @@ import org.junit.Test
  * @author Anggrayudi H
  */
 class TextExtKtTest {
+
+    @Before
+    fun setUp() {
+        mockkStatic(Environment::class)
+        every { Environment.getExternalStorageDirectory() } answers { File("/storage/emulated/0") }
+    }
 
     @Test
     fun count() {
@@ -67,5 +78,16 @@ class TextExtKtTest {
 
         assertFalse("/path/Music/Pop".childOf("/path/Music/Rock"))
         assertFalse("/path/Music".childOf("/path/Music/Rock"))
+    }
+
+    @Test
+    fun parent() {
+        assertEquals("/storage/AAAA-BBBB/Download", "/storage/AAAA-BBBB/Download/abc.txt".parent())
+        assertEquals("/storage/AAAA-BBBB", "/storage/AAAA-BBBB/abc.txt".parent())
+        assertEquals("", "/storage/AAAA-BBBB".parent())
+
+        assertEquals("/storage/emulated/0/Download", "/storage/emulated/0/Download/abc.txt".parent())
+        assertEquals("/storage/emulated/0", "/storage/emulated/0/abc.txt".parent())
+        assertEquals("", "/storage/emulated/0".parent())
     }
 }
