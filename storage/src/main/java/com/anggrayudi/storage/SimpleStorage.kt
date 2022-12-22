@@ -201,9 +201,9 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
 
     /**
+     * Show interactive UI to create a file.
      * @param initialPath only takes effect on API 26+
      */
-    @RequiresApi(21)
     @JvmOverloads
     fun createFile(
         mimeType: String,

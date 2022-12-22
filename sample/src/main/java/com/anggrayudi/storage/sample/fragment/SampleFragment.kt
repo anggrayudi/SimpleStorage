@@ -4,9 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.afollestad.materialdialogs.MaterialDialog
@@ -16,13 +14,13 @@ import com.anggrayudi.storage.file.getAbsolutePath
 import com.anggrayudi.storage.permission.*
 import com.anggrayudi.storage.sample.R
 import com.anggrayudi.storage.sample.activity.MainActivity
-import kotlinx.android.synthetic.main.incl_base_operation.*
+import com.anggrayudi.storage.sample.databinding.InclBaseOperationBinding
 
 /**
  * Created on 13/05/21
  * @author Anggrayudi H
  */
-class SampleFragment : Fragment() {
+class SampleFragment : Fragment(R.layout.incl_base_operation) {
 
     // In Fragment, build permissionRequest before onCreate() is called
     private val permissionRequest = FragmentPermissionRequest.Builder(this)
@@ -54,26 +52,23 @@ class SampleFragment : Fragment() {
         super.onSaveInstanceState(outState)
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.incl_base_operation, container, false)
-    }
-
     @SuppressLint("NewApi")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupSimpleStorage(savedInstanceState)
 
-        btnRequestStoragePermission.run {
+        val binding = InclBaseOperationBinding.bind(view)
+        binding.btnRequestStoragePermission.run {
             setOnClickListener { permissionRequest.check() }
             isEnabled = Build.VERSION.SDK_INT in 23..28
         }
 
-        btnRequestStorageAccess.run {
+        binding.btnRequestStorageAccess.run {
             isEnabled = Build.VERSION.SDK_INT >= 21
             setOnClickListener { storageHelper.requestStorageAccess(MainActivity.REQUEST_CODE_STORAGE_ACCESS) }
         }
 
-        btnRequestFullStorageAccess.run {
+        binding.btnRequestFullStorageAccess.run {
             isEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 setOnClickListener { storageHelper.storage.requestFullStorageAccess() }
                 true
@@ -82,15 +77,15 @@ class SampleFragment : Fragment() {
             }
         }
 
-        btnSelectFolder.setOnClickListener {
+        binding.btnSelectFolder.setOnClickListener {
             storageHelper.openFolderPicker(MainActivity.REQUEST_CODE_PICK_FOLDER)
         }
 
-        btnSelectFile.setOnClickListener {
+        binding.btnSelectFile.setOnClickListener {
             storageHelper.openFilePicker(MainActivity.REQUEST_CODE_PICK_FILE)
         }
 
-        btnCreateFile.setOnClickListener {
+        binding.btnCreateFile.setOnClickListener {
             storageHelper.createFile("text/plain", "Test create file", requestCode = MainActivity.REQUEST_CODE_CREATE_FILE)
         }
     }

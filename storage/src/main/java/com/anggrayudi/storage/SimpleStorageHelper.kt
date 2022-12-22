@@ -357,7 +357,6 @@ class SimpleStorageHelper {
         storage.requestStorageAccess(requestCode, initialPath, expectedStorageType, expectedBasePath)
     }
 
-    @RequiresApi(21)
     @JvmOverloads
     fun createFile(
         mimeType: String,

@@ -9,6 +9,7 @@ import kotlinx.coroutines.*
  * @version CoroutineExt.kt, v 0.0.1 04/04/20 18.26 by Anggrayudi Hardiannico A.
  */
 
+@Suppress("OPT_IN_USAGE")
 fun startCoroutineTimer(
     delayMillis: Long = 0,
     repeatMillis: Long = 0,
@@ -34,6 +35,7 @@ fun startCoroutineTimer(
     }
 }
 
+@Suppress("OPT_IN_USAGE")
 fun launchOnUiThread(action: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(Dispatchers.Main, block = action)
 
 inline fun <R> awaitUiResultWithPending(uiScope: CoroutineScope, crossinline action: (CancellableContinuation<R>) -> Unit): R {

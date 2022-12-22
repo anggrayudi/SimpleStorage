@@ -1,6 +1,5 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 
 def properties = new Properties()
 properties.load(rootProject.file('local.properties').newDataInputStream())
@@ -51,6 +50,10 @@ android {
 
     lintOptions {
         abortOnError false
+    }
+
+    buildFeatures {
+        viewBinding = true
     }
 
     flavorDimensions "libSource"

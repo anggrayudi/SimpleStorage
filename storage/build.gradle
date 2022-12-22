@@ -1,6 +1,5 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 
 android {
     defaultConfig {
@@ -16,6 +15,10 @@ android {
 
     lintOptions {
         abortOnError false
+    }
+
+    buildFeatures {
+        viewBinding = true
     }
 
     resourcePrefix 'ss_'

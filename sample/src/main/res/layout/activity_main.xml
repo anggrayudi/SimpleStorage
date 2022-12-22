@@ -64,7 +64,9 @@
 
         <include layout="@layout/view_divider" />
 
-        <include layout="@layout/incl_base_operation" />
+        <include
+            android:id="@+id/layoutBaseOperation"
+            layout="@layout/incl_base_operation" />
 
         <Button
             android:id="@+id/btnCompressFiles"

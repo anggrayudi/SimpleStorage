@@ -34,9 +34,7 @@ import com.anggrayudi.storage.permission.PermissionReport
 import com.anggrayudi.storage.permission.PermissionResult
 import com.anggrayudi.storage.sample.R
 import com.anggrayudi.storage.sample.StorageInfoAdapter
-import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.android.synthetic.main.incl_base_operation.*
-import kotlinx.android.synthetic.main.view_file_picked.view.*
+import com.anggrayudi.storage.sample.databinding.ActivityMainBinding
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.IOException
@@ -63,12 +61,14 @@ class MainActivity : AppCompatActivity() {
         .build()
 
     private val storageHelper = SimpleStorageHelper(this)
+    private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        recyclerView.adapter = StorageInfoAdapter(applicationContext, ioScope, uiScope)
+        binding.recyclerView.adapter = StorageInfoAdapter(applicationContext, ioScope, uiScope)
 
         setupSimpleStorage(savedInstanceState)
         setupButtonActions()
@@ -76,29 +76,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun scrollToView(view: View) {
-        view.post(Runnable { scrollView?.scrollTo(0, view.top) })
+        view.post(Runnable { binding.scrollView.scrollTo(0, view.top) })
     }
 
     @SuppressLint("SetTextI18n")
     private fun displayOsInfo() {
-        tvOsName.text = "OS name: Android " + Build.VERSION.RELEASE
-        tvApiLevel.text = "API level: " + Build.VERSION.SDK_INT
-        layoutOsInfo.visibility = View.VISIBLE
+        binding.tvOsName.text = "OS name: Android " + Build.VERSION.RELEASE
+        binding.tvApiLevel.text = "API level: " + Build.VERSION.SDK_INT
+        binding.layoutOsInfo.visibility = View.GONE
     }
 
     @SuppressLint("NewApi")
     private fun setupButtonActions() {
-        btnRequestStoragePermission.run {
+        binding.layoutBaseOperation.btnRequestStoragePermission.run {
             setOnClickListener { permissionRequest.check() }
             isEnabled = Build.VERSION.SDK_INT in 23..28
         }
 
-        btnRequestStorageAccess.run {
+        binding.layoutBaseOperation.btnRequestStorageAccess.run {
             isEnabled = Build.VERSION.SDK_INT >= 21
             setOnClickListener { storageHelper.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS) }
         }
 
-        btnRequestFullStorageAccess.run {
+        binding.layoutBaseOperation.btnRequestFullStorageAccess.run {
             isEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 setOnClickListener { storageHelper.storage.requestFullStorageAccess() }
                 true
@@ -107,28 +107,28 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        btnSelectFolder.setOnClickListener {
+        binding.layoutBaseOperation.btnSelectFolder.setOnClickListener {
             storageHelper.openFolderPicker(REQUEST_CODE_PICK_FOLDER)
         }
 
-        btnSelectFile.setOnClickListener {
+        binding.layoutBaseOperation.btnSelectFile.setOnClickListener {
             storageHelper.openFilePicker(REQUEST_CODE_PICK_FILE, true)
         }
 
-        btnCreateFile.setOnClickListener {
+        binding.layoutBaseOperation.btnCreateFile.setOnClickListener {
             storageHelper.createFile("text/plain", "Test create file", requestCode = REQUEST_CODE_CREATE_FILE)
         }
 
-        btnCompressFiles.setOnClickListener {
+        binding.btnCompressFiles.setOnClickListener {
             startActivity(Intent(this, FileCompressionActivity::class.java))
         }
-        btnDecompressFiles.setOnClickListener {
+        binding.btnDecompressFiles.setOnClickListener {
             startActivity(Intent(this, FileDecompressionActivity::class.java))
         }
-        btnRenameFile.setOnClickListener {
+        binding.layoutBaseOperation.btnRenameFile.setOnClickListener {
             storageHelper.openFilePicker(REQUEST_CODE_PICK_FILE_FOR_RENAME)
         }
-        btnDeleteFiles.setOnClickListener {
+        binding.layoutBaseOperation.btnDeleteFiles.setOnClickListener {
             storageHelper.openFilePicker(REQUEST_CODE_PICK_FILE_FOR_DELETE, allowMultiple = true)
         }
 
@@ -152,10 +152,10 @@ class MainActivity : AppCompatActivity() {
         storageHelper.onFileSelected = { requestCode, files ->
             val file = files.first()
             when (requestCode) {
-                REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY -> layoutCopy_srcFile.updateFileSelectionView(file)
-                REQUEST_CODE_PICK_SOURCE_FILE_FOR_MOVE -> layoutMove_srcFile.updateFileSelectionView(file)
-                REQUEST_CODE_PICK_SOURCE_FILE_FOR_MULTIPLE_COPY -> layoutCopyMultipleFiles_sourceFile.updateFileSelectionView(file)
-                REQUEST_CODE_PICK_SOURCE_FILE_FOR_MULTIPLE_MOVE -> layoutMoveMultipleFiles_sourceFile.updateFileSelectionView(file)
+                REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY -> binding.layoutCopySrcFile.tvFilePath.updateFileSelectionView(file)
+                REQUEST_CODE_PICK_SOURCE_FILE_FOR_MOVE -> binding.layoutMoveSrcFile.tvFilePath.updateFileSelectionView(file)
+                REQUEST_CODE_PICK_SOURCE_FILE_FOR_MULTIPLE_COPY -> binding.layoutCopyMultipleFilesSourceFile.tvFilePath.updateFileSelectionView(file)
+                REQUEST_CODE_PICK_SOURCE_FILE_FOR_MULTIPLE_MOVE -> binding.layoutMoveMultipleFilesSourceFile.tvFilePath.updateFileSelectionView(file)
                 REQUEST_CODE_PICK_FILE_FOR_RENAME -> renameFile(file)
                 REQUEST_CODE_PICK_FILE_FOR_DELETE -> deleteFiles(files)
                 else -> {
@@ -166,18 +166,22 @@ class MainActivity : AppCompatActivity() {
         }
         storageHelper.onFolderSelected = { requestCode, folder ->
             when (requestCode) {
-                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_COPY -> layoutCopyFile_targetFolder.updateFolderSelectionView(folder)
-                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_MOVE -> layoutMoveFile_targetFolder.updateFolderSelectionView(folder)
-                REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_COPY -> layoutCopyFolder_srcFolder.updateFolderSelectionView(folder)
-                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_COPY -> layoutCopyFolder_targetFolder.updateFolderSelectionView(folder)
-                REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MOVE -> layoutMoveFolder_srcFolder.updateFolderSelectionView(folder)
-                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_MOVE -> layoutMoveFolder_targetFolder.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_COPY -> binding.layoutCopyFileTargetFolder.tvFilePath.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_MOVE -> binding.layoutMoveFileTargetFolder.tvFilePath.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_COPY -> binding.layoutCopyFolderSrcFolder.tvFilePath.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_COPY -> binding.layoutCopyFolderTargetFolder.tvFilePath.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MOVE -> binding.layoutMoveFolderSrcFolder.tvFilePath.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_MOVE -> binding.layoutMoveFolderTargetFolder.tvFilePath.updateFolderSelectionView(folder)
 
-                REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MULTIPLE_COPY -> layoutCopyMultipleFiles_sourceFolder.updateFolderSelectionView(folder)
-                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_COPY -> layoutCopyMultipleFiles_targetFolder.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MULTIPLE_COPY -> binding.layoutCopyMultipleFilesSourceFolder.tvFilePath.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_COPY -> binding.layoutCopyMultipleFilesTargetFolder.tvFilePath.updateFolderSelectionView(
+                    folder
+                )
 
-                REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MULTIPLE_MOVE -> layoutMoveMultipleFiles_sourceFolder.updateFolderSelectionView(folder)
-                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_MOVE -> layoutMoveMultipleFiles_targetFolder.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MULTIPLE_MOVE -> binding.layoutMoveMultipleFilesSourceFolder.tvFilePath.updateFolderSelectionView(folder)
+                REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_MOVE -> binding.layoutMoveMultipleFilesTargetFolder.tvFilePath.updateFolderSelectionView(
+                    folder
+                )
 
                 else -> Toast.makeText(baseContext, folder.getAbsolutePath(this), Toast.LENGTH_SHORT).show()
             }
@@ -225,41 +229,41 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun View.updateFolderSelectionView(folder: DocumentFile) {
+    private fun TextView.updateFolderSelectionView(folder: DocumentFile) {
         tag = folder
-        tvFilePath.text = folder.getAbsolutePath(context)
+        text = folder.getAbsolutePath(context)
     }
 
-    private fun View.updateFileSelectionView(file: DocumentFile) {
+    private fun TextView.updateFileSelectionView(file: DocumentFile) {
         tag = file
-        tvFilePath.text = file.fullName
+        text = file.fullName
     }
 
     private fun setupMultipleCopy() {
-        layoutCopyMultipleFiles_sourceFolder.btnBrowse.setOnClickListener {
+        binding.layoutCopyMultipleFilesSourceFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker(REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MULTIPLE_COPY)
         }
-        layoutCopyMultipleFiles_sourceFile.btnBrowse.setOnClickListener {
+        binding.layoutCopyMultipleFilesSourceFile.btnBrowse.setOnClickListener {
             storageHelper.openFilePicker(REQUEST_CODE_PICK_SOURCE_FILE_FOR_MULTIPLE_COPY)
         }
-        layoutCopyMultipleFiles_targetFolder.btnBrowse.setOnClickListener {
+        binding.layoutCopyMultipleFilesTargetFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_COPY)
         }
-        btnStartCopyMultipleFiles.setOnClickListener {
-            val targetFolder = layoutCopyMultipleFiles_targetFolder.tag as? DocumentFile
+        binding.btnStartCopyMultipleFiles.setOnClickListener {
+            val targetFolder = binding.layoutCopyMultipleFilesTargetFolder.tvFilePath.tag as? DocumentFile
             if (targetFolder == null) {
                 Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            val sourceFolder = layoutCopyMultipleFiles_sourceFolder.tag as? DocumentFile
-            val sourceFile = layoutCopyMultipleFiles_sourceFile.tag as? DocumentFile
+            val sourceFolder = binding.layoutCopyMultipleFilesSourceFolder.tvFilePath.tag as? DocumentFile
+            val sourceFile = binding.layoutCopyMultipleFilesSourceFile.tvFilePath.tag as? DocumentFile
             val sources = listOfNotNull(sourceFolder, sourceFile)
             if (sources.isEmpty()) {
                 Toast.makeText(this, "Please select the source file and/or folder", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-
+            Toast.makeText(this, "Copying...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
                 sources.copyTo(applicationContext, targetFolder, callback = createMultipleFileCallback(false))
             }
@@ -267,30 +271,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupMultipleMove() {
-        layoutMoveMultipleFiles_sourceFolder.btnBrowse.setOnClickListener {
+        binding.layoutMoveMultipleFilesSourceFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker(REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MULTIPLE_MOVE)
         }
-        layoutMoveMultipleFiles_sourceFile.btnBrowse.setOnClickListener {
+        binding.layoutMoveMultipleFilesSourceFile.btnBrowse.setOnClickListener {
             storageHelper.openFilePicker(REQUEST_CODE_PICK_SOURCE_FILE_FOR_MULTIPLE_MOVE)
         }
-        layoutMoveMultipleFiles_targetFolder.btnBrowse.setOnClickListener {
+        binding.layoutMoveMultipleFilesTargetFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_MOVE)
         }
-        btnStartCopyMultipleFiles.setOnClickListener {
-            val targetFolder = layoutMoveMultipleFiles_targetFolder.tag as? DocumentFile
+        binding.btnStartCopyMultipleFiles.setOnClickListener {
+            val targetFolder = binding.layoutMoveMultipleFilesTargetFolder.tvFilePath.tag as? DocumentFile
             if (targetFolder == null) {
                 Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            val sourceFolder = layoutMoveMultipleFiles_sourceFolder.tag as? DocumentFile
-            val sourceFile = layoutMoveMultipleFiles_sourceFile.tag as? DocumentFile
+            val sourceFolder = binding.layoutMoveMultipleFilesSourceFolder.tvFilePath.tag as? DocumentFile
+            val sourceFile = binding.layoutMoveMultipleFilesSourceFile.tvFilePath.tag as? DocumentFile
             val sources = listOfNotNull(sourceFolder, sourceFile)
             if (sources.isEmpty()) {
                 Toast.makeText(this, "Please select the source file and/or folder", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-
+            Toast.makeText(this, "Moving...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
                 sources.moveTo(applicationContext, targetFolder, callback = createMultipleFileCallback(true))
             }
@@ -335,15 +339,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupFolderCopy() {
-        layoutCopyFolder_srcFolder.btnBrowse.setOnClickListener {
+        binding.layoutCopyFolderSrcFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker(REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_COPY)
         }
-        layoutCopyFolder_targetFolder.btnBrowse.setOnClickListener {
+        binding.layoutCopyFolderTargetFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_COPY)
         }
-        btnStartCopyFolder.setOnClickListener {
-            val folder = layoutCopyFolder_srcFolder.tag as? DocumentFile
-            val targetFolder = layoutCopyFolder_targetFolder.tag as? DocumentFile
+        binding.btnStartCopyFolder.setOnClickListener {
+            val folder = binding.layoutCopyFolderSrcFolder.tvFilePath.tag as? DocumentFile
+            val targetFolder = binding.layoutCopyFolderTargetFolder.tvFilePath.tag as? DocumentFile
             if (folder == null) {
                 Toast.makeText(this, "Please select folder to be copied", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -352,6 +356,7 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+            Toast.makeText(this, "Copying...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
                 folder.copyFolderTo(applicationContext, targetFolder, false, callback = createFolderCallback(false))
             }
@@ -359,15 +364,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupFolderMove() {
-        layoutMoveFolder_srcFolder.btnBrowse.setOnClickListener {
+        binding.layoutMoveFolderSrcFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker(REQUEST_CODE_PICK_SOURCE_FOLDER_FOR_MOVE)
         }
-        layoutMoveFolder_targetFolder.btnBrowse.setOnClickListener {
+        binding.layoutMoveFolderTargetFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FOLDER_MOVE)
         }
-        btnStartMoveFolder.setOnClickListener {
-            val folder = layoutMoveFolder_srcFolder.tag as? DocumentFile
-            val targetFolder = layoutMoveFolder_targetFolder.tag as? DocumentFile
+        binding.btnStartMoveFolder.setOnClickListener {
+            val folder = binding.layoutMoveFolderSrcFolder.tvFilePath.tag as? DocumentFile
+            val targetFolder = binding.layoutMoveFolderTargetFolder.tvFilePath.tag as? DocumentFile
             if (folder == null) {
                 Toast.makeText(this, "Please select folder to be moved", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -376,6 +381,7 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+            Toast.makeText(this, "Moving...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
                 folder.moveFolderTo(applicationContext, targetFolder, false, callback = createFolderCallback(true))
             }
@@ -423,23 +429,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupFileCopy() {
-        layoutCopy_srcFile.btnBrowse.setOnClickListener {
+        binding.layoutCopySrcFile.btnBrowse.setOnClickListener {
             storageHelper.openFilePicker(REQUEST_CODE_PICK_SOURCE_FILE_FOR_COPY)
         }
-        layoutCopyFile_targetFolder.btnBrowse.setOnClickListener {
+        binding.layoutCopyFileTargetFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_COPY)
         }
-        btnStartCopyFile.setOnClickListener {
-            if (layoutCopy_srcFile.tag == null) {
+        binding.btnStartCopyFile.setOnClickListener {
+            if (binding.layoutCopySrcFile.tvFilePath.tag == null) {
                 Toast.makeText(this, "Please select file to be copied", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            if (layoutCopyFile_targetFolder.tag == null) {
+            if (binding.layoutCopyFileTargetFolder.tvFilePath.tag == null) {
                 Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            val file = layoutCopy_srcFile.tag as DocumentFile
-            val targetFolder = layoutCopyFile_targetFolder.tag as DocumentFile
+            val file = binding.layoutCopySrcFile.tvFilePath.tag as DocumentFile
+            val targetFolder = binding.layoutCopyFileTargetFolder.tvFilePath.tag as DocumentFile
+            Toast.makeText(this, "Copying...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
                 file.copyFileTo(applicationContext, targetFolder, callback = createFileCallback())
             }
@@ -447,23 +454,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupFileMove() {
-        layoutMove_srcFile.btnBrowse.setOnClickListener {
+        binding.layoutMoveSrcFile.btnBrowse.setOnClickListener {
             storageHelper.openFilePicker(REQUEST_CODE_PICK_SOURCE_FILE_FOR_MOVE)
         }
-        layoutMoveFile_targetFolder.btnBrowse.setOnClickListener {
+        binding.layoutMoveFileTargetFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_FILE_MOVE)
         }
-        btnStartMoveFile.setOnClickListener {
-            if (layoutMove_srcFile.tag == null) {
+        binding.btnStartMoveFile.setOnClickListener {
+            if (binding.layoutMoveSrcFile.tvFilePath.tag == null) {
                 Toast.makeText(this, "Please select file to be moved", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            if (layoutMoveFile_targetFolder.tag == null) {
+            if (binding.layoutMoveFileTargetFolder.tvFilePath.tag == null) {
                 Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            val file = layoutMove_srcFile.tag as DocumentFile
-            val targetFolder = layoutMoveFile_targetFolder.tag as DocumentFile
+            val file = binding.layoutMoveSrcFile.tvFilePath.tag as DocumentFile
+            val targetFolder = binding.layoutMoveFileTargetFolder.tvFilePath.tag as DocumentFile
+            Toast.makeText(this, "Moving...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
                 file.moveFileTo(applicationContext, targetFolder, callback = createFileCallback())
             }

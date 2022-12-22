@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-Library version: 0.x.x
+Library version: 1.x.x
 OS version: [Android 10]
 Device model: [Samsung S20]
 

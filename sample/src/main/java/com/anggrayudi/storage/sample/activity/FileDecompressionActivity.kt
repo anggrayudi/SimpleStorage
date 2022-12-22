@@ -12,9 +12,7 @@ import com.anggrayudi.storage.file.MimeType
 import com.anggrayudi.storage.file.decompressZip
 import com.anggrayudi.storage.file.fullName
 import com.anggrayudi.storage.file.getAbsolutePath
-import com.anggrayudi.storage.sample.R
-import kotlinx.android.synthetic.main.activity_file_decompression.*
-import kotlinx.android.synthetic.main.view_file_picked.view.*
+import com.anggrayudi.storage.sample.databinding.ActivityFileDecompressionBinding
 import kotlinx.coroutines.launch
 
 /**
@@ -23,43 +21,47 @@ import kotlinx.coroutines.launch
  */
 class FileDecompressionActivity : BaseActivity() {
 
+    private lateinit var binding: ActivityFileDecompressionBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_file_decompression)
+        binding = ActivityFileDecompressionBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
         setupSimpleStorage()
-        btnStartDecompress.setOnClickListener { startDecompress() }
+        binding.btnStartDecompress.setOnClickListener { startDecompress() }
     }
 
     private fun setupSimpleStorage() {
         storageHelper.onFileSelected = { _, files ->
             val file = files.first()
-            layoutDecompressFile_srcZip.run {
+            binding.layoutDecompressFileSrcZip.tvFilePath.run {
                 tag = file
-                tvFilePath.text = file.fullName
+                text = file.fullName
             }
         }
-        layoutDecompressFile_srcZip.btnBrowse.setOnClickListener {
+        binding.layoutDecompressFileSrcZip.btnBrowse.setOnClickListener {
             storageHelper.openFilePicker(filterMimeTypes = arrayOf(MimeType.ZIP))
         }
 
         storageHelper.onFolderSelected = { _, folder ->
-            layoutDecompressFile_destFolder.run {
+            binding.layoutDecompressFileDestFolder.tvFilePath.run {
                 tag = folder
-                tvFilePath.text = folder.getAbsolutePath(context)
+                text = folder.getAbsolutePath(context)
             }
         }
-        layoutDecompressFile_destFolder.btnBrowse.setOnClickListener {
+        binding.layoutDecompressFileDestFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker()
         }
     }
 
     private fun startDecompress() {
-        val zipFile = layoutDecompressFile_srcZip.tag as? DocumentFile
+        val zipFile = binding.layoutDecompressFileSrcZip.tvFilePath.tag as? DocumentFile
         if (zipFile == null) {
             Toast.makeText(this, "Please select source ZIP file", Toast.LENGTH_SHORT).show()
             return
         }
-        val targetFolder = layoutDecompressFile_destFolder.tag as? DocumentFile
+        val targetFolder = binding.layoutDecompressFileDestFolder.tvFilePath.tag as? DocumentFile
         if (targetFolder == null) {
             Toast.makeText(this, "Please select destination folder", Toast.LENGTH_SHORT).show()
             return
