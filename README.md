@@ -213,7 +213,7 @@ For example, you can move a folder with few lines of code:
 val folder: DocumentFile = ...
 val targetFolder: DocumentFile = ...
 
-// Since moveFolderTo() is annotated with @WorkerThread, you must execute it in background thread
+// Since moveFolderTo() is annotated with @WorkerThread, you must execute it in the background thread
 folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, callback = object : FolderCallback() {
     override fun onPrepare() {
         // Show notification or progress bar dialog with indeterminate state
@@ -275,7 +275,7 @@ Check how these repositories use it:
 
 ## License
 
-    Copyright © 2020-2022 Anggrayudi Hardiannico A.
+    Copyright © 2020-2023 Anggrayudi Hardiannico A.
  
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.

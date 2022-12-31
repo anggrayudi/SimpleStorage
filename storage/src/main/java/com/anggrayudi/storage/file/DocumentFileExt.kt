@@ -287,7 +287,7 @@ fun DocumentFile.toTreeDocumentFile(context: Context): DocumentFile? {
 fun DocumentFile.toMediaFile(context: Context) = if (isTreeDocumentFile) null else MediaFile(context, uri)
 
 /**
- * Rename a file without changing its extension. It will try converting [androidx.documentfile.provider.SingleDocumentFile]
+ * It will try converting [androidx.documentfile.provider.SingleDocumentFile]
  * to [androidx.documentfile.provider.TreeDocumentFile] if possible, because `SingleDocumentFile` can't do rename operation.
  * It is also a safer option compared to [androidx.documentfile.provider.DocumentFile.renameTo], because `renameTo()`
  * has some issues prior to scoped storage on SD card path.
