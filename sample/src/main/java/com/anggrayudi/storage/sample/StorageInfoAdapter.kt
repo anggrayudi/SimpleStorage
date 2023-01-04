@@ -3,7 +3,6 @@ package com.anggrayudi.storage.sample
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
-import android.os.Environment
 import android.text.format.Formatter
 import android.view.LayoutInflater
 import android.view.View
@@ -13,11 +12,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.list.listItems
-import com.anggrayudi.storage.extension.isDocumentsDocument
-import com.anggrayudi.storage.extension.isDownloadsDocument
-import com.anggrayudi.storage.extension.isTreeDocumentFile
 import com.anggrayudi.storage.file.DocumentFileCompat
-import com.anggrayudi.storage.file.PublicDirectory
 import com.anggrayudi.storage.file.StorageId.PRIMARY
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -53,7 +48,7 @@ class StorageInfoAdapter(
                     tvStorageUsedSpace.text = "Used Space: $storageUsedSpace"
                     tvStorageFreeSpace.text = "Free Space: $storageFreeSpace"
                     btnShowGrantedUri.setOnClickListener { showGrantedUris(it.context, storageId) }
-                    if (storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                    if (storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || Build.VERSION.SDK_INT < 21) {
                         // No URI permission required for external storage
                         btnShowGrantedUri.visibility = View.GONE
                     }
@@ -65,38 +60,19 @@ class StorageInfoAdapter(
     /**
      * A storageId may contains more than one granted URIs
      */
+    @SuppressLint("NewApi")
     @Suppress("DEPRECATION")
     private fun showGrantedUris(context: Context, filterStorageId: String) {
-        val grantedUris = context.contentResolver.persistedUriPermissions
-            .filter { it.isReadPermission && it.isWritePermission && it.uri.isTreeDocumentFile }
-            .map {
-                if (it.uri.isDownloadsDocument) {
-                    if (filterStorageId == PRIMARY) PublicDirectory.DOWNLOADS.absolutePath else ""
-                } else if (it.uri.isDocumentsDocument) {
-                    if (filterStorageId == PRIMARY) PublicDirectory.DOCUMENTS.absolutePath else ""
-                } else {
-                    val uriPath = it.uri.path!! // e.g. /tree/primary:Music
-                    val storageId = uriPath.substringBefore(':').substringAfterLast('/')
-                    if (filterStorageId == storageId) {
-                        val rootFolder = uriPath.substringAfter(':', "")
-                        if (storageId == PRIMARY) {
-                            "${Environment.getExternalStorageDirectory()}/$rootFolder"
-                        } else {
-                            "/storage/$storageId/$rootFolder"
-                        }
-                    } else ""
-                }
-            }
-            .filter { it.isNotEmpty() }
-        if (grantedUris.isEmpty()) {
+        val grantedPaths = DocumentFileCompat.getAccessibleAbsolutePaths(context).filterKeys { it == filterStorageId }
+        if (grantedPaths.isEmpty()) {
             MaterialDialog(context)
-                .message(text = "No URI permission granted on \"$filterStorageId\"")
+                .message(text = "No permission granted on storage ID \"$filterStorageId\"")
                 .positiveButton()
                 .show()
         } else {
             MaterialDialog(context)
-                .title(text = "Granted URIs")
-                .listItems(items = grantedUris)
+                .title(text = "Granted paths for \"$filterStorageId\"")
+                .listItems(items = grantedPaths.values.flatten())
                 .show()
         }
     }
@@ -109,6 +85,6 @@ class StorageInfoAdapter(
         internal val tvStorageCapacity = view.findViewById<TextView>(R.id.tvStorageCapacity)
         internal val tvStorageUsedSpace = view.findViewById<TextView>(R.id.tvStorageUsedSpace)
         internal val tvStorageFreeSpace = view.findViewById<TextView>(R.id.tvStorageFreeSpace)
-        internal val btnShowGrantedUri = view.findViewById<Button>(R.id.btnShowGrantedUri)
+        internal val btnShowGrantedUri = view.findViewById<Button>(R.id.btnShowGrantedPaths)
     }
 }

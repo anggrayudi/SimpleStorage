@@ -14,8 +14,10 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.FileWrapper
 import com.anggrayudi.storage.SimpleStorage
+import com.anggrayudi.storage.SimpleStorage.Companion.KITKAT_SD_CARD_PATH
 import com.anggrayudi.storage.extension.*
 import com.anggrayudi.storage.file.StorageId.DATA
+import com.anggrayudi.storage.file.StorageId.KITKAT_SDCARD
 import com.anggrayudi.storage.file.StorageId.PRIMARY
 import com.anggrayudi.storage.media.FileDescription
 import com.anggrayudi.storage.media.MediaStoreCompat
@@ -485,6 +487,46 @@ object DocumentFileCompat {
 
     @JvmStatic
     fun getSdCardIds(context: Context) = getStorageIds(context).filter { it != PRIMARY }
+
+    /**
+     * The key of the map is storage ID, and the values are granted absolute paths.
+     * Use it if you want to know what paths that are accessible by your app.
+     */
+    @JvmStatic
+    fun getAccessibleAbsolutePaths(context: Context): Map<String, Set<String>> {
+        val storages = mutableMapOf<String, MutableSet<String>>()
+        storages[PRIMARY] = HashSet()
+        context.contentResolver.persistedUriPermissions
+            .filter { it.isReadPermission && it.isWritePermission && it.uri.isTreeDocumentFile }
+            .forEach {
+                if (it.uri.isDownloadsDocument) {
+                    storages[PRIMARY]?.add(PublicDirectory.DOWNLOADS.absolutePath)
+                } else if (it.uri.isDocumentsDocument) {
+                    storages[PRIMARY]?.add(PublicDirectory.DOCUMENTS.absolutePath)
+                } else {
+                    val uriPath = it.uri.path!! // e.g. /tree/primary:Music
+                    val storageId = uriPath.substringBefore(':').substringAfterLast('/')
+                    val rootFolder = uriPath.substringAfter(':', "")
+                    if (storageId == PRIMARY) {
+                        storages[PRIMARY]?.add("${Environment.getExternalStorageDirectory()}/$rootFolder")
+                    } else if (storageId.matches(SD_CARD_STORAGE_ID_REGEX)) {
+                        val paths = storages[storageId] ?: HashSet()
+                        paths.add("/storage/$storageId/$rootFolder")
+                        storages[storageId] = paths
+                    }
+                }
+            }
+        if (Build.VERSION.SDK_INT < 29 && SimpleStorage.hasStoragePermission(context)) {
+            storages[PRIMARY]?.add(SimpleStorage.externalStoragePath)
+        }
+        if (Build.VERSION.SDK_INT < 21 && File(KITKAT_SD_CARD_PATH).canWrite()) {
+            storages[KITKAT_SDCARD] = mutableSetOf(KITKAT_SD_CARD_PATH)
+        }
+        if (storages[PRIMARY].isNullOrEmpty()) {
+            storages.remove(PRIMARY)
+        }
+        return storages
+    }
 
     /**
      * Create folders. You should do this process in background.
