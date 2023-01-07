@@ -2,6 +2,7 @@ package com.anggrayudi.storage.file
 
 import android.content.Context
 import android.os.Environment
+import androidx.annotation.RestrictTo
 
 /**
  * Created on 03/06/21
@@ -24,4 +25,11 @@ object StorageId {
      * To access SD card in Kitkat, use `sdcard` as the storage ID, instead of the actual ID like `15FA-160C`
      */
     const val KITKAT_SDCARD = "sdcard"
+
+    /**
+     * For `/storage/emulated/0/Documents`
+     * It is only exists on API 29-
+     */
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    const val HOME = "home"
 }

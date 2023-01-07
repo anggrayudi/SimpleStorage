@@ -63,8 +63,8 @@ class StorageInfoAdapter(
     @SuppressLint("NewApi")
     @Suppress("DEPRECATION")
     private fun showGrantedUris(context: Context, filterStorageId: String) {
-        val grantedPaths = DocumentFileCompat.getAccessibleAbsolutePaths(context).filterKeys { it == filterStorageId }
-        if (grantedPaths.isEmpty()) {
+        val grantedPaths = DocumentFileCompat.getAccessibleAbsolutePaths(context)[filterStorageId]
+        if (grantedPaths == null) {
             MaterialDialog(context)
                 .message(text = "No permission granted on storage ID \"$filterStorageId\"")
                 .positiveButton()
@@ -72,7 +72,7 @@ class StorageInfoAdapter(
         } else {
             MaterialDialog(context)
                 .title(text = "Granted paths for \"$filterStorageId\"")
-                .listItems(items = grantedPaths.values.flatten())
+                .listItems(items = grantedPaths.toList().sorted())
                 .show()
         }
     }

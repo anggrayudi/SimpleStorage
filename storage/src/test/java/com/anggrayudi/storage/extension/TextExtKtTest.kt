@@ -66,10 +66,13 @@ class TextExtKtTest {
     fun hasParent() {
         assertTrue("/path/Music//Pop".hasParent("/path/Music"))
         assertTrue("/path/Music/Pop/".hasParent("/path/Music"))
+        assertTrue("/path/Music".hasParent("/path/Music"))
+        assertTrue("Download".hasParent("Download"))
 
         assertFalse("/path/Music".hasParent("/path/Music/Pop"))
         assertFalse("/path/Music".hasParent("/path/MusicMetal"))
         assertFalse("/path/Music".hasParent("/path/MusiC"))
+        assertFalse("/path/Musics".hasParent("/path/Music"))
     }
 
     @Test

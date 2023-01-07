@@ -17,6 +17,7 @@ import com.anggrayudi.storage.extension.isKitkatSdCardStorageId
 import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import com.anggrayudi.storage.file.StorageId.DATA
+import com.anggrayudi.storage.file.StorageId.HOME
 import com.anggrayudi.storage.file.StorageId.PRIMARY
 import java.io.File
 import java.io.IOException
@@ -84,7 +85,7 @@ fun File.getBasePath(context: Context): String {
 fun File.getRootPath(context: Context): String {
     val storageId = getStorageId(context)
     return when {
-        storageId == PRIMARY -> SimpleStorage.externalStoragePath
+        storageId == PRIMARY || storageId == HOME -> SimpleStorage.externalStoragePath
         storageId == DATA -> context.dataDirectory.path
         storageId.isKitkatSdCardStorageId() -> SimpleStorage.KITKAT_SD_CARD_PATH
         storageId.isNotEmpty() -> "/storage/$storageId"

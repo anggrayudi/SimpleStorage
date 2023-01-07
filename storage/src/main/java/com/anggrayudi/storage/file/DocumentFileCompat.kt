@@ -17,6 +17,7 @@ import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.SimpleStorage.Companion.KITKAT_SD_CARD_PATH
 import com.anggrayudi.storage.extension.*
 import com.anggrayudi.storage.file.StorageId.DATA
+import com.anggrayudi.storage.file.StorageId.HOME
 import com.anggrayudi.storage.file.StorageId.KITKAT_SDCARD
 import com.anggrayudi.storage.file.StorageId.PRIMARY
 import com.anggrayudi.storage.media.FileDescription
@@ -147,11 +148,11 @@ object DocumentFileCompat {
         if (storageId == DATA) {
             return DocumentFile.fromFile(context.dataDirectory.child(basePath))
         }
-        return if (basePath.isEmpty()) {
+        return if (basePath.isEmpty() && storageId != HOME) {
             getRootDocumentFile(context, storageId, requiresWriteAccess, considerRawFile)
         } else {
             val file = exploreFile(context, storageId, basePath, documentType, requiresWriteAccess, considerRawFile)
-            if (file == null && basePath.startsWith(Environment.DIRECTORY_DOWNLOADS) && storageId == PRIMARY) {
+            if (file == null && storageId == PRIMARY && basePath.hasParent(Environment.DIRECTORY_DOWNLOADS)) {
                 val downloads = context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))?.takeIf { it.canRead() } ?: return null
                 downloads.child(context, basePath.substringAfter('/', ""))?.takeIf {
                     documentType == DocumentFileType.ANY
@@ -209,10 +210,11 @@ object DocumentFileCompat {
         considerRawFile: Boolean = true
     ): DocumentFile? {
         return if (file.checkRequirements(context, requiresWriteAccess, considerRawFile || Build.VERSION.SDK_INT < 21)) {
-            if (documentType == DocumentFileType.FILE && !file.isFile || documentType == DocumentFileType.FOLDER && !file.isDirectory)
+            if (documentType == DocumentFileType.FILE && !file.isFile || documentType == DocumentFileType.FOLDER && !file.isDirectory) {
                 null
-            else
+            } else {
                 DocumentFile.fromFile(file)
+            }
         } else {
             val basePath = file.getBasePath(context).removeForbiddenCharsFromFilename().trimFileSeparator()
             exploreFile(context, file.getStorageId(context), basePath, documentType, requiresWriteAccess, considerRawFile)
@@ -297,7 +299,13 @@ object DocumentFileCompat {
         if (storageId.isKitkatSdCardStorageId()) {
             return DocumentFile.fromFile(getKitkatSdCardRootFile()).takeIf { it.canWrite() }
         }
-        val file = if (considerRawFile) {
+        val file = if (storageId == HOME) {
+            if (Build.VERSION.SDK_INT == 29) {
+                context.fromTreeUri(createDocumentUri(PRIMARY))
+            } else {
+                DocumentFile.fromFile(Environment.getExternalStorageDirectory())
+            }
+        } else if (considerRawFile) {
             getRootRawFile(context, storageId, requiresWriteAccess)?.let { DocumentFile.fromFile(it) }
                 ?: context.fromTreeUri(createDocumentUri(storageId))
         } else {
@@ -341,11 +349,11 @@ object DocumentFileCompat {
                 .filter { it.isReadPermission && it.isWritePermission && it.uri.isTreeDocumentFile }
                 .forEach {
                     if (Build.VERSION.SDK_INT < 30) {
-                        if (it.uri.isDownloadsDocument && fullPath.startsWith(PublicDirectory.DOWNLOADS.absolutePath)) {
+                        if (it.uri.isDownloadsDocument && fullPath.hasParent(PublicDirectory.DOWNLOADS.absolutePath)) {
                             return context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))
                         }
 
-                        if (it.uri.isDocumentsDocument && fullPath.startsWith(PublicDirectory.DOCUMENTS.absolutePath)) {
+                        if (it.uri.isDocumentsDocument && fullPath.hasParent(PublicDirectory.DOCUMENTS.absolutePath)) {
                             return context.fromTreeUri(Uri.parse(DOCUMENTS_TREE_URI))
                         }
                     }
@@ -376,7 +384,7 @@ object DocumentFileCompat {
     @Suppress("DEPRECATION")
     fun getRootRawFile(context: Context, storageId: String, requiresWriteAccess: Boolean = false): File? {
         val rootFile = when {
-            storageId == PRIMARY -> Environment.getExternalStorageDirectory()
+            storageId == PRIMARY || storageId == HOME -> Environment.getExternalStorageDirectory()
             storageId == DATA -> context.dataDirectory
             storageId.isKitkatSdCardStorageId() -> getKitkatSdCardRootFile()
             else -> File("/storage/$storageId")
@@ -390,6 +398,7 @@ object DocumentFileCompat {
         val rootPath = when (storageId) {
             PRIMARY -> SimpleStorage.externalStoragePath
             DATA -> context.dataDirectory.path
+            HOME -> PublicDirectory.DOCUMENTS.absolutePath
             else -> "/storage/$storageId"
         }
         return "$rootPath/$cleanBasePath".trimEnd('/')
@@ -491,6 +500,7 @@ object DocumentFileCompat {
     /**
      * The key of the map is storage ID, and the values are granted absolute paths.
      * Use it if you want to know what paths that are accessible by your app.
+     * @see getAccessibleUris
      */
     @JvmStatic
     fun getAccessibleAbsolutePaths(context: Context): Map<String, Set<String>> {
@@ -508,10 +518,10 @@ object DocumentFileCompat {
                     val storageId = uriPath.substringBefore(':').substringAfterLast('/')
                     val rootFolder = uriPath.substringAfter(':', "")
                     if (storageId == PRIMARY) {
-                        storages[PRIMARY]?.add("${Environment.getExternalStorageDirectory()}/$rootFolder")
+                        storages[PRIMARY]?.add("${Environment.getExternalStorageDirectory()}/$rootFolder".trimEnd('/'))
                     } else if (storageId.matches(SD_CARD_STORAGE_ID_REGEX)) {
                         val paths = storages[storageId] ?: HashSet()
-                        paths.add("/storage/$storageId/$rootFolder")
+                        paths.add("/storage/$storageId/$rootFolder".trimEnd('/'))
                         storages[storageId] = paths
                     }
                 }
@@ -526,6 +536,18 @@ object DocumentFileCompat {
             storages.remove(PRIMARY)
         }
         return storages
+    }
+
+    /**
+     * @see getAccessibleAbsolutePaths
+     */
+    @JvmStatic
+    fun getAccessibleUris(context: Context): Map<String, List<Uri>> {
+        return context.contentResolver.persistedUriPermissions
+            .filter { it.isReadPermission && it.isWritePermission && it.uri.isTreeDocumentFile }
+            .map { it.uri }
+            .groupBy { it.getStorageId(context) }
+            .filter { it.key.isNotEmpty() }
     }
 
     /**
@@ -768,7 +790,11 @@ object DocumentFileCompat {
                 null
             }
         }
-        val file = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        val file = if (Build.VERSION.SDK_INT == 29 && (storageId == HOME || storageId == PRIMARY && basePath.hasParent(Environment.DIRECTORY_DOCUMENTS))) {
+            getRootDocumentFile(context, storageId, requiresWriteAccess, considerRawFile)?.child(context, basePath)
+                ?: context.fromTreeUri(Uri.parse(DOCUMENTS_TREE_URI))?.child(context, basePath.substringAfter(Environment.DIRECTORY_DOCUMENTS))
+                ?: return null
+        } else if (Build.VERSION.SDK_INT < 30) {
             getRootDocumentFile(context, storageId, requiresWriteAccess, considerRawFile)?.child(context, basePath) ?: return null
         } else {
             val directorySequence = getDirectorySequence(basePath).toMutableList()
@@ -940,7 +966,7 @@ object DocumentFileCompat {
 
     private fun getDocumentFileForStorageInfo(context: Context, storageId: String): DocumentFile? {
         return when (storageId) {
-            PRIMARY -> {
+            PRIMARY, HOME -> {
                 // use app private directory, so no permissions required
                 val directory = context.getExternalFilesDir(null) ?: return null
                 DocumentFile.fromFile(directory)
