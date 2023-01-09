@@ -6,6 +6,7 @@
 * [Overview](#overview)
   + [Java Compatibility](#java-compatibility)
 * [Terminology](#terminology)
+* [Check Accessible Paths](#check-accessible-paths)
 * [Read Files](#read-files)
   + [`DocumentFileCompat`](#documentfilecompat)
     - [Example](#example)
@@ -64,6 +65,35 @@ Simple Storage is built in Kotlin. Follow this [documentation](JAVA_COMPATIBILIT
 ### Other Terminology
 * Storage Permission – related to [runtime permissions](https://developer.android.com/training/permissions/requesting)
 * Storage Access – related to [URI permissions](https://developer.android.com/reference/android/content/ContentResolver#takePersistableUriPermission(android.net.Uri,%20int))
+
+## Check Accessible Paths
+
+To check whether you have access to particular paths, call `DocumentFileCompat.getAccessibleAbsolutePaths()`. The results will look like this in breakpoint:
+
+![Alt text](art/getAccessibleAbsolutePaths.png?raw=true "DocumentFileCompat.getAccessibleAbsolutePaths()")
+
+All paths in those locations are accessible via functions `DocumentFileCompat.from*()`, otherwise your action will be denied by the system if you want to
+access paths other than those. Functions `DocumentFileCompat.from*()` (next section) will return null as well. On API 28-, you can obtain it by requesting
+the runtime permission. For API 29+, it is obtained automatically by calling `SimpleStorageHelper#requestStorageAccess()` or
+`SimpleStorageHelper#openFolderPicker()`. The granted paths are persisted by this library via `ContentResolver#takePersistableUriPermission()`,
+so you don't need to remember them in preferences:
+```kotlin
+buttonSelectFolder.setOnClickListener {
+    storageHelper.openFolderPicker()
+}
+
+storageHelper.onFolderSelected = { requestCode, folder ->
+    // tell user the selected path
+}
+```
+
+In the future, if you want to write files into the granted path, use `DocumentFileCompat.fromFullPath()`:
+```kotlin
+val grantedPaths = DocumentFileCompat.getAccessibleAbsolutePaths(this)
+val path = grantedPaths.values.firstOrNull()?.firstOrNull() ?: return
+val folder = DocumentFileCompat.fromFullPath(this, path, requiresWriteAccess = true)
+val file = folder?.makeFile(this, "notes", "text/plain")
+```
 
 ## Read Files
 
