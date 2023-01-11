@@ -603,7 +603,7 @@ fun DocumentFile.findParent(context: Context, requiresWriteAccess: Boolean = tru
  * It cannot be applied if current [DocumentFile] is a directory.
  */
 fun DocumentFile.recreateFile(context: Context): DocumentFile? {
-    return if (exists() && (isRawFile || isExternalStorageDocument)) {
+    return if (isFile && (isRawFile || isExternalStorageDocument)) {
         val filename = name.orEmpty()
         val parent = findParent(context)
         if (parent?.isWritable(context) == true) {

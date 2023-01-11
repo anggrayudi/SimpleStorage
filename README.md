@@ -165,7 +165,8 @@ For media files, you can have similar capabilities to `DocumentFile`, i.e.:
 ## Request Storage Access, Pick Folder & Files, Request Create File, etc.
 
 Although user has granted read and write permissions during runtime, your app may still does not have full access to the storage,
-thus you cannot search, move and copy files. You can check whether you have the storage access via `SimpleStorage.hasStorageAccess()`.
+thus you cannot search, move and copy files. You can check whether you have the storage access via `SimpleStorage.hasStorageAccess()` or
+`DocumentFileCompat.getAccessibleAbsolutePaths()`.
 
 To enable full storage access, you need to open SAF and let user grant URI permissions for read and write access.
 This library provides you an helper class named `SimpleStorageHelper` to ease the request process:
