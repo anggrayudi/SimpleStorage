@@ -219,7 +219,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        // Mandatory for Activity, but not for Fragment & ComponentActivity
+        // Mandatory for direct subclasses of android.app.Activity,
+        // but not for subclasses of androidx.fragment.app.Fragment, androidx.activity.ComponentActivity, androidx.appcompat.app.AppCompatActivity
         storageHelper.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 }
