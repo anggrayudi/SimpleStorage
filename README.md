@@ -213,7 +213,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        // Mandatory for Activity, but not for Fragment & ComponentActivity
+        // Mandatory for direct subclasses of android.app.Activity,
+        // but not for subclasses of androidx.fragment.app.Fragment, androidx.activity.ComponentActivity, androidx.appcompat.app.AppCompatActivity
         storageHelper.storage.onActivityResult(requestCode, resultCode, data)
     }
 
