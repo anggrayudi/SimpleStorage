@@ -4,11 +4,11 @@ buildscript {
 
     addRepos(repositories)
 
-    ext.kotlin_version = '1.7.20'
+    ext.kotlin_version = '1.7.21'
 
     dependencies {
-        classpath 'com.android.tools:r8:3.3.75'
-        classpath 'com.android.tools.build:gradle:7.3.1'
+        classpath 'com.android.tools:r8:8.0.40'
+        classpath 'com.android.tools.build:gradle:7.4.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.vanniktech:gradle-maven-publish-plugin:0.22.0'
         classpath 'org.jetbrains.dokka:dokka-gradle-plugin:1.7.20'

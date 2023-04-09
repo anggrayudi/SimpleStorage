@@ -28,6 +28,7 @@ android {
         }
     }
 
+    namespace 'com.anggrayudi.storage.sample'
     defaultConfig {
         applicationId "com.anggrayudi.storage.sample"
         multiDexEnabled true
@@ -48,7 +49,7 @@ android {
         }
     }
 
-    lintOptions {
+    lint {
         abortOnError false
     }
 
