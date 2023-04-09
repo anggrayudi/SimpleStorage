@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.FileWrapper
 import com.anggrayudi.storage.SimpleStorage
+import com.anggrayudi.storage.SimpleStorage.Companion.KITKAT_SD_CARD_ID
 import com.anggrayudi.storage.SimpleStorage.Companion.KITKAT_SD_CARD_PATH
 import com.anggrayudi.storage.extension.*
 import com.anggrayudi.storage.file.StorageId.DATA
@@ -64,10 +65,10 @@ object DocumentFileCompat {
     val SD_CARD_STORAGE_ID_REGEX = Regex("[A-Z0-9]{4}-[A-Z0-9]{4}")
 
     @RestrictTo(RestrictTo.Scope.LIBRARY)
-    val SD_CARD_STORAGE_PATH_REGEX = Regex("[A-Z0-9]{4}-[A-Z0-9]{4}(.*?)")
+    val SD_CARD_STORAGE_PATH_REGEX = Regex("/storage/$SD_CARD_STORAGE_ID_REGEX(.*?)")
 
     @RestrictTo(RestrictTo.Scope.LIBRARY)
-    fun getKitkatSdCardRootFile(basePath: String = "") = File(SimpleStorage.KITKAT_SD_CARD_PATH + "/$basePath".trimEnd('/'))
+    fun getKitkatSdCardRootFile(basePath: String = "") = File(KITKAT_SD_CARD_PATH + "/$basePath".trimEnd('/'))
 
     @JvmStatic
     fun isRootUri(uri: Uri): Boolean {
@@ -86,7 +87,10 @@ object DocumentFileCompat {
             when {
                 fullPath.startsWith(SimpleStorage.externalStoragePath) -> PRIMARY
                 fullPath.startsWith(context.dataDirectory.path) -> DATA
-                else -> fullPath.substringAfter("/storage/", "").substringBefore('/')
+                fullPath.startsWith(KITKAT_SD_CARD_PATH) -> KITKAT_SD_CARD_ID
+                else -> if (fullPath.matches(SD_CARD_STORAGE_PATH_REGEX)) {
+                    fullPath.substringAfter("/storage/", "").substringBefore('/')
+                } else ""
             }
         } else {
             fullPath.substringBefore(':', "").substringAfterLast('/')
@@ -107,7 +111,10 @@ object DocumentFileCompat {
             when {
                 fullPath.startsWith(externalStoragePath) -> fullPath.substringAfter(externalStoragePath)
                 fullPath.startsWith(dataDir) -> fullPath.substringAfter(dataDir)
-                else -> fullPath.substringAfter("/storage/", "").substringAfter('/', "")
+                fullPath.startsWith(KITKAT_SD_CARD_PATH) -> fullPath.substringAfter(KITKAT_SD_CARD_PATH)
+                else -> if (fullPath.matches(SD_CARD_STORAGE_PATH_REGEX)) {
+                    fullPath.substringAfter("/storage/", "").substringAfter('/', "")
+                } else ""
             }
         } else {
             fullPath.substringAfter(':', "")

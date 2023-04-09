@@ -18,6 +18,7 @@ import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import com.anggrayudi.storage.file.StorageId.DATA
 import com.anggrayudi.storage.file.StorageId.HOME
+import com.anggrayudi.storage.file.StorageId.KITKAT_SDCARD
 import com.anggrayudi.storage.file.StorageId.PRIMARY
 import java.io.File
 import java.io.IOException
@@ -34,7 +35,10 @@ import java.io.IOException
 fun File.getStorageId(context: Context) = when {
     path.startsWith(SimpleStorage.externalStoragePath) -> PRIMARY
     path.startsWith(context.dataDirectory.path) -> DATA
-    else -> path.substringAfter("/storage/", "").substringBefore('/')
+    path.startsWith(SimpleStorage.KITKAT_SD_CARD_PATH) -> KITKAT_SDCARD
+    else -> if (path.matches(DocumentFileCompat.SD_CARD_STORAGE_PATH_REGEX)) {
+        path.substringAfter("/storage/", "").substringBefore('/')
+    } else ""
 }
 
 val File.inPrimaryStorage: Boolean

@@ -563,7 +563,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         private const val KEY_LAST_VISITED_FOLDER = BuildConfig.LIBRARY_PACKAGE_NAME + ".lastVisitedFolder"
         private const val TAG = "SimpleStorage"
 
-        const val KITKAT_SD_CARD_PATH = "/storage/sdcard"
+        const val KITKAT_SD_CARD_ID = "sdcard"
+        const val KITKAT_SD_CARD_PATH = "/storage/$KITKAT_SD_CARD_ID"
 
         @JvmStatic
         @Suppress("DEPRECATION")
