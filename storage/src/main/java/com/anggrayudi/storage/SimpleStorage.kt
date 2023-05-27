@@ -51,6 +51,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         (wrapper as FragmentWrapper).storage = this
     }
 
+    var isCleanupRedundantUriPermissions: Boolean = true
+
     var storageAccessCallback: StorageAccessCallback? = null
 
     var folderPickerCallback: FolderPickerCallback? = null
@@ -545,7 +547,9 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     private fun saveUriPermission(root: Uri) = try {
         val writeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
         context.contentResolver.takePersistableUriPermission(root, writeFlags)
-        cleanupRedundantUriPermissions(context.applicationContext)
+        if (isCleanupRedundantUriPermissions) {
+            cleanupRedundantUriPermissions(context.applicationContext)
+        }
         true
     } catch (e: SecurityException) {
         false
