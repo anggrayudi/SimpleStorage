@@ -80,7 +80,7 @@ public class JavaActivity extends AppCompatActivity {
             String absolutePath = DocumentFileUtils.getAbsolutePath(root, getBaseContext());
             Toast.makeText(
                     getBaseContext(),
-                    getString(R.string.ss_selecting_root_path_success_without_open_folder_picker, absolutePath),
+                    getString(com.anggrayudi.storage.R.string.ss_selecting_root_path_success_without_open_folder_picker, absolutePath),
                     Toast.LENGTH_SHORT
             ).show();
             return null;
