@@ -619,8 +619,9 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         @JvmStatic
         @JvmOverloads
         fun hasStorageAccess(context: Context, fullPath: String, requiresWriteAccess: Boolean = true): Boolean {
-            return (requiresWriteAccess && hasStoragePermission(context) || !requiresWriteAccess && hasStorageReadPermission(context))
-                    && DocumentFileCompat.getAccessibleRootDocumentFile(context, fullPath, requiresWriteAccess) != null
+            return DocumentFileCompat.getAccessibleRootDocumentFile(context, fullPath, requiresWriteAccess) != null
+                    && (Build.VERSION.SDK_INT > Build.VERSION_CODES.P
+                    || requiresWriteAccess && hasStoragePermission(context) || !requiresWriteAccess && hasStorageReadPermission(context))
         }
 
         /**
