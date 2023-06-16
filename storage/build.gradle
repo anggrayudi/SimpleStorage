@@ -41,10 +41,10 @@ dependencies {
     testImplementation deps.robolectric
 
     // TODO: Replace with MockK after feature "mock java.io.File" has been fixed: https://github.com/mockk/mockk/issues/603
-    testImplementation "org.mockito:mockito-core:3.3.3"
-    testImplementation "org.mockito:mockito-inline:3.3.3"
+    testImplementation "org.mockito:mockito-core:3.10.0"
+    testImplementation "org.mockito:mockito-inline:3.10.0"
     testImplementation "org.mockito:mockito-all:1.10.19"
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
-    testImplementation "org.powermock:powermock-api-mockito2:2.0.5"
-    testImplementation "org.powermock:powermock-module-junit4:2.0.5"
+    testImplementation "org.powermock:powermock-api-mockito2:2.0.9"
+    testImplementation "org.powermock:powermock-module-junit4:2.0.9"
 }

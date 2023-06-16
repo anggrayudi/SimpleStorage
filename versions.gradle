@@ -13,9 +13,9 @@ versions.fragment = "1.5.3"
 versions.junit = "5.9.1"
 versions.material_dialogs = "3.3.0"
 versions.material_progressbar = "1.6.1"
-versions.mockk = "1.13.2"
+versions.mockk = "1.13.5"
 versions.multidex = "2.0.1"
-versions.robolectric = "4.4"
+versions.robolectric = "4.10.3"
 versions.timber = "5.0.1"
 
 ext.versions = versions

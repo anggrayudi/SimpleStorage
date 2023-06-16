@@ -3,6 +3,7 @@ package com.anggrayudi.storage.file
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import org.junit.Assert.assertEquals
+import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.powermock.api.mockito.PowerMockito.whenNew
@@ -19,6 +20,7 @@ import java.io.File
 @PrepareForTest(File::class, FileExtKtTest::class)
 class FileExtKtTest {
 
+    @Ignore("JDK 17 cannot mock File object due to protected clone() method")
     @Test
     fun autoIncrementFileName() {
         val videoPath = "/stroage/emulated/0/Video"
