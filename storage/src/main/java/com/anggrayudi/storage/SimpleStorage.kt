@@ -634,20 +634,18 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
          * Read [Count Your SAF Uri Persisted Permissions!](https://commonsware.com/blog/2020/06/13/count-your-saf-uri-permission-grants.html)
          */
         @JvmStatic
-        fun cleanupRedundantUriPermissions(context: Context) {
-            thread {
-                val resolver = context.contentResolver
-                // e.g. content://com.android.externalstorage.documents/tree/primary%3AMusic
-                val persistedUris = resolver.persistedUriPermissions
-                    .filter { it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument }
-                    .map { it.uri }
-                val writeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                val uniqueUriParents = DocumentFileCompat.findUniqueParents(context, persistedUris.mapNotNull { it.path?.substringAfter("/tree/") })
-                persistedUris.forEach {
-                    if (DocumentFileCompat.buildAbsolutePath(context, it.path.orEmpty().substringAfter("/tree/")) !in uniqueUriParents) {
-                        resolver.releasePersistableUriPermission(it, writeFlags)
-                        Log.d(TAG, "Removed redundant URI permission => $it")
-                    }
+        fun cleanupRedundantUriPermissions(context: Context) = thread {
+            val resolver = context.contentResolver
+            // e.g. content://com.android.externalstorage.documents/tree/primary%3AMusic
+            val persistedUris = resolver.persistedUriPermissions
+                .filter { it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument }
+                .map { it.uri }
+            val writeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            val uniqueUriParents = DocumentFileCompat.findUniqueParents(context, persistedUris.mapNotNull { it.path?.substringAfter("/tree/") })
+            persistedUris.forEach {
+                if (DocumentFileCompat.buildAbsolutePath(context, it.path.orEmpty().substringAfter("/tree/")) !in uniqueUriParents) {
+                    resolver.releasePersistableUriPermission(it, writeFlags)
+                    Log.d(TAG, "Removed redundant URI permission => $it")
                 }
             }
         }

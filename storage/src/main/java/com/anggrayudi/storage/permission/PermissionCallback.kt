@@ -18,4 +18,11 @@ interface PermissionCallback {
     fun onShouldRedirectToSystemSettings(blockedPermissions: List<PermissionReport>) {
         // default implementation
     }
+
+    /**
+     * Triggered when you request another permission when a permission request dialog is showing.
+     */
+    fun onPermissionRequestInterrupted(permissions: Array<String>) {
+        // default implementation
+    }
 }

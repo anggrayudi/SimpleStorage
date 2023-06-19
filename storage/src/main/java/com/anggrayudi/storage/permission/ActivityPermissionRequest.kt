@@ -62,6 +62,10 @@ class ActivityPermissionRequest private constructor(
     }
 
     private fun reportResult(reports: List<PermissionReport>) {
+        if (reports.isEmpty()) {
+            callback.onPermissionRequestInterrupted(permissions)
+            return
+        }
         val blockedPermissions = reports.filter { it.deniedPermanently }
         if (blockedPermissions.isEmpty()) {
             callback.onPermissionsChecked(PermissionResult(reports), true)
