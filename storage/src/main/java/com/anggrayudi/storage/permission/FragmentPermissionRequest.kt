@@ -36,6 +36,10 @@ class FragmentPermissionRequest private constructor(
     }
 
     private fun onRequestPermissionsResult(result: Map<String, Boolean>) {
+        if (result.isEmpty()) {
+            callback.onPermissionRequestInterrupted(permissions)
+            return
+        }
         val activity = fragment.requireActivity()
         val reports = result.map {
             PermissionReport(it.key, it.value, !it.value && !ActivityCompat.shouldShowRequestPermissionRationale(activity, it.key))

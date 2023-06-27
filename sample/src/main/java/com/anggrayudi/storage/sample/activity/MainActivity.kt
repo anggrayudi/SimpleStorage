@@ -145,7 +145,7 @@ class MainActivity : AppCompatActivity() {
         storageHelper.onStorageAccessGranted = { _, root ->
             Toast.makeText(
                 this,
-                getString(R.string.ss_selecting_root_path_success_without_open_folder_picker, root.getAbsolutePath(this)),
+                getString(com.anggrayudi.storage.R.string.ss_selecting_root_path_success_without_open_folder_picker, root.getAbsolutePath(this)),
                 Toast.LENGTH_SHORT
             ).show()
         }

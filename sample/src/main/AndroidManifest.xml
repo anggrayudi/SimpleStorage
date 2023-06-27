@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.anggrayudi.storage.sample">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Add this permission if your app requires full disk access -->
     <uses-permission
@@ -16,7 +15,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
-        tools:ignore="AllowBackup">
+        tools:ignore="AllowBackup,LockedOrientationActivity">
         <activity
             android:name=".activity.MainActivity"
             android:exported="true"

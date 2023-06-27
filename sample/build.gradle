@@ -14,20 +14,14 @@ android {
             storeFile debugKeystore
         }
         release {
-            if (properties['keyAlias'] != null) {
-                keyAlias properties['keyAlias']
-                keyPassword properties['keyPassword']
-                storePassword properties['storePassword']
-                storeFile file('keystore.jks')
-            } else {
-                keyAlias 'androiddebugkey'
-                keyPassword 'android'
-                storePassword 'android'
-                storeFile debugKeystore
-            }
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+            storePassword 'android'
+            storeFile debugKeystore
         }
     }
 
+    namespace 'com.anggrayudi.storage.sample'
     defaultConfig {
         applicationId "com.anggrayudi.storage.sample"
         multiDexEnabled true
@@ -48,7 +42,7 @@ android {
         }
     }
 
-    lintOptions {
+    lint {
         abortOnError false
     }
 

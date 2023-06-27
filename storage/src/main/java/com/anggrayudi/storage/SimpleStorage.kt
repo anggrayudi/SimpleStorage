@@ -563,7 +563,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         private const val KEY_LAST_VISITED_FOLDER = BuildConfig.LIBRARY_PACKAGE_NAME + ".lastVisitedFolder"
         private const val TAG = "SimpleStorage"
 
-        const val KITKAT_SD_CARD_PATH = "/storage/sdcard"
+        const val KITKAT_SD_CARD_ID = "sdcard"
+        const val KITKAT_SD_CARD_PATH = "/storage/$KITKAT_SD_CARD_ID"
 
         @JvmStatic
         @Suppress("DEPRECATION")
@@ -618,8 +619,9 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         @JvmStatic
         @JvmOverloads
         fun hasStorageAccess(context: Context, fullPath: String, requiresWriteAccess: Boolean = true): Boolean {
-            return (requiresWriteAccess && hasStoragePermission(context) || !requiresWriteAccess && hasStorageReadPermission(context))
-                    && DocumentFileCompat.getAccessibleRootDocumentFile(context, fullPath, requiresWriteAccess) != null
+            return DocumentFileCompat.getAccessibleRootDocumentFile(context, fullPath, requiresWriteAccess) != null
+                    && (Build.VERSION.SDK_INT > Build.VERSION_CODES.P
+                    || requiresWriteAccess && hasStoragePermission(context) || !requiresWriteAccess && hasStorageReadPermission(context))
         }
 
         /**
@@ -632,20 +634,18 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
          * Read [Count Your SAF Uri Persisted Permissions!](https://commonsware.com/blog/2020/06/13/count-your-saf-uri-permission-grants.html)
          */
         @JvmStatic
-        fun cleanupRedundantUriPermissions(context: Context) {
-            thread {
-                val resolver = context.contentResolver
-                // e.g. content://com.android.externalstorage.documents/tree/primary%3AMusic
-                val persistedUris = resolver.persistedUriPermissions
-                    .filter { it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument }
-                    .map { it.uri }
-                val writeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                val uniqueUriParents = DocumentFileCompat.findUniqueParents(context, persistedUris.mapNotNull { it.path?.substringAfter("/tree/") })
-                persistedUris.forEach {
-                    if (DocumentFileCompat.buildAbsolutePath(context, it.path.orEmpty().substringAfter("/tree/")) !in uniqueUriParents) {
-                        resolver.releasePersistableUriPermission(it, writeFlags)
-                        Log.d(TAG, "Removed redundant URI permission => $it")
-                    }
+        fun cleanupRedundantUriPermissions(context: Context) = thread {
+            val resolver = context.contentResolver
+            // e.g. content://com.android.externalstorage.documents/tree/primary%3AMusic
+            val persistedUris = resolver.persistedUriPermissions
+                .filter { it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument }
+                .map { it.uri }
+            val writeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            val uniqueUriParents = DocumentFileCompat.findUniqueParents(context, persistedUris.mapNotNull { it.path?.substringAfter("/tree/") })
+            persistedUris.forEach {
+                if (DocumentFileCompat.buildAbsolutePath(context, it.path.orEmpty().substringAfter("/tree/")) !in uniqueUriParents) {
+                    resolver.releasePersistableUriPermission(it, writeFlags)
+                    Log.d(TAG, "Removed redundant URI permission => $it")
                 }
             }
         }
