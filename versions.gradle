@@ -4,16 +4,16 @@
  **/
 ext.deps = [:]
 def versions = [:]
-versions.activity = "1.6.0"
-versions.appcompat = "1.5.1"
-versions.core_ktx = "1.9.0"
-versions.coroutines = "1.6.4"
+versions.activity = "1.7.2"
+versions.appcompat = "1.6.1"
+versions.core_ktx = "1.12.0"
+versions.coroutines = "1.7.3"
 versions.documentfile = "1.0.1"
-versions.fragment = "1.5.3"
-versions.junit = "5.9.1"
+versions.fragment = "1.6.1"
+versions.junit = "5.10.0"
 versions.material_dialogs = "3.3.0"
 versions.material_progressbar = "1.6.1"
-versions.mockk = "1.13.5"
+versions.mockk = "1.13.7"
 versions.multidex = "2.0.1"
 versions.robolectric = "4.10.3"
 versions.timber = "5.0.1"
