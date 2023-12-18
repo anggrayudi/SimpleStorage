@@ -533,12 +533,20 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
 
     private fun checkRequestCode() {
-        val set = setOf(requestCodeFilePicker, requestCodeFolderPicker, requestCodeStorageAccess, requestCodeCreateFile)
-        if (set.size < 4) {
-            throw IllegalArgumentException(
-                "Request codes must be unique. File picker=$requestCodeFilePicker, Folder picker=$requestCodeFolderPicker, " +
-                        "Storage access=$requestCodeStorageAccess, Create file=$requestCodeCreateFile"
-            )
+        if (requestCodeFilePicker == 0) {
+            requestCodeFilePicker = DEFAULT_REQUEST_CODE_FILE_PICKER
+        }
+
+        if (requestCodeFolderPicker == 0) {
+            requestCodeFolderPicker = DEFAULT_REQUEST_CODE_FOLDER_PICKER
+        }
+
+        if (requestCodeStorageAccess == 0) {
+            requestCodeStorageAccess = DEFAULT_REQUEST_CODE_STORAGE_ACCESS
+        }
+
+        if (requestCodeCreateFile == 0) {
+            requestCodeCreateFile = DEFAULT_REQUEST_CODE_CREATE_FILE
         }
     }
 
