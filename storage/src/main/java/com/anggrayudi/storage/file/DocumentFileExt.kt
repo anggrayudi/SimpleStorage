@@ -1999,7 +1999,7 @@ private fun DocumentFile.copyFolderTo(
                 continue
             }
 
-            targetFile = targetFolder.makeFile(context, filename, sourceFile.type, CreateMode.REUSE)
+            targetFile = targetFolder.makeFile(context, filename, mimeType = null, CreateMode.REUSE)
             if (targetFile != null && targetFile.length() > 0) {
                 conflictedFiles.add(FolderCallback.FileConflict(sourceFile, targetFile))
                 continue
