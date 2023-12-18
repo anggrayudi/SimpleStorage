@@ -61,25 +61,25 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
     var fileReceiverCallback: FileReceiverCallback? = null
 
-    var requestCodeStorageAccess = 1
+    var requestCodeStorageAccess = DEFAULT_REQUEST_CODE_STORAGE_ACCESS
         set(value) {
             field = value
             checkRequestCode()
         }
 
-    var requestCodeFolderPicker = 2
+    var requestCodeFolderPicker = DEFAULT_REQUEST_CODE_FOLDER_PICKER
         set(value) {
             field = value
             checkRequestCode()
         }
 
-    var requestCodeFilePicker = 3
+    var requestCodeFilePicker = DEFAULT_REQUEST_CODE_FILE_PICKER
         set(value) {
             field = value
             checkRequestCode()
         }
 
-    var requestCodeCreateFile = 4
+    var requestCodeCreateFile = DEFAULT_REQUEST_CODE_CREATE_FILE
         set(value) {
             field = value
             checkRequestCode()
@@ -523,22 +523,30 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         savedInstanceState.getString(KEY_LAST_VISITED_FOLDER)?.let { lastVisitedFolder = File(it) }
         expectedBasePathForAccessRequest = savedInstanceState.getString(KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST)
         expectedStorageTypeForAccessRequest = StorageType.values()[savedInstanceState.getInt(KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST)]
-        requestCodeStorageAccess = savedInstanceState.getInt(KEY_REQUEST_CODE_STORAGE_ACCESS)
-        requestCodeFolderPicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FOLDER_PICKER)
-        requestCodeFilePicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FILE_PICKER)
-        requestCodeCreateFile = savedInstanceState.getInt(KEY_REQUEST_CODE_CREATE_FILE)
+        requestCodeStorageAccess = savedInstanceState.getInt(KEY_REQUEST_CODE_STORAGE_ACCESS, DEFAULT_REQUEST_CODE_STORAGE_ACCESS)
+        requestCodeFolderPicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FOLDER_PICKER, DEFAULT_REQUEST_CODE_FOLDER_PICKER)
+        requestCodeFilePicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FILE_PICKER, DEFAULT_REQUEST_CODE_FILE_PICKER)
+        requestCodeCreateFile = savedInstanceState.getInt(KEY_REQUEST_CODE_CREATE_FILE, DEFAULT_REQUEST_CODE_CREATE_FILE)
         if (wrapper is FragmentWrapper && savedInstanceState.containsKey(KEY_REQUEST_CODE_FRAGMENT_PICKER)) {
             wrapper.requestCode = savedInstanceState.getInt(KEY_REQUEST_CODE_FRAGMENT_PICKER)
         }
     }
 
     private fun checkRequestCode() {
-        val set = setOf(requestCodeFilePicker, requestCodeFolderPicker, requestCodeStorageAccess, requestCodeCreateFile)
-        if (set.size < 4) {
-            throw IllegalArgumentException(
-                "Request codes must be unique. File picker=$requestCodeFilePicker, Folder picker=$requestCodeFolderPicker, " +
-                        "Storage access=$requestCodeStorageAccess, Create file=$requestCodeCreateFile"
-            )
+        if (requestCodeFilePicker == 0) {
+            requestCodeFilePicker = DEFAULT_REQUEST_CODE_FILE_PICKER
+        }
+
+        if (requestCodeFolderPicker == 0) {
+            requestCodeFolderPicker = DEFAULT_REQUEST_CODE_FOLDER_PICKER
+        }
+
+        if (requestCodeStorageAccess == 0) {
+            requestCodeStorageAccess = DEFAULT_REQUEST_CODE_STORAGE_ACCESS
+        }
+
+        if (requestCodeCreateFile == 0) {
+            requestCodeCreateFile = DEFAULT_REQUEST_CODE_CREATE_FILE
         }
     }
 
@@ -562,6 +570,11 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         private const val KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST = BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedBasePathForAccessRequest"
         private const val KEY_LAST_VISITED_FOLDER = BuildConfig.LIBRARY_PACKAGE_NAME + ".lastVisitedFolder"
         private const val TAG = "SimpleStorage"
+
+        private const val DEFAULT_REQUEST_CODE_STORAGE_ACCESS: Int = 1
+        private const val DEFAULT_REQUEST_CODE_FOLDER_PICKER: Int = 2
+        private const val DEFAULT_REQUEST_CODE_FILE_PICKER: Int = 3
+        private const val DEFAULT_REQUEST_CODE_CREATE_FILE: Int = 4
 
         const val KITKAT_SD_CARD_ID = "sdcard"
         const val KITKAT_SD_CARD_PATH = "/storage/$KITKAT_SD_CARD_ID"
