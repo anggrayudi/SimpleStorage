@@ -72,7 +72,7 @@ fun String.parent(): String {
     }
     val parentPath = folderTree.take(folderTree.size - 1).joinToString("/", "/")
     return if (parentPath.startsWith(SimpleStorage.externalStoragePath)
-        || parentPath.matches(Regex("/storage/[A-Z0-9]{4}-[A-Z0-9]{4}(.*?)"))
+        || parentPath.matches(Regex("/storage/[A-Z0-9-]+(.*?)"))
         || Build.VERSION.SDK_INT < 21 && parentPath.startsWith(SimpleStorage.KITKAT_SD_CARD_PATH)
     ) {
         parentPath
