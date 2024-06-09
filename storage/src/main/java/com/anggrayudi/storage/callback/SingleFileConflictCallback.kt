@@ -13,7 +13,7 @@ import kotlinx.coroutines.GlobalScope
  * Created on 17/08/20
  * @author Anggrayudi H
  */
-abstract class SingleFileConflictCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
+abstract class SingleFileConflictCallback<T> @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
     var uiScope: CoroutineScope = GlobalScope
 ) {
 
@@ -28,7 +28,7 @@ abstract class SingleFileConflictCallback @OptIn(DelicateCoroutinesApi::class) @
      * @param destinationFile can be [DocumentFile] or [java.io.File]
      */
     @UiThread
-    open fun onFileConflict(destinationFile: DocumentFile, action: FileConflictAction) {
+    open fun onFileConflict(destinationFile: T, action: FileConflictAction) {
         action.confirmResolution(ConflictResolution.CREATE_NEW)
     }
 

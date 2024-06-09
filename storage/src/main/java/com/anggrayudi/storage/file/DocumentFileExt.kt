@@ -751,7 +751,7 @@ fun DocumentFile.makeFile(
     name: String,
     mimeType: String? = MimeType.UNKNOWN,
     mode: CreateMode = CreateMode.CREATE_NEW,
-    onConflict: SingleFileConflictCallback? = null
+    onConflict: SingleFileConflictCallback<DocumentFile>? = null
 ): DocumentFile? {
     if (!isDirectory || !isWritable(context)) {
         return null
@@ -1337,7 +1337,7 @@ fun DocumentFile.decompressZip(
     targetFolder: DocumentFile,
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    onConflict: SingleFileConflictCallback? = null
+    onConflict: SingleFileConflictCallback<DocumentFile>? = null
 ): Flow<ZipDecompressionResult> = callbackFlow {
     send(ZipDecompressionResult.Validating)
     if (exists()) {
@@ -1909,7 +1909,7 @@ private fun DocumentFile.copyFolderTo(
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
     callback: FolderConflictCallback
 ): Flow<FolderResult> = callbackFlow {
-    val writableTargetParentFolder = doesMeetCopyRequirements(context, targetParentFolder, newFolderNameInTargetPath, this) ?: return@callbackFlow
+    val writableTargetParentFolder = doesMeetFolderCopyRequirements(context, targetParentFolder, newFolderNameInTargetPath, this) ?: return@callbackFlow
 
     send(FolderResult.Preparing)
 
@@ -2158,7 +2158,7 @@ private fun Exception.toMultipleFileCallbackErrorCode(): MultipleFilesErrorCode 
     }
 }
 
-private fun DocumentFile.doesMeetCopyRequirements(
+private fun DocumentFile.doesMeetFolderCopyRequirements(
     context: Context,
     targetParentFolder: DocumentFile,
     newFolderNameInTargetPath: String?,
@@ -2203,7 +2203,7 @@ fun DocumentFile.copyFileTo(
     fileDescription: FileDescription? = null,
     reportInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    callback: SingleFileConflictCallback
+    callback: SingleFileConflictCallback<DocumentFile>
 ): Flow<SingleFileResult> {
     return copyFileTo(context, targetFolder.absolutePath, fileDescription, reportInterval, isFileSizeAllowed, callback)
 }
@@ -2219,7 +2219,7 @@ fun DocumentFile.copyFileTo(
     fileDescription: FileDescription? = null,
     reportInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    callback: SingleFileConflictCallback
+    callback: SingleFileConflictCallback<DocumentFile>
 ): Flow<SingleFileResult> = callbackFlow {
     val targetFolder = DocumentFileCompat.mkdirs(context, targetFolderAbsolutePath, true)
     if (targetFolder == null) {
@@ -2240,7 +2240,7 @@ fun DocumentFile.copyFileTo(
     fileDescription: FileDescription? = null,
     reportInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    callback: SingleFileConflictCallback
+    callback: SingleFileConflictCallback<DocumentFile>
 ): Flow<SingleFileResult> = callbackFlow {
     if (fileDescription?.subFolder.isNullOrEmpty()) {
         copyFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, reportInterval, this, isFileSizeAllowed, callback)
@@ -2262,9 +2262,9 @@ private fun DocumentFile.copyFileTo(
     updateInterval: Long,
     scope: ProducerScope<SingleFileResult>,
     isFileSizeAllowed: CheckFileSize,
-    callback: SingleFileConflictCallback
+    callback: SingleFileConflictCallback<DocumentFile>
 ) {
-    val writableTargetFolder = doesMeetCopyRequirements(context, targetFolder, newFilenameInTargetPath, scope) ?: return
+    val writableTargetFolder = doesMeetFileCopyRequirements(context, targetFolder, newFilenameInTargetPath, scope) ?: return
 
     scope.trySend(SingleFileResult.Preparing)
 
@@ -2305,7 +2305,7 @@ private fun DocumentFile.copyFileTo(
 /**
  * @return writable [DocumentFile] for `targetFolder`
  */
-private fun DocumentFile.doesMeetCopyRequirements(
+private fun DocumentFile.doesMeetFileCopyRequirements(
     context: Context,
     targetFolder: DocumentFile,
     newFilenameInTargetPath: String?,
@@ -2411,7 +2411,7 @@ fun DocumentFile.moveFileTo(
     fileDescription: FileDescription? = null,
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    callback: SingleFileConflictCallback
+    callback: SingleFileConflictCallback<DocumentFile>
 ): Flow<SingleFileResult> {
     return moveFileTo(context, targetFolder.absolutePath, fileDescription, updateInterval, isFileSizeAllowed, callback)
 }
@@ -2427,7 +2427,7 @@ fun DocumentFile.moveFileTo(
     fileDescription: FileDescription? = null,
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    callback: SingleFileConflictCallback
+    callback: SingleFileConflictCallback<DocumentFile>
 ): Flow<SingleFileResult> = callbackFlow {
     val targetFolder = DocumentFileCompat.mkdirs(context, targetFolderAbsolutePath, true)
     if (targetFolder == null) {
@@ -2448,7 +2448,7 @@ fun DocumentFile.moveFileTo(
     fileDescription: FileDescription? = null,
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    callback: SingleFileConflictCallback
+    callback: SingleFileConflictCallback<DocumentFile>
 ): Flow<SingleFileResult> = callbackFlow {
     if (fileDescription?.subFolder.isNullOrEmpty()) {
         moveFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, updateInterval, this, isFileSizeAllowed, callback)
@@ -2470,9 +2470,9 @@ private fun DocumentFile.moveFileTo(
     updateInterval: Long,
     scope: ProducerScope<SingleFileResult>,
     isFileSizeAllowed: CheckFileSize,
-    callback: SingleFileConflictCallback
+    callback: SingleFileConflictCallback<DocumentFile>
 ) {
-    val writableTargetFolder = doesMeetCopyRequirements(context, targetFolder, newFilenameInTargetPath, scope) ?: return
+    val writableTargetFolder = doesMeetFileCopyRequirements(context, targetFolder, newFilenameInTargetPath, scope) ?: return
 
     scope.trySend(SingleFileResult.Preparing)
 
@@ -2575,7 +2575,7 @@ private fun DocumentFile.copyFileToMedia(
     updateInterval: Long,
     scope: ProducerScope<SingleFileResult>,
     isFileSizeAllowed: CheckFileSize,
-    callback: SingleFileConflictCallback,
+    callback: SingleFileConflictCallback<DocumentFile>,
 ) {
     if (simpleCheckSourceFile(scope)) return
 
@@ -2624,7 +2624,7 @@ fun DocumentFile.copyFileToDownloadMedia(
     mode: CreateMode = CreateMode.CREATE_NEW,
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    callback: SingleFileConflictCallback,
+    callback: SingleFileConflictCallback<DocumentFile>,
 ): Flow<SingleFileResult> = callbackFlow {
     copyFileToMedia(context, fileDescription, PublicDirectory.DOWNLOADS, false, mode, updateInterval, this, isFileSizeAllowed, callback)
 }
@@ -2637,7 +2637,7 @@ fun DocumentFile.copyFileToPictureMedia(
     mode: CreateMode = CreateMode.CREATE_NEW,
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    callback: SingleFileConflictCallback,
+    callback: SingleFileConflictCallback<DocumentFile>,
 ): Flow<SingleFileResult> = callbackFlow {
     copyFileToMedia(context, fileDescription, PublicDirectory.PICTURES, false, mode, updateInterval, this, isFileSizeAllowed, callback)
 }
@@ -2650,7 +2650,7 @@ fun DocumentFile.moveFileToDownloadMedia(
     mode: CreateMode = CreateMode.CREATE_NEW,
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    callback: SingleFileConflictCallback
+    callback: SingleFileConflictCallback<DocumentFile>
 ): Flow<SingleFileResult> = callbackFlow {
     copyFileToMedia(context, fileDescription, PublicDirectory.DOWNLOADS, true, mode, updateInterval, this, isFileSizeAllowed, callback)
 }
@@ -2663,7 +2663,7 @@ fun DocumentFile.moveFileToPictureMedia(
     mode: CreateMode = CreateMode.CREATE_NEW,
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    callback: SingleFileConflictCallback
+    callback: SingleFileConflictCallback<DocumentFile>
 ): Flow<SingleFileResult> = callbackFlow {
     copyFileToMedia(context, fileDescription, PublicDirectory.PICTURES, true, mode, updateInterval, this, isFileSizeAllowed, callback)
 }
@@ -2740,7 +2740,7 @@ private fun handleFileConflict(
     targetFolder: DocumentFile,
     targetFileName: String,
     scope: ProducerScope<SingleFileResult>,
-    callback: SingleFileConflictCallback
+    callback: SingleFileConflictCallback<DocumentFile>
 ): SingleFileConflictCallback.ConflictResolution {
     targetFolder.child(context, targetFileName)?.let { targetFile ->
         val resolution = awaitUiResultWithPending(callback.uiScope) {

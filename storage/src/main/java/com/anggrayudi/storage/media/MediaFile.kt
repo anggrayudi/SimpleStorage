@@ -366,7 +366,7 @@ class MediaFile(context: Context, val uri: Uri) {
         fileDescription: FileDescription? = null,
         updateInterval: Long = 500,
         isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-        callback: SingleFileConflictCallback
+        callback: SingleFileConflictCallback<DocumentFile>
     ): Flow<SingleFileResult> = callbackFlow {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
@@ -419,7 +419,7 @@ class MediaFile(context: Context, val uri: Uri) {
         fileDescription: FileDescription? = null,
         updateInterval: Long = 500,
         isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-        callback: SingleFileConflictCallback
+        callback: SingleFileConflictCallback<DocumentFile>
     ): Flow<SingleFileResult> = callbackFlow {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
@@ -560,7 +560,7 @@ class MediaFile(context: Context, val uri: Uri) {
         targetFolder: DocumentFile,
         fileName: String,
         scope: ProducerScope<SingleFileResult>,
-        callback: SingleFileConflictCallback
+        callback: SingleFileConflictCallback<DocumentFile>
     ): SingleFileConflictCallback.ConflictResolution {
         targetFolder.child(context, fileName)?.let { targetFile ->
             val resolution = awaitUiResultWithPending(callback.uiScope) {
