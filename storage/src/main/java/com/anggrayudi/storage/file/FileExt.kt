@@ -10,8 +10,7 @@ import androidx.annotation.WorkerThread
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
-import com.anggrayudi.storage.callback.FileCallback
-import com.anggrayudi.storage.callback.FileConflictCallback
+import com.anggrayudi.storage.callback.SingleFileConflictCallback
 import com.anggrayudi.storage.extension.awaitUiResultWithPending
 import com.anggrayudi.storage.extension.isKitkatSdCardStorageId
 import com.anggrayudi.storage.extension.trimFileSeparator
@@ -180,7 +179,7 @@ fun File.makeFile(
     name: String,
     mimeType: String? = MimeType.UNKNOWN,
     mode: CreateMode = CreateMode.CREATE_NEW,
-    onConflict: FileConflictCallback<File>? = null
+    onConflict: SingleFileConflictCallback<File>? = null
 ): File? {
     if (!isDirectory || !isWritable(context)) {
         return null
@@ -206,7 +205,7 @@ fun File.makeFile(
     val targetFile = File(parent, fullFileName)
     if (onConflict != null && targetFile.exists()) {
         createMode = awaitUiResultWithPending(onConflict.uiScope) {
-            onConflict.onFileConflict(targetFile, FileCallback.FileConflictAction(it))
+            onConflict.onFileConflict(targetFile, SingleFileConflictCallback.FileConflictAction(it))
         }.toCreateMode(true)
     }
 
@@ -329,20 +328,20 @@ fun File.moveTo(
     context: Context,
     targetFolder: String,
     newFileNameInTarget: String? = null,
-    conflictResolution: FileCallback.ConflictResolution = FileCallback.ConflictResolution.CREATE_NEW
+    conflictResolution: SingleFileConflictCallback.ConflictResolution = SingleFileConflictCallback.ConflictResolution.CREATE_NEW
 ): File? {
     return moveTo(context, File(targetFolder), newFileNameInTarget, conflictResolution)
 }
 
 /**
- * @param conflictResolution using [FileCallback.ConflictResolution.SKIP] will return `null`
+ * @param conflictResolution using [SingleFileConflictCallback.ConflictResolution.SKIP] will return `null`
  */
 @JvmOverloads
 fun File.moveTo(
     context: Context,
     targetFolder: File,
     newFileNameInTarget: String? = null,
-    conflictResolution: FileCallback.ConflictResolution = FileCallback.ConflictResolution.CREATE_NEW
+    conflictResolution: SingleFileConflictCallback.ConflictResolution = SingleFileConflictCallback.ConflictResolution.CREATE_NEW
 ): File? {
     if (!exists() || !isWritable(context)) {
         return null
@@ -361,9 +360,9 @@ fun File.moveTo(
     }
     if (dest.exists()) {
         when (conflictResolution) {
-            FileCallback.ConflictResolution.SKIP -> return null
-            FileCallback.ConflictResolution.REPLACE -> if (!dest.forceDelete()) return null
-            FileCallback.ConflictResolution.CREATE_NEW -> {
+            SingleFileConflictCallback.ConflictResolution.SKIP -> return null
+            SingleFileConflictCallback.ConflictResolution.REPLACE -> if (!dest.forceDelete()) return null
+            SingleFileConflictCallback.ConflictResolution.CREATE_NEW -> {
                 dest = targetFolder.child(targetFolder.autoIncrementFileName(filename))
             }
         }

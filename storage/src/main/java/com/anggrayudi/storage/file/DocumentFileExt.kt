@@ -18,14 +18,9 @@ import androidx.core.content.FileProvider
 import androidx.core.content.MimeTypeFilter
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
-import com.anggrayudi.storage.callback.BaseFileCallback
-import com.anggrayudi.storage.callback.FileCallback
-import com.anggrayudi.storage.callback.FileConflictCallback
-import com.anggrayudi.storage.callback.FolderCallback
-import com.anggrayudi.storage.callback.MultipleFileCallback
-import com.anggrayudi.storage.callback.ZipCompressionCallback
-import com.anggrayudi.storage.callback.ZipDecompressionCallback
-import com.anggrayudi.storage.extension.awaitUiResult
+import com.anggrayudi.storage.callback.FolderConflictCallback
+import com.anggrayudi.storage.callback.MultipleFileConflictCallback
+import com.anggrayudi.storage.callback.SingleFileConflictCallback
 import com.anggrayudi.storage.extension.awaitUiResultWithPending
 import com.anggrayudi.storage.extension.childOf
 import com.anggrayudi.storage.extension.closeEntryQuietly
@@ -43,7 +38,6 @@ import com.anggrayudi.storage.extension.isTreeDocumentFile
 import com.anggrayudi.storage.extension.openInputStream
 import com.anggrayudi.storage.extension.openOutputStream
 import com.anggrayudi.storage.extension.parent
-import com.anggrayudi.storage.extension.postToUi
 import com.anggrayudi.storage.extension.startCoroutineTimer
 import com.anggrayudi.storage.extension.toDocumentFile
 import com.anggrayudi.storage.extension.trimFileSeparator
@@ -53,7 +47,23 @@ import com.anggrayudi.storage.file.StorageId.PRIMARY
 import com.anggrayudi.storage.media.FileDescription
 import com.anggrayudi.storage.media.MediaFile
 import com.anggrayudi.storage.media.MediaStoreCompat
+import com.anggrayudi.storage.result.FileProperties
+import com.anggrayudi.storage.result.FilePropertiesResult
+import com.anggrayudi.storage.result.FolderErrorCode
+import com.anggrayudi.storage.result.FolderResult
+import com.anggrayudi.storage.result.MultipleFilesErrorCode
+import com.anggrayudi.storage.result.MultipleFilesResult
+import com.anggrayudi.storage.result.SingleFileErrorCode
+import com.anggrayudi.storage.result.SingleFileResult
+import com.anggrayudi.storage.result.ZipCompressionErrorCode
+import com.anggrayudi.storage.result.ZipCompressionResult
+import com.anggrayudi.storage.result.ZipDecompressionErrorCode
+import com.anggrayudi.storage.result.ZipDecompressionResult
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.ProducerScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -64,6 +74,10 @@ import java.util.Date
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+
+typealias CheckFileSize = (freeSpace: Long, fileSize: Long) -> Boolean
+
+internal val defaultFileSizeChecker: CheckFileSize = { freeSpace, fileSize -> fileSize + 100 * FileSize.MB < freeSpace /* 100MB tolerance */ }
 
 /**
  * Created on 16/08/20
@@ -140,12 +154,34 @@ fun DocumentFile.isEmpty(context: Context): Boolean {
 
 /**
  * Similar to Get Info on MacOS or File Properties in Windows.
- * Use [Thread.interrupt] to cancel the proccess and it will trigger [FileProperties.CalculationCallback.onCanceled]
+ * Example:
+ * ```
+ * val job = ioScope.launch {
+ *     getProperties(context)
+ *         .onCompletion {
+ *             if (it is CancellationException) {
+ *                 // update UI
+ *             }
+ *         }
+ *         .collect { result ->
+ *             when (result) {
+ *                 is FilePropertiesResult.OnUpdate -> // do something
+ *                 is FilePropertiesResult.OnComplete -> // do something
+ *                 is FilePropertiesResult.OnError -> // do something
+ *             }
+ *         }
+ * }
+ * // call this if you want to stop in the middle of process
+ * job.cancel()
+ * ```
  */
 @WorkerThread
-fun DocumentFile.getProperties(context: Context, callback: FileProperties.CalculationCallback) {
+fun DocumentFile.getProperties(
+    context: Context,
+    updateInterval: Long = 500
+): Flow<FilePropertiesResult> = callbackFlow {
     when {
-        !canRead() -> callback.uiScope.postToUi { callback.onError() }
+        !canRead() -> send(FilePropertiesResult.Error)
 
         isDirectory -> {
             val properties = FileProperties(
@@ -156,23 +192,14 @@ fun DocumentFile.getProperties(context: Context, callback: FileProperties.Calcul
                 lastModified = lastModified().let { if (it > 0) Date(it) else null }
             )
             if (isEmpty(context)) {
-                callback.uiScope.postToUi { callback.onComplete(properties) }
+                send(FilePropertiesResult.Completed(properties))
             } else {
-                val timer = if (callback.updateInterval < 1) null else startCoroutineTimer(repeatMillis = callback.updateInterval) {
-                    callback.uiScope.postToUi { callback.onUpdate(properties) }
+                val timer = if (updateInterval < 1) null else startCoroutineTimer(repeatMillis = updateInterval) {
+                    trySend(FilePropertiesResult.Updating(properties))
                 }
-                val thread = Thread.currentThread()
-                walkFileTreeForInfo(properties, thread)
+                walkFileTreeForInfo(properties, this)
                 timer?.cancel()
-                // need to store isInterrupted in a variable, because calling it from UI thread always returns false
-                val interrupted = thread.isInterrupted
-                callback.uiScope.postToUi {
-                    if (interrupted) {
-                        callback.onCanceled(properties)
-                    } else {
-                        callback.onComplete(properties)
-                    }
-                }
+                send(FilePropertiesResult.Completed(properties))
             }
         }
 
@@ -184,19 +211,20 @@ fun DocumentFile.getProperties(context: Context, callback: FileProperties.Calcul
                 isVirtual = isVirtual,
                 lastModified = lastModified().let { if (it > 0) Date(it) else null }
             )
-            callback.uiScope.postToUi { callback.onComplete(properties) }
+            send(FilePropertiesResult.Completed(properties))
         }
     }
 }
 
-private fun DocumentFile.walkFileTreeForInfo(properties: FileProperties, thread: Thread) {
+@OptIn(DelicateCoroutinesApi::class)
+private fun <E> DocumentFile.walkFileTreeForInfo(properties: FileProperties, scope: ProducerScope<E>) {
     val list = listFiles()
     if (list.isEmpty()) {
         properties.emptyFolders++
         return
     }
     list.forEach {
-        if (thread.isInterrupted) {
+        if (scope.isClosedForSend) {
             return
         }
         if (it.isFile) {
@@ -206,7 +234,7 @@ private fun DocumentFile.walkFileTreeForInfo(properties: FileProperties, thread:
             if (size == 0L) properties.emptyFiles++
         } else {
             properties.folders++
-            it.walkFileTreeForInfo(properties, thread)
+            it.walkFileTreeForInfo(properties, scope)
         }
     }
 }
@@ -436,7 +464,6 @@ fun DocumentFile.checkRequirements(context: Context, requiresWriteAccess: Boolea
  * * It is not a raw file and the authority is neither [DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY] nor [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY]
  * * The authority is [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY], but [isTreeDocumentFile] returns `false`
  */
-@Suppress("DEPRECATION")
 fun DocumentFile.getBasePath(context: Context): String {
     val path = uri.path.orEmpty()
     val storageID = getStorageId(context)
@@ -548,7 +575,6 @@ fun DocumentFile.getRelativePath(context: Context) = getBasePath(context).substr
  * @see File.getAbsolutePath
  * @see getSimplePath
  */
-@Suppress("DEPRECATION")
 fun DocumentFile.getAbsolutePath(context: Context): String {
     val path = uri.path.orEmpty()
     val storageID = getStorageId(context)
@@ -725,7 +751,7 @@ fun DocumentFile.makeFile(
     name: String,
     mimeType: String? = MimeType.UNKNOWN,
     mode: CreateMode = CreateMode.CREATE_NEW,
-    onConflict: FileConflictCallback<DocumentFile>? = null
+    onConflict: SingleFileConflictCallback? = null
 ): DocumentFile? {
     if (!isDirectory || !isWritable(context)) {
         return null
@@ -753,7 +779,7 @@ fun DocumentFile.makeFile(
         parent.child(context, fullFileName)?.let { targetFile ->
             existingFile = targetFile
             createMode = awaitUiResultWithPending(onConflict.uiScope) {
-                onConflict.onFileConflict(targetFile, FileCallback.FileConflictAction(it))
+                onConflict.onFileConflict(targetFile, SingleFileConflictCallback.FileConflictAction(it))
             }.toCreateMode(true)
         }
     }
@@ -1134,9 +1160,10 @@ fun List<DocumentFile>.compressToZip(
     context: Context,
     targetZipFile: DocumentFile,
     deleteSourceWhenComplete: Boolean = false,
-    callback: ZipCompressionCallback<DocumentFile>
-) {
-    callback.uiScope.postToUi { callback.onCountingFiles() }
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+): Flow<ZipCompressionResult> = callbackFlow {
+    send(ZipCompressionResult.CountingFiles)
     val treeFiles = ArrayList<DocumentFile>(size)
     val mediaFiles = ArrayList<DocumentFile>(size)
     var foldersBasePath = mutableListOf<String>()
@@ -1144,10 +1171,8 @@ fun List<DocumentFile>.compressToZip(
     for (srcFile in distinctBy { it.uri }) {
         if (srcFile.exists()) {
             if (!srcFile.canRead()) {
-                callback.uiScope.postToUi {
-                    callback.onFailed(ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED, "Can't read file: ${srcFile.uri}")
-                }
-                return
+                send(ZipCompressionResult.Error(ZipCompressionErrorCode.STORAGE_PERMISSION_DENIED, "Can't read file: ${srcFile.uri}"))
+                return@callbackFlow
             } else if (srcFile.isFile) {
                 if (srcFile.isTreeDocumentFile || srcFile.isRawFile) {
                     treeFiles.add(srcFile)
@@ -1158,8 +1183,8 @@ fun List<DocumentFile>.compressToZip(
                 directories.add(srcFile)
             }
         } else {
-            callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE, "File not found: ${srcFile.uri}") }
-            return
+            send(ZipCompressionResult.Error(ZipCompressionErrorCode.MISSING_ENTRY_FILE, "File not found: ${srcFile.uri}"))
+            return@callbackFlow
         }
     }
 
@@ -1192,17 +1217,17 @@ fun List<DocumentFile>.compressToZip(
 
     val totalFiles = treeFiles.size + mediaFiles.size
     if (totalFiles == 0) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE, "No entry files found") }
-        return
+        send(ZipCompressionResult.Error(ZipCompressionErrorCode.MISSING_ENTRY_FILE, "No entry files found"))
+        return@callbackFlow
     }
 
     var actualFilesSize = 0L
 
     treeFiles.forEach { actualFilesSize += it.length() }
     mediaFiles.forEach { actualFilesSize += it.length() }
-    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetZipFile.getStorageId(context)), actualFilesSize)) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
-        return
+    if (!isFileSizeAllowed(DocumentFileCompat.getFreeSpace(context, targetZipFile.getStorageId(context)), actualFilesSize)) {
+        send(ZipCompressionResult.Error(ZipCompressionErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
+        return@callbackFlow
     }
 
     val entryFiles = ArrayList<EntryFile>(totalFiles)
@@ -1225,10 +1250,13 @@ fun List<DocumentFile>.compressToZip(
     mediaFiles.forEach { entryFiles.add(EntryFile(it, it.fullName)) }
     val duplicateFiles = entryFiles.groupingBy { it }.eachCount().filterValues { it > 1 }
     if (duplicateFiles.isNotEmpty()) {
-        callback.uiScope.postToUi {
-            callback.onFailed(ZipCompressionCallback.ErrorCode.DUPLICATE_ENTRY_FILE, "Found duplicate entry files: ${duplicateFiles.keys.map { it.file.uri }}")
-        }
-        return
+        send(
+            ZipCompressionResult.Error(
+                ZipCompressionErrorCode.DUPLICATE_ENTRY_FILE,
+                "Found duplicate entry files: ${duplicateFiles.keys.map { it.file.uri }}"
+            )
+        )
+        return@callbackFlow
     }
 
     var zipFile: DocumentFile? = targetZipFile
@@ -1236,17 +1264,13 @@ fun List<DocumentFile>.compressToZip(
         zipFile = targetZipFile.findParent(context)?.makeFile(context, targetZipFile.fullName, MimeType.ZIP)
     }
     if (zipFile == null) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
-        return
+        send(ZipCompressionResult.Error(ZipCompressionErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+        return@callbackFlow
     }
     if (!zipFile.isWritable(context)) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED, "Destination ZIP file is not writable") }
-        return
+        send(ZipCompressionResult.Error(ZipCompressionErrorCode.STORAGE_PERMISSION_DENIED, "Destination ZIP file is not writable"))
+        return@callbackFlow
     }
-
-    val thread = Thread.currentThread()
-    val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(entryFiles.map { it.file }, thread) }
-    if (reportInterval < 0) return
 
     var success = false
     var bytesCompressed = 0L
@@ -1257,10 +1281,9 @@ fun List<DocumentFile>.compressToZip(
         var writeSpeed = 0
         var fileCompressedCount = 0
         // using timer on small file is useless. We set minimum 10MB.
-        if (reportInterval > 0 && actualFilesSize > 10 * FileSize.MB) {
-            timer = startCoroutineTimer(repeatMillis = reportInterval) {
-                val report = ZipCompressionCallback.Report(bytesCompressed * 100f / actualFilesSize, bytesCompressed, writeSpeed, fileCompressedCount)
-                callback.uiScope.postToUi { callback.onReport(report) }
+        if (updateInterval > 0 && actualFilesSize > 10 * FileSize.MB) {
+            timer = startCoroutineTimer(repeatMillis = updateInterval) {
+                trySend(ZipCompressionResult.Compressing(bytesCompressed * 100f / actualFilesSize, bytesCompressed, writeSpeed, fileCompressedCount))
                 writeSpeed = 0
             }
         }
@@ -1280,13 +1303,13 @@ fun List<DocumentFile>.compressToZip(
         }
         success = true
     } catch (e: InterruptedIOException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.CANCELED) }
+        send(ZipCompressionResult.Error(ZipCompressionErrorCode.CANCELED))
     } catch (e: FileNotFoundException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE, e.message) }
+        send(ZipCompressionResult.Error(ZipCompressionErrorCode.MISSING_ENTRY_FILE, e.message))
     } catch (e: IOException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.UNKNOWN_IO_ERROR, e.message) }
+        send(ZipCompressionResult.Error(ZipCompressionErrorCode.UNKNOWN_IO_ERROR, e.message))
     } catch (e: SecurityException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED, e.message) }
+        send(ZipCompressionResult.Error(ZipCompressionErrorCode.STORAGE_PERMISSION_DENIED, e.message))
     } finally {
         timer?.cancel()
         zos.closeEntryQuietly()
@@ -1294,11 +1317,11 @@ fun List<DocumentFile>.compressToZip(
     }
     if (success) {
         if (deleteSourceWhenComplete) {
-            callback.uiScope.postToUi { callback.onDeleteEntryFiles() }
-            forEach { it.forceDelete(context) }
+            send(ZipCompressionResult.DeletingEntryFiles)
+            forEach { it.deleteRecursively(context) }
         }
         val sizeReduction = (actualFilesSize - zipFile.length()).toFloat() / actualFilesSize * 100
-        callback.uiScope.postToUi { callback.onCompleted(zipFile, actualFilesSize, totalFiles, sizeReduction) }
+        send(ZipCompressionResult.Completed(zipFile, actualFilesSize, totalFiles, sizeReduction))
     } else {
         zipFile.delete()
     }
@@ -1312,25 +1335,27 @@ fun List<DocumentFile>.compressToZip(
 fun DocumentFile.decompressZip(
     context: Context,
     targetFolder: DocumentFile,
-    callback: ZipDecompressionCallback<DocumentFile>
-) {
-    callback.uiScope.postToUi { callback.onValidate() }
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    onConflict: SingleFileConflictCallback? = null
+): Flow<ZipDecompressionResult> = callbackFlow {
+    send(ZipDecompressionResult.Validating)
     if (exists()) {
         if (!canRead()) {
-            callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
-            return
+            send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.STORAGE_PERMISSION_DENIED, "Can't read file: $uri"))
+            return@callbackFlow
         } else if (isFile) {
             if (type != MimeType.ZIP && name?.endsWith(".zip", ignoreCase = true) != false) {
-                callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.NOT_A_ZIP_FILE) }
-                return
+                send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.NOT_A_ZIP_FILE, "Not a ZIP file: $uri"))
+                return@callbackFlow
             }
         } else {
-            callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.NOT_A_ZIP_FILE) }
-            return
+            send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.MISSING_ZIP_FILE, "ZIP file not found: $uri"))
+            return@callbackFlow
         }
     } else {
-        callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.MISSING_ZIP_FILE) }
-        return
+        send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.MISSING_ZIP_FILE, "ZIP file not found: $uri"))
+        return@callbackFlow
     }
 
     var destFolder: DocumentFile? = targetFolder
@@ -1338,19 +1363,15 @@ fun DocumentFile.decompressZip(
         destFolder = targetFolder.findParent(context)?.makeFolder(context, targetFolder.fullName)
     }
     if (destFolder == null || !destFolder.isWritable(context)) {
-        callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
-        return
+        send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.STORAGE_PERMISSION_DENIED, "Destination folder is not writable"))
+        return@callbackFlow
     }
 
     val zipSize = length()
-    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), zipSize)) {
-        callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
-        return
+    if (!isFileSizeAllowed(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), zipSize)) {
+        send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
+        return@callbackFlow
     }
-
-    val thread = Thread.currentThread()
-    val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(this, thread) }
-    if (reportInterval < 0) return
 
     var success = false
     var bytesDecompressed = 0L
@@ -1363,10 +1384,9 @@ fun DocumentFile.decompressZip(
         zis = ZipInputStream(openInputStream(context))
         var writeSpeed = 0
         // using timer on small file is useless. We set minimum 10MB.
-        if (reportInterval > 0 && zipSize > 10 * FileSize.MB) {
-            timer = startCoroutineTimer(repeatMillis = reportInterval) {
-                val report = ZipDecompressionCallback.Report(bytesDecompressed, writeSpeed, fileDecompressedCount)
-                callback.uiScope.postToUi { callback.onReport(report) }
+        if (updateInterval > 0 && zipSize > 10 * FileSize.MB) {
+            timer = startCoroutineTimer(repeatMillis = updateInterval) {
+                trySend(ZipDecompressionResult.Decompressing(bytesDecompressed, writeSpeed, fileDecompressedCount))
                 writeSpeed = 0
             }
         }
@@ -1381,9 +1401,9 @@ fun DocumentFile.decompressZip(
                     if (it.isEmpty()) destFolder else destFolder.makeFolder(context, it, CreateMode.REUSE)
                 } ?: throw IOException()
                 val fileName = entry.name.substringAfterLast('/')
-                targetFile = folder.makeFile(context, fileName, onConflict = callback)
+                targetFile = folder.makeFile(context, fileName, onConflict = onConflict)
                 if (targetFile == null) {
-                    callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+                    send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                     canSuccess = false
                     break
                 }
@@ -1408,17 +1428,17 @@ fun DocumentFile.decompressZip(
         }
         success = canSuccess
     } catch (e: InterruptedIOException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.CANCELED) }
+        send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.CANCELED))
     } catch (e: FileNotFoundException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.MISSING_ZIP_FILE) }
+        send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.MISSING_ZIP_FILE, e.message))
     } catch (e: IOException) {
         if (e.message?.contains("no space", true) == true) {
-            callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
+            send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
         } else {
-            callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.UNKNOWN_IO_ERROR) }
+            send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.UNKNOWN_IO_ERROR, e.message))
         }
     } catch (e: SecurityException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.STORAGE_PERMISSION_DENIED, e.message))
     } finally {
         timer?.cancel()
         zis.closeEntryQuietly()
@@ -1427,8 +1447,7 @@ fun DocumentFile.decompressZip(
     if (success) {
         // Sometimes, the decompressed size is smaller than the compressed size, and you may get negative values. You should worry about this.
         val sizeExpansion = (bytesDecompressed - zipSize).toFloat() / zipSize * 100
-        val info = ZipDecompressionCallback.DecompressionInfo(bytesDecompressed, skippedDecompressedBytes, fileDecompressedCount, sizeExpansion)
-        callback.uiScope.postToUi { callback.onCompleted(this, destFolder, info) }
+        send(ZipDecompressionResult.Completed(this, destFolder, bytesDecompressed, skippedDecompressedBytes, fileDecompressedCount, sizeExpansion))
     } else {
         targetFile?.delete()
     }
@@ -1439,9 +1458,11 @@ fun List<DocumentFile>.moveTo(
     context: Context,
     targetParentFolder: DocumentFile,
     skipEmptyFiles: Boolean = true,
-    callback: MultipleFileCallback
-) {
-    copyTo(context, targetParentFolder, skipEmptyFiles, true, callback)
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: MultipleFileConflictCallback
+): Flow<MultipleFilesResult> {
+    return copyTo(context, targetParentFolder, skipEmptyFiles, true, updateInterval, isFileSizeAllowed, callback)
 }
 
 @WorkerThread
@@ -1449,58 +1470,52 @@ fun List<DocumentFile>.copyTo(
     context: Context,
     targetParentFolder: DocumentFile,
     skipEmptyFiles: Boolean = true,
-    callback: MultipleFileCallback
-) {
-    copyTo(context, targetParentFolder, skipEmptyFiles, false, callback)
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: MultipleFileConflictCallback
+): Flow<MultipleFilesResult> {
+    return copyTo(context, targetParentFolder, skipEmptyFiles, false, updateInterval, isFileSizeAllowed, callback)
 }
 
+@OptIn(DelicateCoroutinesApi::class)
 private fun List<DocumentFile>.copyTo(
     context: Context,
     targetParentFolder: DocumentFile,
     skipEmptyFiles: Boolean = true,
     deleteSourceWhenComplete: Boolean,
-    callback: MultipleFileCallback
-) {
-    val pair = doesMeetCopyRequirements(context, targetParentFolder, callback) ?: return
-
-    callback.uiScope.postToUi { callback.onPrepare() }
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: MultipleFileConflictCallback
+): Flow<MultipleFilesResult> = callbackFlow {
+    send(MultipleFilesResult.Validating)
+    val pair = doesMeetCopyRequirements(context, targetParentFolder, this, callback) ?: return@callbackFlow
+    send(MultipleFilesResult.Preparing)
 
     val validSources = pair.second
     val writableTargetParentFolder = pair.first
-    val conflictResolutions = validSources.handleParentFolderConflict(context, writableTargetParentFolder, callback) ?: return
-    validSources.removeAll(conflictResolutions.filter { it.solution == FolderCallback.ConflictResolution.SKIP }.map { it.source })
+    val conflictResolutions = validSources.handleParentFolderConflict(context, writableTargetParentFolder, this, callback) ?: return@callbackFlow
+    validSources.removeAll(conflictResolutions.filter { it.solution == FolderConflictCallback.ConflictResolution.SKIP }.map { it.source })
     if (validSources.isEmpty()) {
-        return
+        return@callbackFlow
     }
 
-    callback.uiScope.postToUi { callback.onCountingFiles() }
+    send(MultipleFilesResult.CountingFiles)
 
-    class SourceInfo(val children: List<DocumentFile>?, val size: Long, val totalFiles: Int, val conflictResolution: FolderCallback.ConflictResolution)
+    class SourceInfo(val children: List<DocumentFile>, val size: Long, val totalFiles: Int, val conflictResolution: FolderConflictCallback.ConflictResolution)
 
     val sourceInfos = validSources.associateWith { src ->
-        val resolution = conflictResolutions.find { it.source == src }?.solution ?: FolderCallback.ConflictResolution.CREATE_NEW
-        if (src.isFile) {
-            SourceInfo(null, src.length(), 1, resolution)
-        } else {
-            val children = if (skipEmptyFiles) src.walkFileTreeAndSkipEmptyFiles() else src.walkFileTree(context)
-            var totalFilesToCopy = 0
-            var totalSizeToCopy = 0L
-            children.forEach {
-                if (it.isFile) {
-                    totalFilesToCopy++
-                    totalSizeToCopy += it.length()
-                }
+        val children = if (skipEmptyFiles) src.walkFileTreeAndSkipEmptyFiles() else src.walkFileTree(context)
+        var totalFilesToCopy = 0
+        var totalSizeToCopy = 0L
+        children.forEach {
+            if (it.isFile) {
+                totalFilesToCopy++
+                totalSizeToCopy += it.length()
             }
-            SourceInfo(children, totalSizeToCopy, totalFilesToCopy, resolution)
         }
-        // allow empty folders, but empty files need check
-    }.filterValues { it.children != null || (skipEmptyFiles && it.size > 0 || !skipEmptyFiles) }.toMutableMap()
-
-    if (sourceInfos.isEmpty()) {
-        val result = MultipleFileCallback.Result(emptyList(), 0, 0, true)
-        callback.uiScope.postToUi { callback.onCompleted(result) }
-        return
-    }
+        val resolution = conflictResolutions.find { it.source == src }?.solution ?: FolderConflictCallback.ConflictResolution.CREATE_NEW
+        SourceInfo(children, totalSizeToCopy, totalFilesToCopy, resolution)
+    }.toMutableMap()
 
     // key=src, value=result
     val results = mutableMapOf<DocumentFile, DocumentFile>()
@@ -1519,14 +1534,14 @@ private fun List<DocumentFile>.copyTo(
                     results[src] = result
                 }
 
-                is FolderCallback.ErrorCode -> {
+                is FolderErrorCode -> {
                     val errorCode = when (result) {
-                        FolderCallback.ErrorCode.INVALID_TARGET_FOLDER -> MultipleFileCallback.ErrorCode.INVALID_TARGET_FOLDER
-                        FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED -> MultipleFileCallback.ErrorCode.STORAGE_PERMISSION_DENIED
-                        else -> return
+                        FolderErrorCode.INVALID_TARGET_FOLDER -> MultipleFilesErrorCode.INVALID_TARGET_FOLDER
+                        FolderErrorCode.STORAGE_PERMISSION_DENIED -> MultipleFilesErrorCode.STORAGE_PERMISSION_DENIED
+                        else -> return@callbackFlow
                     }
-                    callback.uiScope.postToUi { callback.onFailed(errorCode) }
-                    return
+                    send(MultipleFilesResult.Error(errorCode))
+                    return@callbackFlow
                 }
             }
         }
@@ -1539,33 +1554,28 @@ private fun List<DocumentFile>.copyTo(
         }
 
         if (sourceInfos.isEmpty()) {
-            val result = MultipleFileCallback.Result(results.map { it.value }, copiedFiles, copiedFiles, true)
-            callback.uiScope.postToUi { callback.onCompleted(result) }
-            return
+            send(MultipleFilesResult.Completed(results.map { it.value }, copiedFiles, copiedFiles, true))
+            return@callbackFlow
         }
     }
 
     val totalSizeToCopy = sourceInfos.values.sumOf { it.size }
-
-    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, writableTargetParentFolder.getStorageId(context)), totalSizeToCopy)) {
-        callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
-        return
+    if (!isFileSizeAllowed(DocumentFileCompat.getFreeSpace(context, writableTargetParentFolder.getStorageId(context)), totalSizeToCopy)) {
+        send(MultipleFilesResult.Error(MultipleFilesErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
+        return@callbackFlow
     }
 
-    val thread = Thread.currentThread()
-    val totalFilesToCopy = sourceInfos.values.sumOf { it.totalFiles }
-    val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(sourceInfos.map { it.key }, totalFilesToCopy, thread) }
-    if (reportInterval < 0) return
+    val totalFilesToCopy = validSources.count { it.isFile } + sourceInfos.values.sumOf { it.totalFiles }
+    send(MultipleFilesResult.Starting(sourceInfos.map { it.key }, totalFilesToCopy))
 
     var totalCopiedFiles = 0
     var timer: Job? = null
     var bytesMoved = 0L
     var writeSpeed = 0
     val startTimer: (Boolean) -> Unit = { start ->
-        if (start && reportInterval > 0) {
-            timer = startCoroutineTimer(repeatMillis = reportInterval) {
-                val report = MultipleFileCallback.Report(bytesMoved * 100f / totalSizeToCopy, bytesMoved, writeSpeed, totalCopiedFiles)
-                callback.uiScope.postToUi { callback.onReport(report) }
+        if (start && updateInterval > 0) {
+            timer = startCoroutineTimer(repeatMillis = updateInterval) {
+                trySend(MultipleFilesResult.InProgress(bytesMoved * 100f / totalSizeToCopy, bytesMoved, writeSpeed, totalCopiedFiles))
                 writeSpeed = 0
             }
         }
@@ -1574,60 +1584,69 @@ private fun List<DocumentFile>.copyTo(
 
     var targetFile: DocumentFile? = null
     var canceled = false // is required to prevent the callback from called again on next FOR iteration after the thread was interrupted
-    val notifyCanceled: (MultipleFileCallback.ErrorCode) -> Unit = { errorCode ->
+    val notifyCanceled: (MultipleFilesErrorCode) -> Unit = { errorCode ->
         if (!canceled) {
             canceled = true
             timer?.cancel()
             targetFile?.delete()
-            val result = MultipleFileCallback.Result(results.map { it.value }, totalFilesToCopy, totalCopiedFiles, false)
-            callback.uiScope.postToUi {
-                callback.onFailed(errorCode)
-                callback.onCompleted(result)
-            }
+            trySend(
+                MultipleFilesResult.Error(
+                    errorCode,
+                    completedData = MultipleFilesResult.Completed(results.map { it.value }, totalFilesToCopy, totalCopiedFiles, false)
+                )
+            )
         }
     }
 
     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
     var success = true
 
-    val copy: (DocumentFile, DocumentFile) -> Unit = { sourceFile, destFile ->
-        createFileStreams(context, sourceFile, destFile, callback) { inputStream, outputStream ->
-            try {
-                var read = inputStream.read(buffer)
-                while (read != -1) {
-                    outputStream.write(buffer, 0, read)
-                    bytesMoved += read
-                    writeSpeed += read
-                    read = inputStream.read(buffer)
-                }
-            } finally {
-                inputStream.closeStreamQuietly()
-                outputStream.closeStreamQuietly()
+    @Suppress("BlockingMethodInNonBlockingContext")
+    fun copy(sourceFile: DocumentFile, destFile: DocumentFile) {
+        val outputStream = destFile.openOutputStream(context)
+        if (outputStream == null) {
+            trySend(MultipleFilesResult.Error(MultipleFilesErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+            return
+        }
+        val inputStream = sourceFile.openInputStream(context)
+        if (inputStream == null) {
+            trySend(MultipleFilesResult.Error(MultipleFilesErrorCode.SOURCE_FILE_NOT_FOUND))
+            return
+        }
+        try {
+            var read = inputStream.read(buffer)
+            while (read != -1) {
+                outputStream.write(buffer, 0, read)
+                bytesMoved += read
+                writeSpeed += read
+                read = inputStream.read(buffer)
             }
+        } finally {
+            inputStream.closeStreamQuietly()
+            outputStream.closeStreamQuietly()
         }
         totalCopiedFiles++
         if (deleteSourceWhenComplete) sourceFile.delete()
-
     }
 
     val handleError: (Exception) -> Boolean = {
         val errorCode = it.toMultipleFileCallbackErrorCode()
-        if (errorCode == MultipleFileCallback.ErrorCode.CANCELED || errorCode == MultipleFileCallback.ErrorCode.UNKNOWN_IO_ERROR) {
+        if (errorCode == MultipleFilesErrorCode.CANCELED || errorCode == MultipleFilesErrorCode.UNKNOWN_IO_ERROR) {
             notifyCanceled(errorCode)
             true
         } else {
             timer?.cancel()
-            callback.uiScope.postToUi { callback.onFailed(errorCode) }
+            trySend(MultipleFilesResult.Error(errorCode))
             false
         }
     }
 
-    val conflictedFiles = mutableListOf<FolderCallback.FileConflict>()
+    val conflictedFiles = mutableListOf<FolderConflictCallback.FileConflict>()
 
     for ((src, info) in sourceInfos) {
-        if (thread.isInterrupted) {
-            notifyCanceled(MultipleFileCallback.ErrorCode.CANCELED)
-            return
+        if (isClosedForSend) {
+            notifyCanceled(MultipleFilesErrorCode.CANCELED)
+            return@callbackFlow
         }
         val mode = info.conflictResolution.toCreateMode()
         val targetRootFile = writableTargetParentFolder.let {
@@ -1635,12 +1654,12 @@ private fun List<DocumentFile>.copyTo(
         }
         if (targetRootFile == null) {
             timer?.cancel()
-            callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
-            return
+            send(MultipleFilesResult.Error(MultipleFilesErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+            return@callbackFlow
         }
 
         try {
-            if (targetRootFile.isFile || info.children == null) {
+            if (targetRootFile.isFile) {
                 copy(src, targetRootFile)
                 results[src] = targetRootFile
                 continue
@@ -1649,9 +1668,9 @@ private fun List<DocumentFile>.copyTo(
             val srcParentAbsolutePath = src.getAbsolutePath(context)
 
             for (sourceFile in info.children) {
-                if (thread.isInterrupted) {
-                    notifyCanceled(MultipleFileCallback.ErrorCode.CANCELED)
-                    return
+                if (isClosedForSend) {
+                    notifyCanceled(MultipleFilesErrorCode.CANCELED)
+                    return@callbackFlow
                 }
                 if (!sourceFile.exists()) {
                     continue
@@ -1671,20 +1690,20 @@ private fun List<DocumentFile>.copyTo(
 
                 targetFile = targetRootFile.makeFile(context, filename, sourceFile.type, CreateMode.REUSE)
                 if (targetFile != null && targetFile.length() > 0) {
-                    conflictedFiles.add(FolderCallback.FileConflict(sourceFile, targetFile))
+                    conflictedFiles.add(FolderConflictCallback.FileConflict(sourceFile, targetFile))
                     continue
                 }
 
                 if (targetFile == null) {
-                    notifyCanceled(MultipleFileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
-                    return
+                    notifyCanceled(MultipleFilesErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
+                    return@callbackFlow
                 }
 
                 copy(sourceFile, targetFile)
             }
             results[src] = targetRootFile
         } catch (e: Exception) {
-            if (handleError(e)) return
+            if (handleError(e)) return@callbackFlow
             success = false
             break
         }
@@ -1694,52 +1713,51 @@ private fun List<DocumentFile>.copyTo(
         timer?.cancel()
         if (!success || conflictedFiles.isEmpty()) {
             if (deleteSourceWhenComplete && success) {
-                sourceInfos.forEach { (src, _) -> src.forceDelete(context) }
+                sourceInfos.forEach { (src, _) -> src.deleteRecursively(context) }
             }
-            val result = MultipleFileCallback.Result(results.map { it.value }, totalFilesToCopy, totalCopiedFiles, success)
-            callback.uiScope.postToUi { callback.onCompleted(result) }
+            trySend(MultipleFilesResult.Completed(results.map { it.value }, totalFilesToCopy, totalCopiedFiles, success))
             true
         } else false
     }
-    if (finalize()) return
+    if (finalize()) return@callbackFlow
 
-    val solutions = awaitUiResultWithPending<List<FolderCallback.FileConflict>>(callback.uiScope) {
-        callback.onContentConflict(writableTargetParentFolder, conflictedFiles, FolderCallback.FolderContentConflictAction(it))
+    val solutions = awaitUiResultWithPending<List<FolderConflictCallback.FileConflict>>(callback.uiScope) {
+        callback.onContentConflict(writableTargetParentFolder, conflictedFiles, FolderConflictCallback.FolderContentConflictAction(it))
     }.filter {
         // free up space first, by deleting some files
-        if (it.solution == FileCallback.ConflictResolution.SKIP) {
+        if (it.solution == SingleFileConflictCallback.ConflictResolution.SKIP) {
             if (deleteSourceWhenComplete) it.source.delete()
             totalCopiedFiles++
         }
-        it.solution != FileCallback.ConflictResolution.SKIP
+        it.solution != SingleFileConflictCallback.ConflictResolution.SKIP
     }
 
     val leftoverSize = totalSizeToCopy - bytesMoved
     startTimer(solutions.isNotEmpty() && leftoverSize > 10 * FileSize.MB)
 
     for (conflict in solutions) {
-        if (thread.isInterrupted) {
-            notifyCanceled(MultipleFileCallback.ErrorCode.CANCELED)
-            return
+        if (isClosedForSend) {
+            notifyCanceled(MultipleFilesErrorCode.CANCELED)
+            return@callbackFlow
         }
         if (!conflict.source.isFile) {
             continue
         }
         val filename = conflict.target.fullName
-        if (conflict.solution == FileCallback.ConflictResolution.REPLACE && conflict.target.let { !it.delete() || it.exists() }) {
+        if (conflict.solution == SingleFileConflictCallback.ConflictResolution.REPLACE && conflict.target.let { !it.delete() || it.exists() }) {
             continue
         }
 
         targetFile = conflict.target.findParent(context)?.makeFile(context, filename)
         if (targetFile == null) {
-            notifyCanceled(MultipleFileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
-            return
+            notifyCanceled(MultipleFilesErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
+            return@callbackFlow
         }
 
         try {
             copy(conflict.source, targetFile)
         } catch (e: Exception) {
-            if (handleError(e)) return
+            if (handleError(e)) return@callbackFlow
             success = false
             break
         }
@@ -1751,16 +1769,15 @@ private fun List<DocumentFile>.copyTo(
 private fun List<DocumentFile>.doesMeetCopyRequirements(
     context: Context,
     targetParentFolder: DocumentFile,
-    callback: MultipleFileCallback
+    scope: ProducerScope<MultipleFilesResult>,
+    callback: MultipleFileConflictCallback
 ): Pair<DocumentFile, MutableList<DocumentFile>>? {
-    callback.uiScope.postToUi { callback.onValidate() }
-
     if (!targetParentFolder.isDirectory) {
-        callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.INVALID_TARGET_FOLDER) }
+        scope.trySend(MultipleFilesResult.Error(MultipleFilesErrorCode.INVALID_TARGET_FOLDER))
         return null
     }
     if (!targetParentFolder.isWritable(context)) {
-        callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        scope.trySend(MultipleFilesResult.Error(MultipleFilesErrorCode.STORAGE_PERMISSION_DENIED))
         return null
     }
 
@@ -1768,32 +1785,32 @@ private fun List<DocumentFile>.doesMeetCopyRequirements(
     val sourceFiles = distinctBy { it.name }
     val invalidSourceFiles = sourceFiles.mapNotNull {
         when {
-            !it.exists() -> Pair(it, FolderCallback.ErrorCode.SOURCE_FILE_NOT_FOUND)
-            !it.canRead() -> Pair(it, FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
+            !it.exists() -> Pair(it, FolderErrorCode.SOURCE_FILE_NOT_FOUND)
+            !it.canRead() -> Pair(it, FolderErrorCode.STORAGE_PERMISSION_DENIED)
             targetParentFolderPath == it.parentFile?.getAbsolutePath(context) ->
-                Pair(it, FolderCallback.ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER)
+                Pair(it, FolderErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER)
 
             else -> null
         }
     }.toMap()
 
     if (invalidSourceFiles.isNotEmpty()) {
-        val abort = awaitUiResultWithPending<Boolean>(callback.uiScope) {
-            callback.onInvalidSourceFilesFound(invalidSourceFiles, MultipleFileCallback.InvalidSourceFilesAction(it))
+        val abort = awaitUiResultWithPending(callback.uiScope) {
+            callback.onInvalidSourceFilesFound(invalidSourceFiles, MultipleFileConflictCallback.InvalidSourceFilesAction(it))
         }
         if (abort) {
-            callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.CANCELED) }
+            scope.trySend(MultipleFilesResult.Error(MultipleFilesErrorCode.CANCELED))
             return null
         }
         if (invalidSourceFiles.size == size) {
-            callback.uiScope.postToUi { callback.onCompleted(MultipleFileCallback.Result(emptyList(), 0, 0, true)) }
+            scope.trySend(MultipleFilesResult.Completed(emptyList(), 0, 0, true))
             return null
         }
     }
 
     val writableFolder = targetParentFolder.let { if (it.isDownloadsDocument) it.toWritableDownloadsDocumentFile(context) else it }
     if (writableFolder == null) {
-        callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        scope.trySend(MultipleFilesResult.Error(MultipleFilesErrorCode.STORAGE_PERMISSION_DENIED))
         return null
     }
 
@@ -1806,7 +1823,7 @@ private fun DocumentFile.tryMoveFolderByRenamingPath(
     targetFolderParentName: String,
     skipEmptyFiles: Boolean,
     newFolderNameInTargetPath: String?,
-    conflictResolution: FolderCallback.ConflictResolution
+    conflictResolution: FolderConflictCallback.ConflictResolution
 ): Any? {
     if (inSameMountPointWith(context, writableTargetParentFolder)) {
         if (inInternalStorage(context)) {
@@ -1822,7 +1839,7 @@ private fun DocumentFile.tryMoveFolderByRenamingPath(
         }
 
         if (isExternalStorageManager(context)) {
-            val sourceFile = toRawFile(context) ?: return FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED
+            val sourceFile = toRawFile(context) ?: return FolderErrorCode.STORAGE_PERMISSION_DENIED
             writableTargetParentFolder.toRawFile(context)?.let { destinationFolder ->
                 sourceFile.moveTo(context, destinationFolder, targetFolderParentName, conflictResolution.toFileConflictResolution())?.let {
                     if (skipEmptyFiles) it.deleteEmptyFolders(context)
@@ -1841,12 +1858,12 @@ private fun DocumentFile.tryMoveFolderByRenamingPath(
                         if (skipEmptyFiles) newFile.deleteEmptyFolders(context)
                         newFile
                     } else {
-                        FolderCallback.ErrorCode.INVALID_TARGET_FOLDER
+                        FolderErrorCode.INVALID_TARGET_FOLDER
                     }
                 }
             }
         } catch (e: Throwable) {
-            return FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED
+            return FolderErrorCode.STORAGE_PERMISSION_DENIED
         }
     }
     return null
@@ -1858,9 +1875,11 @@ fun DocumentFile.moveFolderTo(
     targetParentFolder: DocumentFile,
     skipEmptyFiles: Boolean = true,
     newFolderNameInTargetPath: String? = null,
-    callback: FolderCallback
-) {
-    copyFolderTo(context, targetParentFolder, skipEmptyFiles, newFolderNameInTargetPath, true, callback)
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: FolderConflictCallback
+): Flow<FolderResult> {
+    return copyFolderTo(context, targetParentFolder, skipEmptyFiles, newFolderNameInTargetPath, true, updateInterval, isFileSizeAllowed, callback)
 }
 
 @WorkerThread
@@ -1869,44 +1888,49 @@ fun DocumentFile.copyFolderTo(
     targetParentFolder: DocumentFile,
     skipEmptyFiles: Boolean = true,
     newFolderNameInTargetPath: String? = null,
-    callback: FolderCallback
-) {
-    copyFolderTo(context, targetParentFolder, skipEmptyFiles, newFolderNameInTargetPath, false, callback)
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: FolderConflictCallback
+): Flow<FolderResult> {
+    return copyFolderTo(context, targetParentFolder, skipEmptyFiles, newFolderNameInTargetPath, false, updateInterval, isFileSizeAllowed, callback)
 }
 
 /**
  * @param skipEmptyFiles skip copying empty files & folders
  */
+@OptIn(DelicateCoroutinesApi::class)
 private fun DocumentFile.copyFolderTo(
     context: Context,
     targetParentFolder: DocumentFile,
     skipEmptyFiles: Boolean = true,
     newFolderNameInTargetPath: String? = null,
     deleteSourceWhenComplete: Boolean,
-    callback: FolderCallback
-) {
-    val writableTargetParentFolder = doesMeetCopyRequirements(context, targetParentFolder, newFolderNameInTargetPath, callback) ?: return
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: FolderConflictCallback
+): Flow<FolderResult> = callbackFlow {
+    val writableTargetParentFolder = doesMeetCopyRequirements(context, targetParentFolder, newFolderNameInTargetPath, this) ?: return@callbackFlow
 
-    callback.uiScope.postToUi { callback.onPrepare() }
+    send(FolderResult.Preparing)
 
     val targetFolderParentName = (newFolderNameInTargetPath ?: name.orEmpty()).removeForbiddenCharsFromFilename().trimFileSeparator()
-    val conflictResolution = handleParentFolderConflict(context, targetParentFolder, targetFolderParentName, callback)
-    if (conflictResolution == FolderCallback.ConflictResolution.SKIP) {
-        return
+    val conflictResolution = handleParentFolderConflict(context, targetParentFolder, targetFolderParentName, this, callback)
+    if (conflictResolution == FolderConflictCallback.ConflictResolution.SKIP) {
+        return@callbackFlow
     }
 
-    callback.uiScope.postToUi { callback.onCountingFiles() }
+    send(FolderResult.CountingFiles)
 
     val filesToCopy = if (skipEmptyFiles) walkFileTreeAndSkipEmptyFiles() else walkFileTree(context)
     if (filesToCopy.isEmpty()) {
         val targetFolder = writableTargetParentFolder.makeFolder(context, targetFolderParentName, conflictResolution.toCreateMode())
         if (targetFolder == null) {
-            callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+            send(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
         } else {
             if (deleteSourceWhenComplete) delete()
-            callback.uiScope.postToUi { callback.onCompleted(FolderCallback.Result(targetFolder, 0, 0, true)) }
+            send(FolderResult.Completed(targetFolder, 0, 0, true))
         }
-        return
+        return@callbackFlow
     }
 
     var totalFilesToCopy = 0
@@ -1918,10 +1942,9 @@ private fun DocumentFile.copyFolderTo(
         }
     }
 
-    val thread = Thread.currentThread()
-    if (thread.isInterrupted) {
-        callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.CANCELED) }
-        return
+    if (isClosedForSend) {
+        send(FolderResult.Error(FolderErrorCode.CANCELED))
+        return@callbackFlow
     }
 
     if (deleteSourceWhenComplete) {
@@ -1934,29 +1957,26 @@ private fun DocumentFile.copyFolderTo(
             conflictResolution
         )) {
             is DocumentFile -> {
-                callback.uiScope.postToUi { callback.onCompleted(FolderCallback.Result(result, totalFilesToCopy, totalFilesToCopy, true)) }
-                return
+                send(FolderResult.Completed(result, totalFilesToCopy, totalFilesToCopy, true))
+                return@callbackFlow
             }
 
-            is FolderCallback.ErrorCode -> {
-                callback.uiScope.postToUi { callback.onFailed(result) }
-                return
+            is FolderErrorCode -> {
+                send(FolderResult.Error(result))
+                return@callbackFlow
             }
         }
     }
 
-    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, writableTargetParentFolder.getStorageId(context)), totalSizeToCopy)) {
-        callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
-        return
+    if (!isFileSizeAllowed(DocumentFileCompat.getFreeSpace(context, writableTargetParentFolder.getStorageId(context)), totalSizeToCopy)) {
+        send(FolderResult.Error(FolderErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
+        return@callbackFlow
     }
-
-    val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(this, totalFilesToCopy, thread) }
-    if (reportInterval < 0) return
 
     val targetFolder = writableTargetParentFolder.makeFolder(context, targetFolderParentName, conflictResolution.toCreateMode())
     if (targetFolder == null) {
-        callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
-        return
+        send(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+        return@callbackFlow
     }
 
     var totalCopiedFiles = 0
@@ -1964,10 +1984,9 @@ private fun DocumentFile.copyFolderTo(
     var bytesMoved = 0L
     var writeSpeed = 0
     val startTimer: (Boolean) -> Unit = { start ->
-        if (start && reportInterval > 0) {
-            timer = startCoroutineTimer(repeatMillis = reportInterval) {
-                val report = FolderCallback.Report(bytesMoved * 100f / totalSizeToCopy, bytesMoved, writeSpeed, totalCopiedFiles)
-                callback.uiScope.postToUi { callback.onReport(report) }
+        if (start && updateInterval > 0) {
+            timer = startCoroutineTimer(repeatMillis = updateInterval) {
+                trySend(FolderResult.InProgress(bytesMoved * 100f / totalSizeToCopy, bytesMoved, writeSpeed, totalCopiedFiles))
                 writeSpeed = 0
             }
         }
@@ -1976,36 +1995,43 @@ private fun DocumentFile.copyFolderTo(
 
     var targetFile: DocumentFile? = null
     var canceled = false // is required to prevent the callback from called again on next FOR iteration after the thread was interrupted
-    val notifyCanceled: (FolderCallback.ErrorCode) -> Unit = { errorCode ->
+    val notifyCanceled: (FolderErrorCode) -> Unit = { errorCode ->
         if (!canceled) {
             canceled = true
             timer?.cancel()
             targetFile?.delete()
-            callback.uiScope.postToUi {
-                callback.onFailed(errorCode)
-                callback.onCompleted(FolderCallback.Result(targetFolder, totalFilesToCopy, totalCopiedFiles, false))
-            }
+            trySend(FolderResult.Error(errorCode, completedData = FolderResult.Completed(targetFolder, totalFilesToCopy, totalCopiedFiles, false)))
         }
     }
 
-    val conflictedFiles = ArrayList<FolderCallback.FileConflict>(totalFilesToCopy)
+    val conflictedFiles = ArrayList<FolderConflictCallback.FileConflict>(totalFilesToCopy)
     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
     var success = true
 
-    val copy: (DocumentFile, DocumentFile) -> Unit = { sourceFile, destFile ->
-        createFileStreams(context, sourceFile, destFile, callback) { inputStream, outputStream ->
-            try {
-                var read = inputStream.read(buffer)
-                while (read != -1) {
-                    outputStream.write(buffer, 0, read)
-                    bytesMoved += read
-                    writeSpeed += read
-                    read = inputStream.read(buffer)
-                }
-            } finally {
-                inputStream.closeStreamQuietly()
-                outputStream.closeStreamQuietly()
+    @Suppress("BlockingMethodInNonBlockingContext")
+    fun copy(sourceFile: DocumentFile, destFile: DocumentFile) {
+        val outputStream = destFile.openOutputStream(context)
+        if (outputStream == null) {
+            trySend(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+            return
+        }
+        val inputStream = sourceFile.openInputStream(context)
+        if (inputStream == null) {
+            outputStream.closeStreamQuietly()
+            trySend(FolderResult.Error(FolderErrorCode.SOURCE_FILE_NOT_FOUND))
+            return
+        }
+        try {
+            var read = inputStream.read(buffer)
+            while (read != -1) {
+                outputStream.write(buffer, 0, read)
+                bytesMoved += read
+                writeSpeed += read
+                read = inputStream.read(buffer)
             }
+        } finally {
+            inputStream.closeStreamQuietly()
+            outputStream.closeStreamQuietly()
         }
         totalCopiedFiles++
         if (deleteSourceWhenComplete) sourceFile.delete()
@@ -2013,12 +2039,12 @@ private fun DocumentFile.copyFolderTo(
 
     val handleError: (Exception) -> Boolean = {
         val errorCode = it.toFolderCallbackErrorCode()
-        if (errorCode == FolderCallback.ErrorCode.CANCELED || errorCode == FolderCallback.ErrorCode.UNKNOWN_IO_ERROR) {
+        if (errorCode == FolderErrorCode.CANCELED || errorCode == FolderErrorCode.UNKNOWN_IO_ERROR) {
             notifyCanceled(errorCode)
             true
         } else {
             timer?.cancel()
-            callback.uiScope.postToUi { callback.onFailed(errorCode) }
+            trySend(FolderResult.Error(errorCode))
             false
         }
     }
@@ -2026,9 +2052,9 @@ private fun DocumentFile.copyFolderTo(
     val srcAbsolutePath = getAbsolutePath(context)
     for (sourceFile in filesToCopy) {
         try {
-            if (Thread.currentThread().isInterrupted) {
-                notifyCanceled(FolderCallback.ErrorCode.CANCELED)
-                return
+            if (isClosedForSend) {
+                notifyCanceled(FolderErrorCode.CANCELED)
+                return@callbackFlow
             }
             if (!sourceFile.exists()) {
                 continue
@@ -2048,18 +2074,18 @@ private fun DocumentFile.copyFolderTo(
 
             targetFile = targetFolder.makeFile(context, filename, sourceFile.type, CreateMode.REUSE)
             if (targetFile != null && targetFile.length() > 0) {
-                conflictedFiles.add(FolderCallback.FileConflict(sourceFile, targetFile))
+                conflictedFiles.add(FolderConflictCallback.FileConflict(sourceFile, targetFile))
                 continue
             }
 
             if (targetFile == null) {
-                notifyCanceled(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
-                return
+                notifyCanceled(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
+                return@callbackFlow
             }
 
             copy(sourceFile, targetFile)
         } catch (e: Exception) {
-            if (handleError(e)) return
+            if (handleError(e)) return@callbackFlow
             success = false
             break
         }
@@ -2069,30 +2095,30 @@ private fun DocumentFile.copyFolderTo(
         timer?.cancel()
         if (!success || conflictedFiles.isEmpty()) {
             if (deleteSourceWhenComplete && success) forceDelete(context)
-            callback.uiScope.postToUi { callback.onCompleted(FolderCallback.Result(targetFolder, totalFilesToCopy, totalCopiedFiles, success)) }
+            trySend(FolderResult.Completed(targetFolder, totalFilesToCopy, totalCopiedFiles, success))
             true
         } else false
     }
-    if (finalize()) return
+    if (finalize()) return@callbackFlow
 
-    val solutions = awaitUiResultWithPending<List<FolderCallback.FileConflict>>(callback.uiScope) {
-        callback.onContentConflict(targetFolder, conflictedFiles, FolderCallback.FolderContentConflictAction(it))
+    val solutions = awaitUiResultWithPending<List<FolderConflictCallback.FileConflict>>(callback.uiScope) {
+        callback.onContentConflict(targetFolder, conflictedFiles, FolderConflictCallback.FolderContentConflictAction(it))
     }.filter {
         // free up space first, by deleting some files
-        if (it.solution == FileCallback.ConflictResolution.SKIP) {
+        if (it.solution == SingleFileConflictCallback.ConflictResolution.SKIP) {
             if (deleteSourceWhenComplete) it.source.delete()
             totalCopiedFiles++
         }
-        it.solution != FileCallback.ConflictResolution.SKIP
+        it.solution != SingleFileConflictCallback.ConflictResolution.SKIP
     }
 
     val leftoverSize = totalSizeToCopy - bytesMoved
     startTimer(solutions.isNotEmpty() && leftoverSize > 10 * FileSize.MB)
 
     for (conflict in solutions) {
-        if (Thread.currentThread().isInterrupted) {
-            notifyCanceled(FolderCallback.ErrorCode.CANCELED)
-            return
+        if (isClosedForSend) {
+            notifyCanceled(FolderErrorCode.CANCELED)
+            return@callbackFlow
         }
         if (!conflict.source.isFile) {
             continue
@@ -2100,14 +2126,14 @@ private fun DocumentFile.copyFolderTo(
         val filename = conflict.target.name.orEmpty()
         targetFile = conflict.target.findParent(context)?.makeFile(context, filename, mode = conflict.solution.toCreateMode())
         if (targetFile == null) {
-            notifyCanceled(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
-            return
+            notifyCanceled(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
+            return@callbackFlow
         }
 
         try {
             copy(conflict.source, targetFile)
         } catch (e: Exception) {
-            if (handleError(e)) return
+            if (handleError(e)) return@callbackFlow
             success = false
             break
         }
@@ -2116,19 +2142,19 @@ private fun DocumentFile.copyFolderTo(
     finalize()
 }
 
-private fun Exception.toFolderCallbackErrorCode(): FolderCallback.ErrorCode {
+private fun Exception.toFolderCallbackErrorCode(): FolderErrorCode {
     return when (this) {
-        is SecurityException -> FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED
-        is InterruptedIOException, is InterruptedException -> FolderCallback.ErrorCode.CANCELED
-        else -> FolderCallback.ErrorCode.UNKNOWN_IO_ERROR
+        is SecurityException -> FolderErrorCode.STORAGE_PERMISSION_DENIED
+        is InterruptedIOException, is InterruptedException -> FolderErrorCode.CANCELED
+        else -> FolderErrorCode.UNKNOWN_IO_ERROR
     }
 }
 
-private fun Exception.toMultipleFileCallbackErrorCode(): MultipleFileCallback.ErrorCode {
+private fun Exception.toMultipleFileCallbackErrorCode(): MultipleFilesErrorCode {
     return when (this) {
-        is SecurityException -> MultipleFileCallback.ErrorCode.STORAGE_PERMISSION_DENIED
-        is InterruptedIOException, is InterruptedException -> MultipleFileCallback.ErrorCode.CANCELED
-        else -> MultipleFileCallback.ErrorCode.UNKNOWN_IO_ERROR
+        is SecurityException -> MultipleFilesErrorCode.STORAGE_PERMISSION_DENIED
+        is InterruptedIOException, is InterruptedException -> MultipleFilesErrorCode.CANCELED
+        else -> MultipleFilesErrorCode.UNKNOWN_IO_ERROR
     }
 }
 
@@ -2136,33 +2162,33 @@ private fun DocumentFile.doesMeetCopyRequirements(
     context: Context,
     targetParentFolder: DocumentFile,
     newFolderNameInTargetPath: String?,
-    callback: FolderCallback
+    scope: ProducerScope<FolderResult>,
 ): DocumentFile? {
-    callback.uiScope.postToUi { callback.onValidate() }
+    scope.trySend(FolderResult.Validating)
 
     if (!isDirectory) {
-        callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.SOURCE_FOLDER_NOT_FOUND) }
+        scope.trySend(FolderResult.Error(FolderErrorCode.SOURCE_FOLDER_NOT_FOUND))
         return null
     }
 
     if (!targetParentFolder.isDirectory) {
-        callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.INVALID_TARGET_FOLDER) }
+        scope.trySend(FolderResult.Error(FolderErrorCode.INVALID_TARGET_FOLDER))
         return null
     }
 
     if (!canRead() || !targetParentFolder.isWritable(context)) {
-        callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        scope.trySend(FolderResult.Error(FolderErrorCode.STORAGE_PERMISSION_DENIED))
         return null
     }
 
     if (targetParentFolder.getAbsolutePath(context) == parentFile?.getAbsolutePath(context) && (newFolderNameInTargetPath.isNullOrEmpty() || name == newFolderNameInTargetPath)) {
-        callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER) }
+        scope.trySend(FolderResult.Error(FolderErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER))
         return null
     }
 
     val writableFolder = targetParentFolder.let { if (it.isDownloadsDocument) it.toWritableDownloadsDocumentFile(context) else it }
     if (writableFolder == null) {
-        callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        scope.trySend(FolderResult.Error(FolderErrorCode.STORAGE_PERMISSION_DENIED))
     }
     return writableFolder
 }
@@ -2175,9 +2201,11 @@ fun DocumentFile.copyFileTo(
     context: Context,
     targetFolder: File,
     fileDescription: FileDescription? = null,
-    callback: FileCallback
-) {
-    copyFileTo(context, targetFolder.absolutePath, fileDescription, callback)
+    reportInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: SingleFileConflictCallback
+): Flow<SingleFileResult> {
+    return copyFileTo(context, targetFolder.absolutePath, fileDescription, reportInterval, isFileSizeAllowed, callback)
 }
 
 /**
@@ -2189,13 +2217,16 @@ fun DocumentFile.copyFileTo(
     context: Context,
     targetFolderAbsolutePath: String,
     fileDescription: FileDescription? = null,
-    callback: FileCallback
-) {
+    reportInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: SingleFileConflictCallback
+): Flow<SingleFileResult> = callbackFlow {
     val targetFolder = DocumentFileCompat.mkdirs(context, targetFolderAbsolutePath, true)
     if (targetFolder == null) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+        send(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
     } else {
-        copyFileTo(context, targetFolder, fileDescription, callback)
+        // todo how to continue/return current flow with this flow function?
+        copyFileTo(context, targetFolder, fileDescription, reportInterval, isFileSizeAllowed, callback)
     }
 }
 
@@ -2207,16 +2238,18 @@ fun DocumentFile.copyFileTo(
     context: Context,
     targetFolder: DocumentFile,
     fileDescription: FileDescription? = null,
-    callback: FileCallback
-) {
+    reportInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: SingleFileConflictCallback
+): Flow<SingleFileResult> = callbackFlow {
     if (fileDescription?.subFolder.isNullOrEmpty()) {
-        copyFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, callback)
+        copyFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, reportInterval, this, isFileSizeAllowed, callback)
     } else {
         val targetDirectory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
         if (targetDirectory == null) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+            send(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
         } else {
-            copyFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, callback)
+            copyFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, reportInterval, this, isFileSizeAllowed, callback)
         }
     }
 }
@@ -2226,39 +2259,46 @@ private fun DocumentFile.copyFileTo(
     targetFolder: DocumentFile,
     newFilenameInTargetPath: String?,
     newMimeTypeInTargetPath: String?,
-    callback: FileCallback
+    updateInterval: Long,
+    scope: ProducerScope<SingleFileResult>,
+    isFileSizeAllowed: CheckFileSize,
+    callback: SingleFileConflictCallback
 ) {
-    val writableTargetFolder = doesMeetCopyRequirements(context, targetFolder, newFilenameInTargetPath, callback) ?: return
+    val writableTargetFolder = doesMeetCopyRequirements(context, targetFolder, newFilenameInTargetPath, scope) ?: return
 
-    callback.uiScope.postToUi { callback.onPrepare() }
+    scope.trySend(SingleFileResult.Preparing)
 
-    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, writableTargetFolder.getStorageId(context)), length())) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
+    if (!isFileSizeAllowed(DocumentFileCompat.getFreeSpace(context, writableTargetFolder.getStorageId(context)), length())) {
+        scope.trySend(SingleFileResult.Error(SingleFileErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
         return
     }
 
     val cleanFileName = MimeType.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), newMimeTypeInTargetPath ?: mimeTypeByFileName)
         .removeForbiddenCharsFromFilename().trimFileSeparator()
-    val fileConflictResolution = handleFileConflict(context, writableTargetFolder, cleanFileName, callback)
-    if (fileConflictResolution == FileCallback.ConflictResolution.SKIP) {
+    val fileConflictResolution = handleFileConflict(context, writableTargetFolder, cleanFileName, scope, callback)
+    if (fileConflictResolution == SingleFileConflictCallback.ConflictResolution.SKIP) {
         return
     }
-
-    val thread = Thread.currentThread()
-    val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(this, thread) }
-    if (reportInterval < 0) return
-    val watchProgress = reportInterval > 0
 
     try {
         val targetFile = createTargetFile(
             context, writableTargetFolder, cleanFileName, newMimeTypeInTargetPath ?: mimeTypeByFileName,
-            fileConflictResolution.toCreateMode(), callback
+            fileConflictResolution.toCreateMode(), scope
         ) ?: return
-        createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
-            copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, false, callback)
+        val outputStream = targetFile.openOutputStream(context)
+        if (outputStream == null) {
+            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.TARGET_FILE_NOT_FOUND))
+            return
         }
+        val inputStream = openInputStream(context)
+        if (inputStream == null) {
+            outputStream.closeStreamQuietly()
+            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.SOURCE_FILE_NOT_FOUND))
+            return
+        }
+        copyFileStream(inputStream, outputStream, targetFile, updateInterval, false, scope)
     } catch (e: Exception) {
-        callback.uiScope.postToUi { callback.onFailed(e.toFileCallbackErrorCode()) }
+        scope.trySend(SingleFileResult.Error(e.toFileCallbackErrorCode()))
     }
 }
 
@@ -2269,92 +2309,35 @@ private fun DocumentFile.doesMeetCopyRequirements(
     context: Context,
     targetFolder: DocumentFile,
     newFilenameInTargetPath: String?,
-    callback: FileCallback
+    scope: ProducerScope<SingleFileResult>
 ): DocumentFile? {
-    callback.uiScope.postToUi { callback.onValidate() }
+    scope.trySend(SingleFileResult.Validating)
 
     if (!isFile) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND) }
+        scope.trySend(SingleFileResult.Error(SingleFileErrorCode.SOURCE_FILE_NOT_FOUND))
         return null
     }
 
     if (!targetFolder.isDirectory) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.TARGET_FOLDER_NOT_FOUND) }
+        scope.trySend(SingleFileResult.Error(SingleFileErrorCode.TARGET_FOLDER_NOT_FOUND))
         return null
     }
 
     if (!canRead() || !targetFolder.isWritable(context)) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        scope.trySend(SingleFileResult.Error(SingleFileErrorCode.STORAGE_PERMISSION_DENIED))
         return null
     }
 
     if (parentFile?.getAbsolutePath(context) == targetFolder.getAbsolutePath(context) && (newFilenameInTargetPath.isNullOrEmpty() || name == newFilenameInTargetPath)) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER) }
+        scope.trySend(SingleFileResult.Error(SingleFileErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER))
         return null
     }
 
     val writableFolder = targetFolder.let { if (it.isDownloadsDocument) it.toWritableDownloadsDocumentFile(context) else it }
     if (writableFolder == null) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        scope.trySend(SingleFileResult.Error(SingleFileErrorCode.STORAGE_PERMISSION_DENIED))
     }
     return writableFolder
-}
-
-@Suppress("UNCHECKED_CAST")
-private fun <Enum> createFileStreams(
-    context: Context,
-    sourceFile: DocumentFile,
-    targetFile: DocumentFile,
-    callback: BaseFileCallback<Enum, *, *>,
-    onStreamsReady: (InputStream, OutputStream) -> Unit
-) {
-    val outputStream = targetFile.openOutputStream(context)
-    if (outputStream == null) {
-        val errorCode = when (callback) {
-            is MultipleFileCallback -> MultipleFileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET
-            is FolderCallback -> FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET
-            else -> FileCallback.ErrorCode.TARGET_FILE_NOT_FOUND
-        }
-        callback.uiScope.postToUi { callback.onFailed(errorCode as Enum) }
-        return
-    }
-
-    val inputStream = sourceFile.openInputStream(context)
-    if (inputStream == null) {
-        outputStream.closeStreamQuietly()
-        val errorCode = when (callback) {
-            is MultipleFileCallback -> MultipleFileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND
-            is FolderCallback -> FolderCallback.ErrorCode.SOURCE_FILE_NOT_FOUND
-            else -> FileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND
-        }
-        callback.uiScope.postToUi { callback.onFailed(errorCode as Enum) }
-        return
-    }
-
-    onStreamsReady(inputStream, outputStream)
-}
-
-private inline fun createFileStreams(
-    context: Context,
-    sourceFile: DocumentFile,
-    targetFile: MediaFile,
-    callback: FileCallback,
-    onStreamsReady: (InputStream, OutputStream) -> Unit
-) {
-    val outputStream = targetFile.openOutputStream()
-    if (outputStream == null) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.TARGET_FILE_NOT_FOUND) }
-        return
-    }
-
-    val inputStream = sourceFile.openInputStream(context)
-    if (inputStream == null) {
-        outputStream.closeStreamQuietly()
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND) }
-        return
-    }
-
-    onStreamsReady(inputStream, outputStream)
 }
 
 private fun createTargetFile(
@@ -2363,11 +2346,11 @@ private fun createTargetFile(
     newFilenameInTargetPath: String,
     mimeType: String?,
     mode: CreateMode,
-    callback: FileCallback
+    scope: ProducerScope<SingleFileResult>,
 ): DocumentFile? {
     val targetFile = targetFolder.makeFile(context, newFilenameInTargetPath, mimeType, mode)
     if (targetFile == null) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+        scope.trySend(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
     }
     return targetFile
 }
@@ -2379,10 +2362,9 @@ private fun DocumentFile.copyFileStream(
     inputStream: InputStream,
     outputStream: OutputStream,
     targetFile: Any,
-    watchProgress: Boolean,
-    reportInterval: Long,
+    updateInterval: Long,
     deleteSourceFileWhenComplete: Boolean,
-    callback: FileCallback
+    scope: ProducerScope<SingleFileResult>,
 ) {
     var timer: Job? = null
     try {
@@ -2390,10 +2372,9 @@ private fun DocumentFile.copyFileStream(
         var writeSpeed = 0
         val srcSize = length()
         // using timer on small file is useless. We set minimum 10MB.
-        if (watchProgress && srcSize > 10 * FileSize.MB) {
-            timer = startCoroutineTimer(repeatMillis = reportInterval) {
-                val report = FileCallback.Report(bytesMoved * 100f / srcSize, bytesMoved, writeSpeed)
-                callback.uiScope.postToUi { callback.onReport(report) }
+        if (updateInterval > 0 && srcSize > 10 * FileSize.MB) {
+            timer = startCoroutineTimer(repeatMillis = updateInterval) {
+                scope.trySend(SingleFileResult.InProgress(bytesMoved * 100f / srcSize, bytesMoved, writeSpeed))
                 writeSpeed = 0
             }
         }
@@ -2412,7 +2393,7 @@ private fun DocumentFile.copyFileStream(
         if (targetFile is MediaFile) {
             targetFile.length = srcSize
         }
-        callback.uiScope.postToUi { callback.onCompleted(targetFile) }
+        scope.trySend(SingleFileResult.Completed(targetFile))
     } finally {
         timer?.cancel()
         inputStream.closeStreamQuietly()
@@ -2428,9 +2409,11 @@ fun DocumentFile.moveFileTo(
     context: Context,
     targetFolder: File,
     fileDescription: FileDescription? = null,
-    callback: FileCallback
-) {
-    moveFileTo(context, targetFolder.absolutePath, fileDescription, callback)
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: SingleFileConflictCallback
+): Flow<SingleFileResult> {
+    return moveFileTo(context, targetFolder.absolutePath, fileDescription, updateInterval, isFileSizeAllowed, callback)
 }
 
 /**
@@ -2442,13 +2425,16 @@ fun DocumentFile.moveFileTo(
     context: Context,
     targetFolderAbsolutePath: String,
     fileDescription: FileDescription? = null,
-    callback: FileCallback
-) {
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: SingleFileConflictCallback
+): Flow<SingleFileResult> = callbackFlow {
     val targetFolder = DocumentFileCompat.mkdirs(context, targetFolderAbsolutePath, true)
     if (targetFolder == null) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+        send(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
     } else {
-        moveFileTo(context, targetFolder, fileDescription, callback)
+        // TODO: Return another flow
+        moveFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, callback)
     }
 }
 
@@ -2460,16 +2446,18 @@ fun DocumentFile.moveFileTo(
     context: Context,
     targetFolder: DocumentFile,
     fileDescription: FileDescription? = null,
-    callback: FileCallback
-) {
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: SingleFileConflictCallback
+): Flow<SingleFileResult> = callbackFlow {
     if (fileDescription?.subFolder.isNullOrEmpty()) {
-        moveFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, callback)
+        moveFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, updateInterval, this, isFileSizeAllowed, callback)
     } else {
         val targetDirectory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
         if (targetDirectory == null) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+            send(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
         } else {
-            moveFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, callback)
+            moveFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, updateInterval, this, isFileSizeAllowed, callback)
         }
     }
 }
@@ -2479,22 +2467,25 @@ private fun DocumentFile.moveFileTo(
     targetFolder: DocumentFile,
     newFilenameInTargetPath: String?,
     newMimeTypeInTargetPath: String?,
-    callback: FileCallback
+    updateInterval: Long,
+    scope: ProducerScope<SingleFileResult>,
+    isFileSizeAllowed: CheckFileSize,
+    callback: SingleFileConflictCallback
 ) {
-    val writableTargetFolder = doesMeetCopyRequirements(context, targetFolder, newFilenameInTargetPath, callback) ?: return
+    val writableTargetFolder = doesMeetCopyRequirements(context, targetFolder, newFilenameInTargetPath, scope) ?: return
 
-    callback.uiScope.postToUi { callback.onPrepare() }
+    scope.trySend(SingleFileResult.Preparing)
 
     val cleanFileName = MimeType.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), newMimeTypeInTargetPath ?: mimeTypeByFileName)
         .removeForbiddenCharsFromFilename().trimFileSeparator()
-    val fileConflictResolution = handleFileConflict(context, writableTargetFolder, cleanFileName, callback)
-    if (fileConflictResolution == FileCallback.ConflictResolution.SKIP) {
+    val fileConflictResolution = handleFileConflict(context, writableTargetFolder, cleanFileName, scope, callback)
+    if (fileConflictResolution == SingleFileConflictCallback.ConflictResolution.SKIP) {
         return
     }
 
     if (inInternalStorage(context)) {
         toRawFile(context)?.moveTo(context, writableTargetFolder.getAbsolutePath(context), cleanFileName, fileConflictResolution)?.let {
-            callback.uiScope.postToUi { callback.onCompleted(DocumentFile.fromFile(it)) }
+            scope.trySend(SingleFileResult.Completed(DocumentFile.fromFile(it)))
             return
         }
     }
@@ -2503,12 +2494,12 @@ private fun DocumentFile.moveFileTo(
     if (isExternalStorageManager(context) && getStorageId(context) == targetStorageId) {
         val sourceFile = toRawFile(context)
         if (sourceFile == null) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.SOURCE_FILE_NOT_FOUND))
             return
         }
         writableTargetFolder.toRawFile(context)?.let { destinationFolder ->
             sourceFile.moveTo(context, destinationFolder, cleanFileName, fileConflictResolution)?.let {
-                callback.uiScope.postToUi { callback.onCompleted(DocumentFile.fromFile(it)) }
+                scope.trySend(SingleFileResult.Completed(DocumentFile.fromFile(it)))
                 return
             }
         }
@@ -2521,51 +2512,55 @@ private fun DocumentFile.moveFileTo(
                 val newFile = context.fromTreeUri(movedFileUri)
                 if (newFile != null && newFile.isFile) {
                     if (newFilenameInTargetPath != null) newFile.renameTo(cleanFileName)
-                    callback.uiScope.postToUi { callback.onCompleted(newFile) }
+                    scope.trySend(SingleFileResult.Completed(newFile))
                 } else {
-                    callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.TARGET_FILE_NOT_FOUND) }
+                    scope.trySend(SingleFileResult.Error(SingleFileErrorCode.TARGET_FILE_NOT_FOUND))
                 }
                 return
             }
         }
 
-        if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetStorageId), length())) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
+        if (!isFileSizeAllowed(DocumentFileCompat.getFreeSpace(context, targetStorageId), length())) {
+            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
             return
         }
     } catch (e: Throwable) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        scope.trySend(SingleFileResult.Error(SingleFileErrorCode.STORAGE_PERMISSION_DENIED))
         return
     }
-
-    val thread = Thread.currentThread()
-    val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(this, thread) }
-    if (reportInterval < 0) return
-    val watchProgress = reportInterval > 0
 
     try {
         val targetFile = createTargetFile(
             context, writableTargetFolder, cleanFileName, newMimeTypeInTargetPath ?: mimeTypeByFileName,
-            fileConflictResolution.toCreateMode(), callback
+            fileConflictResolution.toCreateMode(), scope
         ) ?: return
-        createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
-            copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, true, callback)
+        val outputStream = targetFile.openOutputStream(context)
+        if (outputStream == null) {
+            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.TARGET_FILE_NOT_FOUND))
+            return
         }
+        val inputStream = openInputStream(context)
+        if (inputStream == null) {
+            outputStream.closeStreamQuietly()
+            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.SOURCE_FILE_NOT_FOUND))
+            return
+        }
+        copyFileStream(inputStream, outputStream, targetFile, updateInterval, true, scope)
     } catch (e: Exception) {
-        callback.uiScope.postToUi { callback.onFailed(e.toFileCallbackErrorCode()) }
+        scope.trySend(SingleFileResult.Error(e.toFileCallbackErrorCode()))
     }
 }
 
 /**
  * @return `true` if error
  */
-private fun DocumentFile.simpleCheckSourceFile(callback: FileCallback): Boolean {
+private fun DocumentFile.simpleCheckSourceFile(scope: ProducerScope<SingleFileResult>): Boolean {
     if (!isFile) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND) }
+        scope.trySend(SingleFileResult.Error(SingleFileErrorCode.SOURCE_FILE_NOT_FOUND))
         return true
     }
     if (!canRead()) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        scope.trySend(SingleFileResult.Error(SingleFileErrorCode.STORAGE_PERMISSION_DENIED))
         return true
     }
     return false
@@ -2574,23 +2569,26 @@ private fun DocumentFile.simpleCheckSourceFile(callback: FileCallback): Boolean 
 private fun DocumentFile.copyFileToMedia(
     context: Context,
     fileDescription: FileDescription,
-    callback: FileCallback,
     publicDirectory: PublicDirectory,
     deleteSourceFileWhenComplete: Boolean,
-    mode: CreateMode
+    mode: CreateMode,
+    updateInterval: Long,
+    scope: ProducerScope<SingleFileResult>,
+    isFileSizeAllowed: CheckFileSize,
+    callback: SingleFileConflictCallback,
 ) {
-    if (simpleCheckSourceFile(callback)) return
+    if (simpleCheckSourceFile(scope)) return
 
     val publicFolder = DocumentFileCompat.fromPublicFolder(context, publicDirectory, fileDescription.subFolder, true)
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || deleteSourceFileWhenComplete && !isRawFile && publicFolder?.isTreeDocumentFile == true) {
         if (publicFolder == null) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.STORAGE_PERMISSION_DENIED))
             return
         }
         publicFolder.child(context, fileDescription.fullName)?.let {
             if (mode == CreateMode.REPLACE) {
                 if (!it.forceDelete(context)) {
-                    callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+                    scope.trySend(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                     return
                 }
             } else {
@@ -2599,9 +2597,9 @@ private fun DocumentFile.copyFileToMedia(
         }
         fileDescription.subFolder = ""
         if (deleteSourceFileWhenComplete) {
-            moveFileTo(context, publicFolder, fileDescription, callback)
+            moveFileTo(context, publicFolder, fileDescription, updateInterval, isFileSizeAllowed, callback)
         } else {
-            copyFileTo(context, publicFolder, fileDescription, callback)
+            copyFileTo(context, publicFolder, fileDescription, updateInterval, isFileSizeAllowed, callback)
         }
     } else {
         val validMode = if (mode == CreateMode.REUSE) CreateMode.CREATE_NEW else mode
@@ -2611,85 +2609,129 @@ private fun DocumentFile.copyFileToMedia(
             MediaStoreCompat.createImage(context, fileDescription, mode = validMode)
         }
         if (mediaFile == null) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
         } else {
-            copyFileTo(context, mediaFile, deleteSourceFileWhenComplete, callback)
+            copyFileTo(context, mediaFile, deleteSourceFileWhenComplete, updateInterval, scope, isFileSizeAllowed)
         }
     }
 }
 
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.copyFileToDownloadMedia(context: Context, fileDescription: FileDescription, callback: FileCallback, mode: CreateMode = CreateMode.CREATE_NEW) {
-    copyFileToMedia(context, fileDescription, callback, PublicDirectory.DOWNLOADS, false, mode)
+fun DocumentFile.copyFileToDownloadMedia(
+    context: Context,
+    fileDescription: FileDescription,
+    mode: CreateMode = CreateMode.CREATE_NEW,
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: SingleFileConflictCallback,
+): Flow<SingleFileResult> = callbackFlow {
+    copyFileToMedia(context, fileDescription, PublicDirectory.DOWNLOADS, false, mode, updateInterval, this, isFileSizeAllowed, callback)
 }
 
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.copyFileToPictureMedia(context: Context, fileDescription: FileDescription, callback: FileCallback, mode: CreateMode = CreateMode.CREATE_NEW) {
-    copyFileToMedia(context, fileDescription, callback, PublicDirectory.PICTURES, false, mode)
+fun DocumentFile.copyFileToPictureMedia(
+    context: Context,
+    fileDescription: FileDescription,
+    mode: CreateMode = CreateMode.CREATE_NEW,
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: SingleFileConflictCallback,
+): Flow<SingleFileResult> = callbackFlow {
+    copyFileToMedia(context, fileDescription, PublicDirectory.PICTURES, false, mode, updateInterval, this, isFileSizeAllowed, callback)
 }
 
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.moveFileToDownloadMedia(context: Context, fileDescription: FileDescription, callback: FileCallback, mode: CreateMode = CreateMode.CREATE_NEW) {
-    copyFileToMedia(context, fileDescription, callback, PublicDirectory.DOWNLOADS, true, mode)
+fun DocumentFile.moveFileToDownloadMedia(
+    context: Context,
+    fileDescription: FileDescription,
+    mode: CreateMode = CreateMode.CREATE_NEW,
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: SingleFileConflictCallback
+): Flow<SingleFileResult> = callbackFlow {
+    copyFileToMedia(context, fileDescription, PublicDirectory.DOWNLOADS, true, mode, updateInterval, this, isFileSizeAllowed, callback)
 }
 
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.moveFileToPictureMedia(context: Context, fileDescription: FileDescription, callback: FileCallback, mode: CreateMode = CreateMode.CREATE_NEW) {
-    copyFileToMedia(context, fileDescription, callback, PublicDirectory.PICTURES, true, mode)
+fun DocumentFile.moveFileToPictureMedia(
+    context: Context,
+    fileDescription: FileDescription,
+    mode: CreateMode = CreateMode.CREATE_NEW,
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+    callback: SingleFileConflictCallback
+): Flow<SingleFileResult> = callbackFlow {
+    copyFileToMedia(context, fileDescription, PublicDirectory.PICTURES, true, mode, updateInterval, this, isFileSizeAllowed, callback)
 }
 
 /**
  * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
  */
 @WorkerThread
-fun DocumentFile.moveFileTo(context: Context, targetFile: MediaFile, callback: FileCallback) {
-    copyFileTo(context, targetFile, true, callback)
+fun DocumentFile.moveFileTo(
+    context: Context,
+    targetFile: MediaFile,
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+): Flow<SingleFileResult> = callbackFlow {
+    copyFileTo(context, targetFile, true, updateInterval, this, isFileSizeAllowed)
 }
 
 /**
  * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
  */
 @WorkerThread
-fun DocumentFile.copyFileTo(context: Context, targetFile: MediaFile, callback: FileCallback) {
-    copyFileTo(context, targetFile, false, callback)
+fun DocumentFile.copyFileTo(
+    context: Context,
+    targetFile: MediaFile,
+    updateInterval: Long = 500,
+    isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
+): Flow<SingleFileResult> = callbackFlow {
+    copyFileTo(context, targetFile, false, updateInterval, this, isFileSizeAllowed)
 }
 
 private fun DocumentFile.copyFileTo(
     context: Context,
     targetFile: MediaFile,
     deleteSourceFileWhenComplete: Boolean,
-    callback: FileCallback
+    updateInterval: Long,
+    scope: ProducerScope<SingleFileResult>,
+    isFileSizeAllowed: CheckFileSize,
 ) {
-    if (simpleCheckSourceFile(callback)) return
+    if (simpleCheckSourceFile(scope)) return
 
-    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, PRIMARY), length())) {
-        callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
+    if (!isFileSizeAllowed(DocumentFileCompat.getFreeSpace(context, PRIMARY), length())) {
+        scope.trySend(SingleFileResult.Error(SingleFileErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
         return
     }
 
-    val thread = Thread.currentThread()
-    val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(this, thread) }
-    if (reportInterval < 0) return
-    val watchProgress = reportInterval > 0
-
     try {
-        createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
-            copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, deleteSourceFileWhenComplete, callback)
+        val outputStream = targetFile.openOutputStream()
+        if (outputStream == null) {
+            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.TARGET_FILE_NOT_FOUND))
+            return
         }
+        val inputStream = openInputStream(context)
+        if (inputStream == null) {
+            outputStream.closeStreamQuietly()
+            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.SOURCE_FILE_NOT_FOUND))
+            return
+        }
+        copyFileStream(inputStream, outputStream, targetFile, updateInterval, deleteSourceFileWhenComplete, scope)
     } catch (e: Exception) {
-        callback.uiScope.postToUi { callback.onFailed(e.toFileCallbackErrorCode()) }
+        scope.trySend(SingleFileResult.Error(e.toFileCallbackErrorCode()))
     }
 }
 
-internal fun Exception.toFileCallbackErrorCode(): FileCallback.ErrorCode {
+internal fun Exception.toFileCallbackErrorCode(): SingleFileErrorCode {
     return when (this) {
-        is SecurityException -> FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED
-        is InterruptedIOException, is InterruptedException -> FileCallback.ErrorCode.CANCELED
-        else -> FileCallback.ErrorCode.UNKNOWN_IO_ERROR
+        is SecurityException -> SingleFileErrorCode.STORAGE_PERMISSION_DENIED
+        is InterruptedIOException, is InterruptedException -> SingleFileErrorCode.CANCELED
+        else -> SingleFileErrorCode.UNKNOWN_IO_ERROR
     }
 }
 
@@ -2697,69 +2739,71 @@ private fun handleFileConflict(
     context: Context,
     targetFolder: DocumentFile,
     targetFileName: String,
-    callback: FileCallback
-): FileCallback.ConflictResolution {
+    scope: ProducerScope<SingleFileResult>,
+    callback: SingleFileConflictCallback
+): SingleFileConflictCallback.ConflictResolution {
     targetFolder.child(context, targetFileName)?.let { targetFile ->
         val resolution = awaitUiResultWithPending(callback.uiScope) {
-            callback.onConflict(targetFile, FileCallback.FileConflictAction(it))
+            callback.onFileConflict(targetFile, SingleFileConflictCallback.FileConflictAction(it))
         }
-        if (resolution == FileCallback.ConflictResolution.REPLACE) {
-            callback.uiScope.postToUi { callback.onDeleteConflictedFiles() }
+        if (resolution == SingleFileConflictCallback.ConflictResolution.REPLACE) {
+            scope.trySend(SingleFileResult.DeletingConflictedFile)
             if (!targetFile.forceDelete(context)) {
-                callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
-                return FileCallback.ConflictResolution.SKIP
+                scope.trySend(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+                return SingleFileConflictCallback.ConflictResolution.SKIP
             }
         }
         return resolution
     }
-    return FileCallback.ConflictResolution.CREATE_NEW
+    return SingleFileConflictCallback.ConflictResolution.CREATE_NEW
 }
 
 private fun handleParentFolderConflict(
     context: Context,
     targetParentFolder: DocumentFile,
     targetFolderParentName: String,
-    callback: FolderCallback
-): FolderCallback.ConflictResolution {
+    scope: ProducerScope<FolderResult>,
+    callback: FolderConflictCallback
+): FolderConflictCallback.ConflictResolution {
     targetParentFolder.child(context, targetFolderParentName)?.let { targetFolder ->
         val canMerge = targetFolder.isDirectory
         if (canMerge && targetFolder.isEmpty(context)) {
-            return FolderCallback.ConflictResolution.MERGE
+            return FolderConflictCallback.ConflictResolution.MERGE
         }
 
-        val resolution = awaitUiResultWithPending<FolderCallback.ConflictResolution>(callback.uiScope) {
-            callback.onParentConflict(targetFolder, FolderCallback.ParentFolderConflictAction(it), canMerge)
+        val resolution = awaitUiResultWithPending(callback.uiScope) {
+            callback.onParentConflict(targetFolder, FolderConflictCallback.ParentFolderConflictAction(it), canMerge)
         }
 
         when (resolution) {
-            FolderCallback.ConflictResolution.REPLACE -> {
-                callback.uiScope.postToUi { callback.onDeleteConflictedFiles() }
+            FolderConflictCallback.ConflictResolution.REPLACE -> {
+                scope.trySend(FolderResult.DeletingConflictedFiles)
                 val isFolder = targetFolder.isDirectory
                 if (targetFolder.forceDelete(context, true)) {
                     if (!isFolder) {
                         val newFolder = targetFolder.parentFile?.createDirectory(targetFolderParentName)
                         if (newFolder == null) {
-                            callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
-                            return FolderCallback.ConflictResolution.SKIP
+                            scope.trySend(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+                            return FolderConflictCallback.ConflictResolution.SKIP
                         }
                     }
                 } else {
-                    callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
-                    return FolderCallback.ConflictResolution.SKIP
+                    scope.trySend(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+                    return FolderConflictCallback.ConflictResolution.SKIP
                 }
             }
 
-            FolderCallback.ConflictResolution.MERGE -> {
+            FolderConflictCallback.ConflictResolution.MERGE -> {
                 if (targetFolder.isFile) {
                     if (targetFolder.delete()) {
                         val newFolder = targetFolder.parentFile?.createDirectory(targetFolderParentName)
                         if (newFolder == null) {
-                            callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
-                            return FolderCallback.ConflictResolution.SKIP
+                            scope.trySend(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+                            return FolderConflictCallback.ConflictResolution.SKIP
                         }
                     } else {
-                        callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
-                        return FolderCallback.ConflictResolution.SKIP
+                        scope.trySend(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+                        return FolderConflictCallback.ConflictResolution.SKIP
                     }
                 }
             }
@@ -2770,44 +2814,46 @@ private fun handleParentFolderConflict(
         }
         return resolution
     }
-    return FolderCallback.ConflictResolution.CREATE_NEW
+    return FolderConflictCallback.ConflictResolution.CREATE_NEW
 }
 
 private fun List<DocumentFile>.handleParentFolderConflict(
     context: Context,
     targetParentFolder: DocumentFile,
-    callback: MultipleFileCallback
-): List<MultipleFileCallback.ParentConflict>? {
+    scope: ProducerScope<MultipleFilesResult>,
+    callback: MultipleFileConflictCallback
+): List<MultipleFileConflictCallback.ParentConflict>? {
     val sourceFileNames = map { it.name }
     val conflictedFiles = targetParentFolder.listFiles().filter { it.name in sourceFileNames }
     val conflicts = conflictedFiles.map {
         val sourceFile = first { src -> src.name == it.name }
         val canMerge = sourceFile.isDirectory && it.isDirectory
-        val solution = if (canMerge && it.isEmpty(context)) FolderCallback.ConflictResolution.MERGE else FolderCallback.ConflictResolution.CREATE_NEW
-        MultipleFileCallback.ParentConflict(sourceFile, it, canMerge, solution)
+        val solution =
+            if (canMerge && it.isEmpty(context)) FolderConflictCallback.ConflictResolution.MERGE else FolderConflictCallback.ConflictResolution.CREATE_NEW
+        MultipleFileConflictCallback.ParentConflict(sourceFile, it, canMerge, solution)
     }
-    val unresolvedConflicts = conflicts.filter { it.solution != FolderCallback.ConflictResolution.MERGE }.toMutableList()
+    val unresolvedConflicts = conflicts.filter { it.solution != FolderConflictCallback.ConflictResolution.MERGE }.toMutableList()
     if (unresolvedConflicts.isNotEmpty()) {
         val unresolvedFiles = unresolvedConflicts.filter { it.source.isFile }.toMutableList()
         val unresolvedFolders = unresolvedConflicts.filter { it.source.isDirectory }.toMutableList()
-        val resolution = awaitUiResultWithPending<List<MultipleFileCallback.ParentConflict>>(callback.uiScope) {
-            callback.onParentConflict(targetParentFolder, unresolvedFolders, unresolvedFiles, MultipleFileCallback.ParentFolderConflictAction(it))
+        val resolution = awaitUiResultWithPending(callback.uiScope) {
+            callback.onParentConflict(targetParentFolder, unresolvedFolders, unresolvedFiles, MultipleFileConflictCallback.ParentFolderConflictAction(it))
         }
-        if (resolution.any { it.solution == FolderCallback.ConflictResolution.REPLACE }) {
-            callback.uiScope.postToUi { callback.onDeleteConflictedFiles() }
+        if (resolution.any { it.solution == FolderConflictCallback.ConflictResolution.REPLACE }) {
+            scope.trySend(MultipleFilesResult.DeletingConflictedFiles)
         }
         resolution.forEach { conflict ->
             when (conflict.solution) {
-                FolderCallback.ConflictResolution.REPLACE -> {
-                    if (!conflict.target.let { it.forceDelete(context, true) || !it.exists() }) {
-                        callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+                FolderConflictCallback.ConflictResolution.REPLACE -> {
+                    if (!conflict.target.let { it.deleteRecursively(context, true) || !it.exists() }) {
+                        scope.trySend(MultipleFilesResult.Error(MultipleFilesErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                         return null
                     }
                 }
 
-                FolderCallback.ConflictResolution.MERGE -> {
+                FolderConflictCallback.ConflictResolution.MERGE -> {
                     if (conflict.target.isFile && !conflict.target.delete()) {
-                        callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+                        scope.trySend(MultipleFilesResult.Error(MultipleFilesErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                         return null
                     }
                 }
@@ -2817,7 +2863,7 @@ private fun List<DocumentFile>.handleParentFolderConflict(
                 }
             }
         }
-        return resolution.toMutableList().apply { addAll(conflicts.filter { it.solution == FolderCallback.ConflictResolution.MERGE }) }
+        return resolution.toMutableList().apply { addAll(conflicts.filter { it.solution == FolderConflictCallback.ConflictResolution.MERGE }) }
     }
     return emptyList()
 }

@@ -1,5 +1,15 @@
 package com.anggrayudi.storage.sample.fragment;
 
+import com.anggrayudi.storage.SimpleStorageHelper;
+import com.anggrayudi.storage.callback.SingleFileConflictCallback;
+import com.anggrayudi.storage.file.DocumentFileCompat;
+import com.anggrayudi.storage.file.DocumentFileType;
+import com.anggrayudi.storage.file.DocumentFileUtils;
+import com.anggrayudi.storage.file.PublicDirectory;
+import com.anggrayudi.storage.media.FileDescription;
+import com.anggrayudi.storage.media.MediaFile;
+import com.anggrayudi.storage.sample.R;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
@@ -13,17 +23,6 @@ import androidx.documentfile.provider.DocumentFile;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
-
-import com.anggrayudi.storage.SimpleStorageHelper;
-import com.anggrayudi.storage.callback.FileCallback;
-import com.anggrayudi.storage.file.DocumentFileCompat;
-import com.anggrayudi.storage.file.DocumentFileType;
-import com.anggrayudi.storage.file.DocumentFileUtils;
-import com.anggrayudi.storage.file.PublicDirectory;
-import com.anggrayudi.storage.media.FileDescription;
-import com.anggrayudi.storage.media.MediaFile;
-import com.anggrayudi.storage.sample.R;
-
 import timber.log.Timber;
 
 /**
@@ -82,8 +81,8 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         }
     }
 
-    private FileCallback createCallback() {
-        return new FileCallback() {
+    private SingleFileConflictCallback createCallback() {
+        return new SingleFileConflictCallback() {
             @Override
             public void onReport(Report report) {
                 Timber.d("Progress: %s", report.getProgress());

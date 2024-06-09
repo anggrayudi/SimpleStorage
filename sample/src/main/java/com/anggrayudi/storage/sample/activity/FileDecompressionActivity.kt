@@ -6,8 +6,7 @@ import androidx.documentfile.provider.DocumentFile
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.checkbox.checkBoxPrompt
 import com.afollestad.materialdialogs.list.listItems
-import com.anggrayudi.storage.callback.FileCallback
-import com.anggrayudi.storage.callback.ZipDecompressionCallback
+import com.anggrayudi.storage.callback.SingleFileConflictCallback
 import com.anggrayudi.storage.file.MimeType
 import com.anggrayudi.storage.file.decompressZip
 import com.anggrayudi.storage.file.fullName
@@ -68,9 +67,9 @@ class FileDecompressionActivity : BaseActivity() {
         }
         ioScope.launch {
             zipFile.decompressZip(applicationContext, targetFolder, object : ZipDecompressionCallback<DocumentFile>(uiScope) {
-                var actionForAllConflicts: FileCallback.ConflictResolution? = null
+                var actionForAllConflicts: SingleFileConflictCallback.ConflictResolution? = null
 
-                override fun onFileConflict(destinationFile: DocumentFile, action: FileCallback.FileConflictAction) {
+                override fun onFileConflict(destinationFile: DocumentFile, action: SingleFileConflictCallback.FileConflictAction) {
                     actionForAllConflicts?.let {
                         action.confirmResolution(it)
                         return
@@ -83,7 +82,7 @@ class FileDecompressionActivity : BaseActivity() {
                         .message(text = "File \"${destinationFile.name}\" already exists in destination. What's your action?")
                         .checkBoxPrompt(text = "Apply to all") { doForAll = it }
                         .listItems(items = mutableListOf("Replace", "Create New", "Skip Duplicate")) { _, index, _ ->
-                            val resolution = FileCallback.ConflictResolution.values()[index]
+                            val resolution = SingleFileConflictCallback.ConflictResolution.values()[index]
                             if (doForAll) {
                                 actionForAllConflicts = resolution
                             }

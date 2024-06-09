@@ -4,11 +4,11 @@ import android.os.Bundle
 import android.widget.TextView
 import android.widget.Toast
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.callback.ZipCompressionCallback
 import com.anggrayudi.storage.file.MimeType
 import com.anggrayudi.storage.file.compressToZip
 import com.anggrayudi.storage.file.fullName
 import com.anggrayudi.storage.file.getAbsolutePath
+import com.anggrayudi.storage.result.ZipCompressionResult
 import com.anggrayudi.storage.sample.databinding.ActivityFileCompressionBinding
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -90,27 +90,32 @@ class FileCompressionActivity : BaseActivity() {
         (binding.layoutCompressFilesSrcFolder2.tvFilePath.tag as? DocumentFile)?.let { files.add(it) }
 
         ioScope.launch {
-            files.compressToZip(applicationContext, targetZip, callback = object : ZipCompressionCallback<DocumentFile>(uiScope) {
-                override fun onCountingFiles() {
-                    // show a notification or dialog with indeterminate progress bar
-                }
+            files.compressToZip(applicationContext, targetZip)
+                .collect { result ->
+                    when (result) {
+                        is ZipCompressionResult.CountingFiles -> {
+                            // show a notification or dialog with indeterminate progress bar
+                        }
 
-                override fun onStart(files: List<DocumentFile>, workerThread: Thread): Long = 500
+                        is ZipCompressionResult.Compressing -> {
+                            Timber.d("onReport() -> ${result.progress.toInt()}% | Compressed ${result.fileCount} files")
+                        }
 
-                override fun onReport(report: Report) {
-                    Timber.d("onReport() -> ${report.progress.toInt()}% | Compressed ${report.fileCount} files")
-                }
+                        is ZipCompressionResult.Completed -> {
+                            Timber.d("onCompleted() -> Compressed ${result.totalFilesCompressed} with compression rate %.2f", result.compressionRate)
+                            Toast.makeText(applicationContext, "Successfully compressed ${result.totalFilesCompressed} files", Toast.LENGTH_SHORT).show()
+                        }
 
-                override fun onCompleted(zipFile: DocumentFile, bytesCompressed: Long, totalFilesCompressed: Int, compressionRate: Float) {
-                    Timber.d("onCompleted() -> Compressed $totalFilesCompressed with compression rate %.2f", compressionRate)
-                    Toast.makeText(applicationContext, "Successfully compressed $totalFilesCompressed files", Toast.LENGTH_SHORT).show()
-                }
+                        is ZipCompressionResult.DeletingEntryFiles -> {
+                            // show a notification or dialog with indeterminate progress bar
+                        }
 
-                override fun onFailed(errorCode: ErrorCode, message: String?) {
-                    Timber.d("onFailed() -> $errorCode: $message")
-                    Toast.makeText(applicationContext, "Error compressing files: $errorCode", Toast.LENGTH_SHORT).show()
+                        is ZipCompressionResult.Error -> {
+                            Timber.d("onFailed() -> ${result.errorCode}: ${result.message}")
+                            Toast.makeText(applicationContext, "Error compressing files: ${result.errorCode}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
-            })
         }
     }
 
