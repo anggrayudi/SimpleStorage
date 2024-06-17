@@ -200,7 +200,9 @@ class MainActivity : AppCompatActivity() {
                     folder
                 )
 
-                else -> Toast.makeText(baseContext, folder.getAbsolutePath(this), Toast.LENGTH_SHORT).show()
+                else -> {
+                    Toast.makeText(baseContext, folder.getAbsolutePath(this), Toast.LENGTH_SHORT).show()
+                }
             }
         }
         storageHelper.onFileCreated = { requestCode, file ->
@@ -295,12 +297,12 @@ class MainActivity : AppCompatActivity() {
                             is MultipleFilesResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
                             is MultipleFilesResult.Starting -> Timber.d("Starting...")
                             is MultipleFilesResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
-                            is MultipleFilesResult.Completed -> {
+                            is MultipleFilesResult.Completed -> uiScope.launch {
                                 Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")
                                 Toast.makeText(baseContext, "Copied ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
                             }
 
-                            is MultipleFilesResult.Error -> {
+                            is MultipleFilesResult.Error -> uiScope.launch {
                                 Timber.e(result.errorCode.name)
                                 Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
                             }
@@ -349,12 +351,12 @@ class MainActivity : AppCompatActivity() {
                             is MultipleFilesResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
                             is MultipleFilesResult.Starting -> Timber.d("Starting...")
                             is MultipleFilesResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
-                            is MultipleFilesResult.Completed -> {
+                            is MultipleFilesResult.Completed -> uiScope.launch {
                                 Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")
                                 Toast.makeText(baseContext, "Moved ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
                             }
 
-                            is MultipleFilesResult.Error -> {
+                            is MultipleFilesResult.Error -> uiScope.launch {
                                 Timber.e(result.errorCode.name)
                                 Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
                             }
@@ -416,12 +418,12 @@ class MainActivity : AppCompatActivity() {
                             is FolderResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
                             is FolderResult.Starting -> Timber.d("Starting...")
                             is FolderResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
-                            is FolderResult.Completed -> {
+                            is FolderResult.Completed -> uiScope.launch {
                                 Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")
                                 Toast.makeText(baseContext, "Copied ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
                             }
 
-                            is FolderResult.Error -> {
+                            is FolderResult.Error -> uiScope.launch {
                                 Timber.e(result.errorCode.name)
                                 Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
                             }
@@ -464,12 +466,12 @@ class MainActivity : AppCompatActivity() {
                             is FolderResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
                             is FolderResult.Starting -> Timber.d("Starting...")
                             is FolderResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
-                            is FolderResult.Completed -> {
+                            is FolderResult.Completed -> uiScope.launch {
                                 Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")
                                 Toast.makeText(baseContext, "Moved ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
                             }
 
-                            is FolderResult.Error -> {
+                            is FolderResult.Error -> uiScope.launch {
                                 Timber.e(result.errorCode.name)
                                 Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
                             }
@@ -526,12 +528,12 @@ class MainActivity : AppCompatActivity() {
                             is SingleFileResult.DeletingConflictedFile -> Timber.d("Deleting conflicted file...")
                             is SingleFileResult.Starting -> Timber.d("Starting...")
                             is SingleFileResult.InProgress -> Timber.d("Progress: ${it.progress.toInt()}%")
-                            is SingleFileResult.Completed -> {
+                            is SingleFileResult.Completed -> uiScope.launch {
                                 Timber.d("Completed")
                                 Toast.makeText(baseContext, "Copied successfully", Toast.LENGTH_SHORT).show()
                             }
 
-                            is SingleFileResult.Error -> {
+                            is SingleFileResult.Error -> uiScope.launch {
                                 Timber.e(it.errorCode.name)
                                 Toast.makeText(baseContext, "An error has occurred: ${it.errorCode.name}", Toast.LENGTH_SHORT).show()
                             }
@@ -601,12 +603,12 @@ class MainActivity : AppCompatActivity() {
                                 progressBar?.progress = result.progress.toInt()
                             }
 
-                            is SingleFileResult.Completed -> {
+                            is SingleFileResult.Completed -> uiScope.launch {
                                 Timber.d("Completed")
                                 Toast.makeText(baseContext, "Moved successfully", Toast.LENGTH_SHORT).show()
                             }
 
-                            is SingleFileResult.Error -> {
+                            is SingleFileResult.Error -> uiScope.launch {
                                 Timber.e(result.errorCode.name)
                                 Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
                             }

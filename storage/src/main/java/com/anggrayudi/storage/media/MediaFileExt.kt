@@ -7,6 +7,7 @@ import androidx.annotation.WorkerThread
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.extension.closeEntryQuietly
 import com.anggrayudi.storage.extension.closeStreamQuietly
+import com.anggrayudi.storage.extension.sendAndClose
 import com.anggrayudi.storage.extension.startCoroutineTimer
 import com.anggrayudi.storage.file.CreateMode
 import com.anggrayudi.storage.file.MimeType
@@ -45,7 +46,7 @@ fun List<MediaFile>.compressToZip(
     send(ZipCompressionResult.CountingFiles)
     val entryFiles = distinctBy { it.uri }.filter { !it.isEmpty }
     if (entryFiles.isEmpty()) {
-        send(ZipCompressionResult.Error(ZipCompressionErrorCode.MISSING_ENTRY_FILE, "No entry files found"))
+        sendAndClose(ZipCompressionResult.Error(ZipCompressionErrorCode.MISSING_ENTRY_FILE, "No entry files found"))
         return@callbackFlow
     }
 
@@ -54,11 +55,11 @@ fun List<MediaFile>.compressToZip(
         zipFile = targetZipFile.findParent(context)?.makeFile(context, targetZipFile.fullName, MimeType.ZIP)
     }
     if (zipFile == null) {
-        send(ZipCompressionResult.Error(ZipCompressionErrorCode.CANNOT_CREATE_FILE_IN_TARGET, "Cannot create ZIP file in target"))
+        sendAndClose(ZipCompressionResult.Error(ZipCompressionErrorCode.CANNOT_CREATE_FILE_IN_TARGET, "Cannot create ZIP file in target"))
         return@callbackFlow
     }
     if (!zipFile.isWritable(context)) {
-        send(ZipCompressionResult.Error(ZipCompressionErrorCode.STORAGE_PERMISSION_DENIED, "Destination ZIP file is not writable"))
+        sendAndClose(ZipCompressionResult.Error(ZipCompressionErrorCode.STORAGE_PERMISSION_DENIED, "Destination ZIP file is not writable"))
         return@callbackFlow
     }
 
@@ -118,6 +119,7 @@ fun List<MediaFile>.compressToZip(
     } else {
         zipFile.delete()
     }
+    close()
 }
 
 @WorkerThread
@@ -128,11 +130,11 @@ fun MediaFile.decompressZip(
 ): Flow<ZipDecompressionResult> = callbackFlow {
     send(ZipDecompressionResult.Validating)
     if (isEmpty) {
-        send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.MISSING_ZIP_FILE, "No zip file found"))
+        sendAndClose(ZipDecompressionResult.Error(ZipDecompressionErrorCode.MISSING_ZIP_FILE, "No zip file found"))
         return@callbackFlow
     }
     if (mimeType != MimeType.ZIP) {
-        send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.NOT_A_ZIP_FILE, "Not a ZIP file"))
+        sendAndClose(ZipDecompressionResult.Error(ZipDecompressionErrorCode.NOT_A_ZIP_FILE, "Not a ZIP file"))
         return@callbackFlow
     }
 
@@ -141,7 +143,7 @@ fun MediaFile.decompressZip(
         destFolder = targetFolder.findParent(context)?.makeFolder(context, targetFolder.fullName)
     }
     if (destFolder == null || !destFolder.isWritable(context)) {
-        send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.STORAGE_PERMISSION_DENIED, "Destination folder is not writable"))
+        sendAndClose(ZipDecompressionResult.Error(ZipDecompressionErrorCode.STORAGE_PERMISSION_DENIED, "Destination folder is not writable"))
         return@callbackFlow
     }
 
@@ -220,4 +222,5 @@ fun MediaFile.decompressZip(
     } else {
         targetFile?.delete()
     }
+    close()
 }

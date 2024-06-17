@@ -2,7 +2,16 @@
 
 package com.anggrayudi.storage.extension
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * @author Anggrayudi Hardiannico A. (anggrayudi.hardiannico@dana.id)
@@ -58,4 +67,14 @@ inline fun <R> awaitUiResult(uiScope: CoroutineScope, crossinline action: () -> 
 
 inline fun CoroutineScope.postToUi(crossinline action: () -> Unit) {
     launch(Dispatchers.Main) { action() }
+}
+
+suspend fun <E> SendChannel<E>.sendAndClose(element: E) {
+    send(element)
+    close()
+}
+
+suspend inline fun <E> SendChannel<E>.resumeWith(flow: Flow<E>) {
+    flow.collect { send(it) }
+    close()
 }

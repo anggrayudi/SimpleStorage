@@ -96,7 +96,7 @@ class FileDecompressionActivity : BaseActivity() {
                 when (it) {
                     is ZipDecompressionResult.Validating -> Timber.d("Validating")
                     is ZipDecompressionResult.Decompressing -> Timber.d("Decompressing")
-                    is ZipDecompressionResult.Completed -> {
+                    is ZipDecompressionResult.Completed -> uiScope.launch {
                         Toast.makeText(
                             applicationContext,
                             "Decompressed ${it.totalFilesDecompressed} files from ${zipFile.name}",
@@ -104,7 +104,9 @@ class FileDecompressionActivity : BaseActivity() {
                         ).show()
                     }
 
-                    is ZipDecompressionResult.Error -> Toast.makeText(applicationContext, "${it.errorCode}", Toast.LENGTH_SHORT).show()
+                    is ZipDecompressionResult.Error -> uiScope.launch {
+                        Toast.makeText(applicationContext, "${it.errorCode}", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }

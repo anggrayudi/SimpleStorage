@@ -24,6 +24,8 @@ import com.anggrayudi.storage.extension.getString
 import com.anggrayudi.storage.extension.isRawFile
 import com.anggrayudi.storage.extension.openInputStream
 import com.anggrayudi.storage.extension.replaceCompletely
+import com.anggrayudi.storage.extension.resumeWith
+import com.anggrayudi.storage.extension.sendAndClose
 import com.anggrayudi.storage.extension.startCoroutineTimer
 import com.anggrayudi.storage.extension.toDocumentFile
 import com.anggrayudi.storage.extension.toInt
@@ -380,12 +382,12 @@ class MediaFile(context: Context, val uri: Uri) {
     ): Flow<SingleFileResult> = callbackFlow {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sourceFile.moveFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict)
+            resumeWith(sourceFile.moveFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict))
             return@callbackFlow
         }
 
         if (!isFileSizeAllowed(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), length)) {
-            send(SingleFileResult.Error(SingleFileErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
+            sendAndClose(SingleFileResult.Error(SingleFileErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
             return@callbackFlow
         }
 
@@ -394,7 +396,7 @@ class MediaFile(context: Context, val uri: Uri) {
         } else {
             val directory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
             if (directory == null) {
-                send(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+                sendAndClose(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                 return@callbackFlow
             } else {
                 directory
@@ -405,6 +407,7 @@ class MediaFile(context: Context, val uri: Uri) {
             .removeForbiddenCharsFromFilename().trimFileSeparator()
         val conflictResolution = handleFileConflict(targetDirectory, cleanFileName, this, onConflict)
         if (conflictResolution == SingleFileConflictCallback.ConflictResolution.SKIP) {
+            close()
             return@callbackFlow
         }
 
@@ -412,7 +415,11 @@ class MediaFile(context: Context, val uri: Uri) {
             val targetFile = createTargetFile(
                 targetDirectory, cleanFileName, fileDescription?.mimeType ?: type,
                 conflictResolution.toCreateMode(), this
-            ) ?: return@callbackFlow
+            )
+            if (targetFile == null) {
+                close()
+                return@callbackFlow
+            }
             createFileStreams(targetFile, this) { inputStream, outputStream ->
                 copyFileStream(inputStream, outputStream, targetFile, updateInterval, true, this)
             }
@@ -421,6 +428,7 @@ class MediaFile(context: Context, val uri: Uri) {
         } catch (e: Exception) {
             send(SingleFileResult.Error(e.toFileCallbackErrorCode()))
         }
+        close()
     }
 
     @WorkerThread
@@ -433,12 +441,12 @@ class MediaFile(context: Context, val uri: Uri) {
     ): Flow<SingleFileResult> = callbackFlow {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sourceFile.copyFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict)
+            resumeWith(sourceFile.copyFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict))
             return@callbackFlow
         }
 
         if (!isFileSizeAllowed(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), length)) {
-            send(SingleFileResult.Error(SingleFileErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
+            sendAndClose(SingleFileResult.Error(SingleFileErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
             return@callbackFlow
         }
 
@@ -447,7 +455,7 @@ class MediaFile(context: Context, val uri: Uri) {
         } else {
             val directory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
             if (directory == null) {
-                send(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+                sendAndClose(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                 return@callbackFlow
             } else {
                 directory
@@ -458,6 +466,7 @@ class MediaFile(context: Context, val uri: Uri) {
             .removeForbiddenCharsFromFilename().trimFileSeparator()
         val conflictResolution = handleFileConflict(targetDirectory, cleanFileName, this, onConflict)
         if (conflictResolution == SingleFileConflictCallback.ConflictResolution.SKIP) {
+            close()
             return@callbackFlow
         }
 
@@ -465,7 +474,11 @@ class MediaFile(context: Context, val uri: Uri) {
             val targetFile = createTargetFile(
                 targetDirectory, cleanFileName, fileDescription?.mimeType ?: type,
                 conflictResolution.toCreateMode(), this
-            ) ?: return@callbackFlow
+            )
+            if (targetFile == null) {
+                close()
+                return@callbackFlow
+            }
             createFileStreams(targetFile, this) { inputStream, outputStream ->
                 copyFileStream(inputStream, outputStream, targetFile, updateInterval, false, this)
             }
@@ -474,6 +487,7 @@ class MediaFile(context: Context, val uri: Uri) {
         } catch (e: Exception) {
             send(SingleFileResult.Error(e.toFileCallbackErrorCode()))
         }
+        close()
     }
 
     private fun createTargetFile(

@@ -101,7 +101,7 @@ class FileCompressionActivity : BaseActivity() {
                             Timber.d("onReport() -> ${result.progress.toInt()}% | Compressed ${result.fileCount} files")
                         }
 
-                        is ZipCompressionResult.Completed -> {
+                        is ZipCompressionResult.Completed -> uiScope.launch {
                             Timber.d("onCompleted() -> Compressed ${result.totalFilesCompressed} with compression rate %.2f", result.compressionRate)
                             Toast.makeText(applicationContext, "Successfully compressed ${result.totalFilesCompressed} files", Toast.LENGTH_SHORT).show()
                         }
@@ -110,7 +110,7 @@ class FileCompressionActivity : BaseActivity() {
                             // show a notification or dialog with indeterminate progress bar
                         }
 
-                        is ZipCompressionResult.Error -> {
+                        is ZipCompressionResult.Error -> uiScope.launch {
                             Timber.d("onFailed() -> ${result.errorCode}: ${result.message}")
                             Toast.makeText(applicationContext, "Error compressing files: ${result.errorCode}", Toast.LENGTH_SHORT).show()
                         }
