@@ -2225,8 +2225,7 @@ fun DocumentFile.copyFileTo(
     if (targetFolder == null) {
         send(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
     } else {
-        // todo how to continue/return current flow with this flow function?
-        copyFileTo(context, targetFolder, fileDescription, reportInterval, isFileSizeAllowed, callback)
+        copyFileTo(context, targetFolder, fileDescription, reportInterval, this, isFileSizeAllowed, callback)
     }
 }
 
@@ -2242,14 +2241,26 @@ fun DocumentFile.copyFileTo(
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
     callback: SingleFileConflictCallback<DocumentFile>
 ): Flow<SingleFileResult> = callbackFlow {
+    copyFileTo(context, targetFolder, fileDescription, reportInterval, this, isFileSizeAllowed, callback)
+}
+
+private fun DocumentFile.copyFileTo(
+    context: Context,
+    targetFolder: DocumentFile,
+    fileDescription: FileDescription?,
+    reportInterval: Long,
+    scope: ProducerScope<SingleFileResult>,
+    isFileSizeAllowed: CheckFileSize,
+    callback: SingleFileConflictCallback<DocumentFile>
+) {
     if (fileDescription?.subFolder.isNullOrEmpty()) {
-        copyFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, reportInterval, this, isFileSizeAllowed, callback)
+        copyFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, reportInterval, scope, isFileSizeAllowed, callback)
     } else {
         val targetDirectory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
         if (targetDirectory == null) {
-            send(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
         } else {
-            copyFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, reportInterval, this, isFileSizeAllowed, callback)
+            copyFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, reportInterval, scope, isFileSizeAllowed, callback)
         }
     }
 }
@@ -2433,8 +2444,7 @@ fun DocumentFile.moveFileTo(
     if (targetFolder == null) {
         send(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
     } else {
-        // TODO: Return another flow
-        moveFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, callback)
+        moveFileTo(context, targetFolder, fileDescription, updateInterval, this, isFileSizeAllowed, callback)
     }
 }
 
@@ -2450,14 +2460,26 @@ fun DocumentFile.moveFileTo(
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
     callback: SingleFileConflictCallback<DocumentFile>
 ): Flow<SingleFileResult> = callbackFlow {
+    moveFileTo(context, targetFolder, fileDescription, updateInterval, this, isFileSizeAllowed, callback)
+}
+
+private fun DocumentFile.moveFileTo(
+    context: Context,
+    targetFolder: DocumentFile,
+    fileDescription: FileDescription?,
+    updateInterval: Long,
+    scope: ProducerScope<SingleFileResult>,
+    isFileSizeAllowed: CheckFileSize,
+    callback: SingleFileConflictCallback<DocumentFile>
+) {
     if (fileDescription?.subFolder.isNullOrEmpty()) {
-        moveFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, updateInterval, this, isFileSizeAllowed, callback)
+        moveFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, updateInterval, scope, isFileSizeAllowed, callback)
     } else {
         val targetDirectory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
         if (targetDirectory == null) {
-            send(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
         } else {
-            moveFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, updateInterval, this, isFileSizeAllowed, callback)
+            moveFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, updateInterval, scope, isFileSizeAllowed, callback)
         }
     }
 }
