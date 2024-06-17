@@ -1,9 +1,7 @@
 package com.anggrayudi.storage.sample.activity;
 
 import com.anggrayudi.storage.SimpleStorageHelper;
-import com.anggrayudi.storage.callback.SingleFileConflictCallback;
 import com.anggrayudi.storage.file.DocumentFileUtils;
-import com.anggrayudi.storage.media.MediaFile;
 import com.anggrayudi.storage.permission.ActivityPermissionRequest;
 import com.anggrayudi.storage.permission.PermissionCallback;
 import com.anggrayudi.storage.permission.PermissionReport;
@@ -22,8 +20,6 @@ import java.util.List;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.documentfile.provider.DocumentFile;
-import timber.log.Timber;
 
 import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_CREATE_FILE;
 import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_PICK_FILE;
@@ -98,34 +94,6 @@ public class JavaActivity extends AppCompatActivity {
             String message = "File created: " + file.getName();
             Toast.makeText(getBaseContext(), message, Toast.LENGTH_SHORT).show();
             return null;
-        });
-    }
-
-    private void moveFile(DocumentFile source, DocumentFile destinationFolder) {
-        DocumentFileUtils.moveFileTo(source, getApplicationContext(), destinationFolder, null, new SingleFileConflictCallback() {
-            @Override
-            public void onFileConflict(@NotNull DocumentFile destinationFile, @NotNull SingleFileConflictCallback.FileConflictAction action) {
-                // do stuff
-            }
-
-            @Override
-            public void onCompleted(@NotNull Object result) {
-                if (result instanceof DocumentFile) {
-                    // do stuff
-                } else if (result instanceof MediaFile) {
-                    // do stuff
-                }
-            }
-
-            @Override
-            public void onReport(Report report) {
-                Timber.d("%s", report.getProgress());
-            }
-
-            @Override
-            public void onFailed(ErrorCode errorCode) {
-                Timber.d("Error: %s", errorCode.toString());
-            }
         });
     }
 

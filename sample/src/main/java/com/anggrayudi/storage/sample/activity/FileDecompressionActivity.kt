@@ -11,8 +11,10 @@ import com.anggrayudi.storage.file.MimeType
 import com.anggrayudi.storage.file.decompressZip
 import com.anggrayudi.storage.file.fullName
 import com.anggrayudi.storage.file.getAbsolutePath
+import com.anggrayudi.storage.result.ZipDecompressionResult
 import com.anggrayudi.storage.sample.databinding.ActivityFileDecompressionBinding
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /**
  * Created on 04/01/22
@@ -66,10 +68,10 @@ class FileDecompressionActivity : BaseActivity() {
             return
         }
         ioScope.launch {
-            zipFile.decompressZip(applicationContext, targetFolder, object : ZipDecompressionCallback<DocumentFile>(uiScope) {
-                var actionForAllConflicts: SingleFileConflictCallback.ConflictResolution? = null
+            zipFile.decompressZip(applicationContext, targetFolder, onConflict = object : SingleFileConflictCallback<DocumentFile>(uiScope) {
+                var actionForAllConflicts: ConflictResolution? = null
 
-                override fun onFileConflict(destinationFile: DocumentFile, action: SingleFileConflictCallback.FileConflictAction) {
+                override fun onFileConflict(destinationFile: DocumentFile, action: FileConflictAction) {
                     actionForAllConflicts?.let {
                         action.confirmResolution(it)
                         return
@@ -82,7 +84,7 @@ class FileDecompressionActivity : BaseActivity() {
                         .message(text = "File \"${destinationFile.name}\" already exists in destination. What's your action?")
                         .checkBoxPrompt(text = "Apply to all") { doForAll = it }
                         .listItems(items = mutableListOf("Replace", "Create New", "Skip Duplicate")) { _, index, _ ->
-                            val resolution = SingleFileConflictCallback.ConflictResolution.values()[index]
+                            val resolution = ConflictResolution.entries[index]
                             if (doForAll) {
                                 actionForAllConflicts = resolution
                             }
@@ -90,23 +92,21 @@ class FileDecompressionActivity : BaseActivity() {
                         }
                         .show()
                 }
+            }).collect {
+                when (it) {
+                    is ZipDecompressionResult.Validating -> Timber.d("Validating")
+                    is ZipDecompressionResult.Decompressing -> Timber.d("Decompressing")
+                    is ZipDecompressionResult.Completed -> {
+                        Toast.makeText(
+                            applicationContext,
+                            "Decompressed ${it.totalFilesDecompressed} files from ${zipFile.name}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
 
-                override fun onCompleted(
-                    zipFile: DocumentFile,
-                    targetFolder: DocumentFile,
-                    decompressionInfo: DecompressionInfo
-                ) {
-                    Toast.makeText(
-                        applicationContext,
-                        "Decompressed ${decompressionInfo.totalFilesDecompressed} files from ${zipFile.name}",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    is ZipDecompressionResult.Error -> Toast.makeText(applicationContext, "${it.errorCode}", Toast.LENGTH_SHORT).show()
                 }
-
-                override fun onFailed(errorCode: ErrorCode) {
-                    Toast.makeText(applicationContext, "$errorCode", Toast.LENGTH_SHORT).show()
-                }
-            })
+            }
         }
     }
 }

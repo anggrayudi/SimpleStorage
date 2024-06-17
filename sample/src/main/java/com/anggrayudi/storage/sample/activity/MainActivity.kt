@@ -619,7 +619,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun createFileCallback() = object : SingleFileConflictCallback(uiScope) {
+    private fun createFileCallback() = object : SingleFileConflictCallback<DocumentFile>(uiScope) {
         override fun onFileConflict(destinationFile: DocumentFile, action: FileConflictAction) {
             handleFileConflict(action)
         }
