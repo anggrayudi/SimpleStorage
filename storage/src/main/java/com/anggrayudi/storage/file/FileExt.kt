@@ -142,10 +142,9 @@ fun File.isWritable(context: Context) = canWrite() && (isFile || isExternalStora
  * @return `true` if you have full disk access
  * @see Environment.isExternalStorageManager
  */
-fun File.isExternalStorageManager(context: Context) =
-    Build.VERSION.SDK_INT > Build.VERSION_CODES.Q && Environment.isExternalStorageManager(this)
-            || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && path.startsWith(SimpleStorage.externalStoragePath)
-            && SimpleStorage.hasStoragePermission(context) || context.writableDirs.any { path.startsWith(it.path) }
+fun File.isExternalStorageManager(context: Context) = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q && Environment.isExternalStorageManager(this)
+        || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && path.startsWith(SimpleStorage.externalStoragePath) && SimpleStorage.hasStoragePermission(context)
+        || context.writableDirs.any { path.startsWith(it.path) }
 
 /**
  * These directories do not require storage permissions. They are always writable with full disk access.

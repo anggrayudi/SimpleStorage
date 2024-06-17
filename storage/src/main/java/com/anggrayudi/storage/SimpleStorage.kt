@@ -118,6 +118,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      * because on previous Android versions there's no reliable way to get the
      * volume/path of SdCard, and of course, SdCard != External Storage.
      */
+    @Suppress("DEPRECATION")
     private val sdCardRootAccessIntent: Intent
         @RequiresApi(api = Build.VERSION_CODES.N)
         get() {
@@ -288,6 +289,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun handleActivityResultForStorageAccess(requestCode: Int, uri: Uri) {
         val storageId = uri.getStorageId(context)
         val storageType = StorageType.fromStorageId(storageId)

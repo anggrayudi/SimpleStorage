@@ -1341,7 +1341,7 @@ fun DocumentFile.decompressZip(
                 return@callbackFlow
             }
         } else {
-            send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.MISSING_ZIP_FILE, "ZIP file not found: $uri"))
+            send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.NOT_A_ZIP_FILE, "Not a ZIP file: $uri"))
             return@callbackFlow
         }
     } else {
@@ -1934,7 +1934,6 @@ private fun DocumentFile.copyFolderTo(
     }
 
     if (isClosedForSend) {
-        send(FolderResult.Error(FolderErrorCode.CANCELED))
         return@callbackFlow
     }
 
@@ -2192,11 +2191,11 @@ fun DocumentFile.copyFileTo(
     context: Context,
     targetFolder: File,
     fileDescription: FileDescription? = null,
-    reportInterval: Long = 500,
+    updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
     onConflict: SingleFileConflictCallback<DocumentFile>
 ): Flow<SingleFileResult> {
-    return copyFileTo(context, targetFolder.absolutePath, fileDescription, reportInterval, isFileSizeAllowed, onConflict)
+    return copyFileTo(context, targetFolder.absolutePath, fileDescription, updateInterval, isFileSizeAllowed, onConflict)
 }
 
 /**
@@ -2208,7 +2207,7 @@ fun DocumentFile.copyFileTo(
     context: Context,
     targetFolderAbsolutePath: String,
     fileDescription: FileDescription? = null,
-    reportInterval: Long = 500,
+    updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
     onConflict: SingleFileConflictCallback<DocumentFile>
 ): Flow<SingleFileResult> = callbackFlow {
@@ -2216,7 +2215,7 @@ fun DocumentFile.copyFileTo(
     if (targetFolder == null) {
         send(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
     } else {
-        copyFileTo(context, targetFolder, fileDescription, reportInterval, this, isFileSizeAllowed, onConflict)
+        copyFileTo(context, targetFolder, fileDescription, updateInterval, this, isFileSizeAllowed, onConflict)
     }
 }
 
@@ -2228,30 +2227,30 @@ fun DocumentFile.copyFileTo(
     context: Context,
     targetFolder: DocumentFile,
     fileDescription: FileDescription? = null,
-    reportInterval: Long = 500,
+    updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
     onConflict: SingleFileConflictCallback<DocumentFile>
 ): Flow<SingleFileResult> = callbackFlow {
-    copyFileTo(context, targetFolder, fileDescription, reportInterval, this, isFileSizeAllowed, onConflict)
+    copyFileTo(context, targetFolder, fileDescription, updateInterval, this, isFileSizeAllowed, onConflict)
 }
 
 private fun DocumentFile.copyFileTo(
     context: Context,
     targetFolder: DocumentFile,
     fileDescription: FileDescription?,
-    reportInterval: Long,
+    updateInterval: Long,
     scope: ProducerScope<SingleFileResult>,
     isFileSizeAllowed: CheckFileSize,
     onConflict: SingleFileConflictCallback<DocumentFile>
 ) {
     if (fileDescription?.subFolder.isNullOrEmpty()) {
-        copyFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, reportInterval, scope, isFileSizeAllowed, onConflict)
+        copyFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, updateInterval, scope, isFileSizeAllowed, onConflict)
     } else {
         val targetDirectory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
         if (targetDirectory == null) {
             scope.trySend(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
         } else {
-            copyFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, reportInterval, scope, isFileSizeAllowed, onConflict)
+            copyFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, updateInterval, scope, isFileSizeAllowed, onConflict)
         }
     }
 }
@@ -2507,7 +2506,7 @@ private fun DocumentFile.moveFileTo(
     if (isExternalStorageManager(context) && getStorageId(context) == targetStorageId) {
         val sourceFile = toRawFile(context)
         if (sourceFile == null) {
-            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.SOURCE_FILE_NOT_FOUND))
+            scope.trySend(SingleFileResult.Error(SingleFileErrorCode.STORAGE_PERMISSION_DENIED))
             return
         }
         writableTargetFolder.toRawFile(context)?.let { destinationFolder ->

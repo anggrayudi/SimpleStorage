@@ -48,7 +48,7 @@ class StorageInfoAdapter(
                     tvStorageUsedSpace.text = "Used Space: $storageUsedSpace"
                     tvStorageFreeSpace.text = "Free Space: $storageFreeSpace"
                     btnShowGrantedUri.setOnClickListener { showGrantedUris(it.context, storageId) }
-                    if (storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || Build.VERSION.SDK_INT < 21) {
+                    if (storageId == PRIMARY && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                         // No URI permission required for external storage
                         btnShowGrantedUri.visibility = View.GONE
                     }
