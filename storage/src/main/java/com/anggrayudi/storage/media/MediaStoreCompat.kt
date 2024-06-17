@@ -13,8 +13,18 @@ import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.extension.getString
 import com.anggrayudi.storage.extension.trimFileName
 import com.anggrayudi.storage.extension.trimFileSeparator
-import com.anggrayudi.storage.file.*
+import com.anggrayudi.storage.file.CreateMode
+import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
+import com.anggrayudi.storage.file.DocumentFileType
+import com.anggrayudi.storage.file.MimeType
+import com.anggrayudi.storage.file.PublicDirectory
+import com.anggrayudi.storage.file.autoIncrementFileName
+import com.anggrayudi.storage.file.canModify
+import com.anggrayudi.storage.file.child
+import com.anggrayudi.storage.file.createNewFileIfPossible
+import com.anggrayudi.storage.file.recreateFile
+import com.anggrayudi.storage.file.search
 import java.io.File
 
 /**
@@ -77,9 +87,9 @@ object MediaStoreCompat {
         val mediaFolder = basePath.substringBefore('/')
         val mediaType = when (mediaFolder) {
             Environment.DIRECTORY_DOWNLOADS -> MediaType.DOWNLOADS
-            in ImageMediaDirectory.values().map { it.folderName } -> MediaType.IMAGE
-            in AudioMediaDirectory.values().map { it.folderName } -> MediaType.AUDIO
-            in VideoMediaDirectory.values().map { it.folderName } -> MediaType.VIDEO
+            in ImageMediaDirectory.entries.map { it.folderName } -> MediaType.IMAGE
+            in AudioMediaDirectory.entries.map { it.folderName } -> MediaType.AUDIO
+            in VideoMediaDirectory.entries.map { it.folderName } -> MediaType.VIDEO
             else -> return null
         }
         val subFolder = basePath.substringAfter('/', "")
@@ -140,10 +150,10 @@ object MediaStoreCompat {
 
                     tryInsertMediaFile(context, mediaType, contentValues)
                 }
+
                 else -> tryInsertMediaFile(context, mediaType, contentValues)
             }
         } else {
-            @Suppress("DEPRECATION")
             val publicDirectory = Environment.getExternalStoragePublicDirectory(folderName)
             if (publicDirectory.canModify(context)) {
                 val filename = file.fullName
@@ -203,7 +213,6 @@ object MediaStoreCompat {
     @JvmStatic
     fun fromFileName(context: Context, mediaType: MediaType, name: String): MediaFile? {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
             File(PublicDirectory.DOWNLOADS.file, name).let {
                 if (it.isFile && it.canRead()) MediaFile(context, it) else null
             }
@@ -223,7 +232,6 @@ object MediaStoreCompat {
     fun fromBasePath(context: Context, mediaType: MediaType, basePath: String): MediaFile? {
         val cleanBasePath = basePath.removeForbiddenCharsFromFilename().trimFileSeparator()
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
             File(Environment.getExternalStorageDirectory(), cleanBasePath).let { if (it.isFile && it.canRead()) MediaFile(context, it) else null }
         } else {
             val relativePath = cleanBasePath.substringBeforeLast('/', "")
@@ -243,6 +251,7 @@ object MediaStoreCompat {
         Environment.DIRECTORY_MOVIES, Environment.DIRECTORY_DCIM -> MediaType.VIDEO
         Environment.DIRECTORY_MUSIC, Environment.DIRECTORY_PODCASTS, Environment.DIRECTORY_RINGTONES,
         Environment.DIRECTORY_ALARMS, Environment.DIRECTORY_NOTIFICATIONS -> MediaType.AUDIO
+
         Environment.DIRECTORY_DOWNLOADS -> MediaType.DOWNLOADS
         else -> null
     }
@@ -260,7 +269,6 @@ object MediaStoreCompat {
     fun fromRelativePath(context: Context, relativePath: String): List<MediaFile> {
         val cleanRelativePath = relativePath.trimFileSeparator()
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
             DocumentFile.fromFile(File(Environment.getExternalStorageDirectory(), cleanRelativePath))
                 .search(true, DocumentFileType.FILE)
                 .map { MediaFile(context, File(it.uri.path!!)) }
@@ -282,7 +290,6 @@ object MediaStoreCompat {
     fun fromRelativePath(context: Context, relativePath: String, name: String): MediaFile? {
         val cleanRelativePath = relativePath.trimFileSeparator()
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
             DocumentFile.fromFile(File(Environment.getExternalStorageDirectory(), cleanRelativePath))
                 .search(true, DocumentFileType.FILE, name = name)
                 .map { MediaFile(context, File(it.uri.path!!)) }
@@ -302,7 +309,6 @@ object MediaStoreCompat {
     fun fromFileNameContains(context: Context, mediaType: MediaType, containsName: String): List<MediaFile> {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
-                @Suppress("DEPRECATION")
                 DocumentFile.fromFile(directory)
                     .search(true, regex = Regex("^.*$containsName.*\$"), mimeTypes = arrayOf(mediaType.mimeType))
                     .map { MediaFile(context, File(it.uri.path!!)) }
@@ -319,7 +325,6 @@ object MediaStoreCompat {
     fun fromMimeType(context: Context, mediaType: MediaType, mimeType: String): List<MediaFile> {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
-                @Suppress("DEPRECATION")
                 DocumentFile.fromFile(directory)
                     .search(true, DocumentFileType.FILE, arrayOf(mimeType))
                     .map { MediaFile(context, File(it.uri.path!!)) }
@@ -336,7 +341,6 @@ object MediaStoreCompat {
     fun fromMediaType(context: Context, mediaType: MediaType): List<MediaFile> {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
-                @Suppress("DEPRECATION")
                 DocumentFile.fromFile(directory)
                     .search(true, mimeTypes = arrayOf(mediaType.mimeType))
                     .map { MediaFile(context, File(it.uri.path!!)) }

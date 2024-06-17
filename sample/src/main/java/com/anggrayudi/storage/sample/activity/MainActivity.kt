@@ -113,10 +113,7 @@ class MainActivity : AppCompatActivity() {
             isEnabled = Build.VERSION.SDK_INT in 23..28
         }
 
-        binding.layoutBaseOperation.btnRequestStorageAccess.run {
-            isEnabled = Build.VERSION.SDK_INT >= 21
-            setOnClickListener { storageHelper.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS) }
-        }
+        binding.layoutBaseOperation.btnRequestStorageAccess.setOnClickListener { storageHelper.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS) }
 
         binding.layoutBaseOperation.btnRequestFullStorageAccess.run {
             isEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

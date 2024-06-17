@@ -22,11 +22,6 @@ object StorageId {
     const val DATA = "data"
 
     /**
-     * To access SD card in Kitkat, use `sdcard` as the storage ID, instead of the actual ID like `15FA-160C`
-     */
-    const val KITKAT_SDCARD = "sdcard"
-
-    /**
      * For `/storage/emulated/0/Documents`
      * It is only exists on API 29-
      */

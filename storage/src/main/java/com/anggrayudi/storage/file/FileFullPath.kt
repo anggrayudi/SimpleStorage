@@ -6,10 +6,8 @@ import android.os.storage.StorageManager
 import androidx.annotation.RequiresApi
 import androidx.annotation.RestrictTo
 import com.anggrayudi.storage.SimpleStorage
-import com.anggrayudi.storage.SimpleStorage.Companion.KITKAT_SD_CARD_PATH
 import com.anggrayudi.storage.extension.fromTreeUri
 import com.anggrayudi.storage.extension.trimFileSeparator
-import com.anggrayudi.storage.file.StorageId.KITKAT_SDCARD
 import java.io.File
 
 /**
@@ -61,12 +59,6 @@ class FileFullPath {
                     basePath = fullPath.substringAfter(rootPath, "").trimFileSeparator()
                     simplePath = "$storageId:$basePath"
                     absolutePath = "$rootPath/$basePath".trimEnd('/')
-                }
-                fullPath.startsWith(KITKAT_SD_CARD_PATH) -> {
-                    storageId = KITKAT_SDCARD
-                    basePath = fullPath.substringAfter(KITKAT_SD_CARD_PATH, "").trimFileSeparator()
-                    simplePath = "$storageId:$basePath"
-                    absolutePath = "$KITKAT_SD_CARD_PATH/$basePath".trimEnd('/')
                 }
                 else -> if (fullPath.matches(DocumentFileCompat.SD_CARD_STORAGE_PATH_REGEX)) {
                     storageId = fullPath.substringAfter("/storage/", "").substringBefore('/')

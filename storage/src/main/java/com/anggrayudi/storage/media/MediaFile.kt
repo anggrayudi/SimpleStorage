@@ -66,7 +66,6 @@ import java.io.OutputStream
  * Created on 06/09/20
  * @author Anggrayudi H
  */
-@Suppress("DEPRECATION")
 class MediaFile(context: Context, val uri: Uri) {
 
     constructor(context: Context, rawFile: File) : this(context, Uri.fromFile(rawFile))
@@ -601,6 +600,7 @@ class MediaFile(context: Context, val uri: Uri) {
         return 0
     }
 
+    @Suppress("SameParameterValue")
     private fun getColumnInfoInt(column: String): Int {
         context.contentResolver.query(uri, arrayOf(column), null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) {

@@ -12,12 +12,10 @@ import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
 import com.anggrayudi.storage.callback.SingleFileConflictCallback
 import com.anggrayudi.storage.extension.awaitUiResultWithPending
-import com.anggrayudi.storage.extension.isKitkatSdCardStorageId
 import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import com.anggrayudi.storage.file.StorageId.DATA
 import com.anggrayudi.storage.file.StorageId.HOME
-import com.anggrayudi.storage.file.StorageId.KITKAT_SDCARD
 import com.anggrayudi.storage.file.StorageId.PRIMARY
 import java.io.File
 import java.io.IOException
@@ -34,7 +32,6 @@ import java.io.IOException
 fun File.getStorageId(context: Context) = when {
     path.startsWith(SimpleStorage.externalStoragePath) -> PRIMARY
     path.startsWith(context.dataDirectory.path) -> DATA
-    path.startsWith(SimpleStorage.KITKAT_SD_CARD_PATH) -> KITKAT_SDCARD
     else -> if (path.matches(DocumentFileCompat.SD_CARD_STORAGE_PATH_REGEX)) {
         path.substringAfter("/storage/", "").substringBefore('/')
     } else ""
@@ -90,7 +87,6 @@ fun File.getRootPath(context: Context): String {
     return when {
         storageId == PRIMARY || storageId == HOME -> SimpleStorage.externalStoragePath
         storageId == DATA -> context.dataDirectory.path
-        storageId.isKitkatSdCardStorageId() -> SimpleStorage.KITKAT_SD_CARD_PATH
         storageId.isNotEmpty() -> "/storage/$storageId"
         else -> ""
     }
@@ -142,20 +138,14 @@ fun File.createNewFileIfPossible(): Boolean = try {
  */
 fun File.isWritable(context: Context) = canWrite() && (isFile || isExternalStorageManager(context))
 
-@RestrictTo(RestrictTo.Scope.LIBRARY)
-fun File.inKitkatSdCard() =
-    Build.VERSION.SDK_INT < 21 && (path.startsWith(StorageId.KITKAT_SDCARD) || path.matches(DocumentFileCompat.SD_CARD_STORAGE_PATH_REGEX))
-
 /**
  * @return `true` if you have full disk access
  * @see Environment.isExternalStorageManager
  */
-@Suppress("DEPRECATION")
-fun File.isExternalStorageManager(context: Context) = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q && Environment.isExternalStorageManager(this)
-        || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
-        (path.startsWith(SimpleStorage.externalStoragePath) || Build.VERSION.SDK_INT < 21 && path.startsWith(StorageId.KITKAT_SDCARD))
-        && SimpleStorage.hasStoragePermission(context)
-        || context.writableDirs.any { path.startsWith(it.path) }
+fun File.isExternalStorageManager(context: Context) =
+    Build.VERSION.SDK_INT > Build.VERSION_CODES.Q && Environment.isExternalStorageManager(this)
+            || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && path.startsWith(SimpleStorage.externalStoragePath)
+            && SimpleStorage.hasStoragePermission(context) || context.writableDirs.any { path.startsWith(it.path) }
 
 /**
  * These directories do not require storage permissions. They are always writable with full disk access.

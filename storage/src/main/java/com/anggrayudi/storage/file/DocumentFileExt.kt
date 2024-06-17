@@ -31,7 +31,6 @@ import com.anggrayudi.storage.extension.hasParent
 import com.anggrayudi.storage.extension.isDocumentsDocument
 import com.anggrayudi.storage.extension.isDownloadsDocument
 import com.anggrayudi.storage.extension.isExternalStorageDocument
-import com.anggrayudi.storage.extension.isKitkatSdCardStorageId
 import com.anggrayudi.storage.extension.isMediaDocument
 import com.anggrayudi.storage.extension.isRawFile
 import com.anggrayudi.storage.extension.isTreeDocumentFile
@@ -115,11 +114,6 @@ val DocumentFile.rootId: String
     get() = DocumentsContract.getRootId(uri)
 
 fun DocumentFile.isExternalStorageManager(context: Context) = isRawFile && File(uri.path!!).isExternalStorageManager(context)
-
-@RestrictTo(RestrictTo.Scope.LIBRARY)
-fun DocumentFile.inKitkatSdCard() = Build.VERSION.SDK_INT < 21 && uri.path?.let {
-    it.startsWith(StorageId.KITKAT_SDCARD) || it.matches(DocumentFileCompat.SD_CARD_STORAGE_PATH_REGEX)
-} == true
 
 /**
  * Some media files do not return file extension from [DocumentFile.getName]. This function helps you to fix this kind of issue.
@@ -266,8 +260,7 @@ fun DocumentFile.inPrimaryStorage(context: Context) = isTreeDocumentFile && getS
 /**
  * `true` if this file located in SD Card
  */
-fun DocumentFile.inSdCardStorage(context: Context) =
-    getStorageId(context).let { it.matches(DocumentFileCompat.SD_CARD_STORAGE_ID_REGEX) || Build.VERSION.SDK_INT < 21 && it == StorageId.KITKAT_SDCARD }
+fun DocumentFile.inSdCardStorage(context: Context) = getStorageId(context).matches(DocumentFileCompat.SD_CARD_STORAGE_ID_REGEX)
 
 fun DocumentFile.inDataStorage(context: Context) = isRawFile && File(uri.path!!).inDataStorage(context)
 
@@ -316,9 +309,7 @@ fun DocumentFile.toRawFile(context: Context): File? {
         isRawFile -> File(uri.path ?: return null)
         inPrimaryStorage(context) -> File("${SimpleStorage.externalStoragePath}/${getBasePath(context)}")
         else -> getStorageId(context).let { storageId ->
-            if (storageId.isKitkatSdCardStorageId()) {
-                DocumentFileCompat.getKitkatSdCardRootFile(getBasePath(context))
-            } else if (storageId.isNotEmpty()) {
+            if (storageId.isNotEmpty()) {
                 File("/storage/$storageId/${getBasePath(context)}")
             } else {
                 null

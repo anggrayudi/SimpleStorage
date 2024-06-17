@@ -79,6 +79,7 @@ dependencies {
     implementation deps.timber
     implementation deps.material_progressbar
     implementation 'androidx.preference:preference-ktx:1.2.1'
+    implementation 'com.afollestad.material-dialogs:files:3.3.0'
 
     //test
     testImplementation deps.junit

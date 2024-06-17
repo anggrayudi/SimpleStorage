@@ -20,13 +20,26 @@ import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
-import com.afollestad.materialdialogs.MaterialDialog
-import com.afollestad.materialdialogs.callbacks.onCancel
-import com.afollestad.materialdialogs.files.folderChooser
-import com.anggrayudi.storage.callback.*
-import com.anggrayudi.storage.extension.*
-import com.anggrayudi.storage.file.*
+import com.anggrayudi.storage.callback.CreateFileCallback
+import com.anggrayudi.storage.callback.FilePickerCallback
+import com.anggrayudi.storage.callback.FileReceiverCallback
+import com.anggrayudi.storage.callback.FolderPickerCallback
+import com.anggrayudi.storage.callback.StorageAccessCallback
+import com.anggrayudi.storage.extension.fromSingleUri
+import com.anggrayudi.storage.extension.fromTreeUri
+import com.anggrayudi.storage.extension.getStorageId
+import com.anggrayudi.storage.extension.isDocumentsDocument
+import com.anggrayudi.storage.extension.isDownloadsDocument
+import com.anggrayudi.storage.extension.isExternalStorageDocument
+import com.anggrayudi.storage.file.DocumentFileCompat
+import com.anggrayudi.storage.file.FileFullPath
+import com.anggrayudi.storage.file.MimeType
+import com.anggrayudi.storage.file.PublicDirectory
 import com.anggrayudi.storage.file.StorageId.PRIMARY
+import com.anggrayudi.storage.file.StorageType
+import com.anggrayudi.storage.file.canModify
+import com.anggrayudi.storage.file.getAbsolutePath
+import com.anggrayudi.storage.file.getBasePath
 import java.io.File
 import kotlin.concurrent.thread
 
@@ -106,7 +119,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      * volume/path of SdCard, and of course, SdCard != External Storage.
      */
     private val sdCardRootAccessIntent: Intent
-        @Suppress("DEPRECATION")
         @RequiresApi(api = Build.VERSION_CODES.N)
         get() {
             val sm = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
@@ -145,7 +157,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      * trigger [StorageAccessCallback.onRootPathNotSelected]. Set to [StorageType.UNKNOWN] to accept any storage type.
      * @param expectedBasePath applicable for API 30+ only, because Android 11 does not allow selecting the root path.
      */
-    @RequiresApi(21)
     @JvmOverloads
     fun requestStorageAccess(
         requestCode: Int = requestCodeStorageAccess,
@@ -229,21 +240,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         initialPath?.checkIfStorageIdIsAccessibleInSafSelector()
         requestCodeFolderPicker = requestCode
 
-        if (Build.VERSION.SDK_INT < 21) {
-            MaterialDialog(context).folderChooser(
-                context,
-                initialDirectory = initialPath?.let { File(it.absolutePath) } ?: lastVisitedFolder,
-                allowFolderCreation = true,
-                selection = { _, file ->
-                    lastVisitedFolder = file
-                    folderPickerCallback?.onFolderSelected(requestCode, DocumentFile.fromFile(file))
-                }
-            ).negativeButton(android.R.string.cancel, click = { it.cancel() })
-                .onCancel { folderPickerCallback?.onCanceledByUser(requestCode) }
-                .show()
-            return
-        }
-
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P || hasStoragePermission(context)) {
             val intent = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
                 Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
@@ -258,7 +254,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
     }
 
-    @Suppress("DEPRECATION")
     private var lastVisitedFolder: File = Environment.getExternalStorageDirectory()
 
     /**
@@ -274,12 +269,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         initialPath?.checkIfStorageIdIsAccessibleInSafSelector()
         requestCodeFilePicker = requestCode
 
-        val intent = if (Build.VERSION.SDK_INT < 21) {
-            Intent(Intent.ACTION_GET_CONTENT)
-        } else {
-            Intent(Intent.ACTION_OPEN_DOCUMENT)
-        }
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple)
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+            .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple)
         if (filterMimeTypes.size > 1) {
             intent.setType(MimeType.UNKNOWN)
                 .putExtra(Intent.EXTRA_MIME_TYPES, filterMimeTypes)
@@ -374,7 +365,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             } else {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                     val sm = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
-                    @Suppress("DEPRECATION")
                     sm.storageVolumes.firstOrNull { !it.isPrimary }?.createAccessIntent(null)?.let {
                         if (!wrapper.startActivityForResult(it, requestCode)) {
                             storageAccessCallback?.onActivityHandlerNotFound(requestCode, it)
@@ -427,13 +417,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             if (uri.isDownloadsDocument && Build.VERSION.SDK_INT < 28 && uri.path?.startsWith("/document/raw:") == true) {
                 val fullPath = uri.path.orEmpty().substringAfterLast("/document/raw:")
                 DocumentFile.fromFile(File(fullPath))
-            } else context.fromSingleUri(uri)?.let { file ->
-                // content://com.android.externalstorage.documents/document/15FA-160C%3Aabc.txt
-                if (Build.VERSION.SDK_INT < 21 && file.getStorageId(context).matches(DocumentFileCompat.SD_CARD_STORAGE_ID_REGEX)) {
-                    DocumentFile.fromFile(DocumentFileCompat.getKitkatSdCardRootFile(file.getBasePath(context)))
-                } else {
-                    file
-                }
+            } else {
+                context.fromSingleUri(uri)
             }
         }.filter { it.isFile }
     }
@@ -522,7 +507,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     fun onRestoreInstanceState(savedInstanceState: Bundle) {
         savedInstanceState.getString(KEY_LAST_VISITED_FOLDER)?.let { lastVisitedFolder = File(it) }
         expectedBasePathForAccessRequest = savedInstanceState.getString(KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST)
-        expectedStorageTypeForAccessRequest = StorageType.values()[savedInstanceState.getInt(KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST)]
+        expectedStorageTypeForAccessRequest = StorageType.entries.toTypedArray()[savedInstanceState.getInt(KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST)]
         requestCodeStorageAccess = savedInstanceState.getInt(KEY_REQUEST_CODE_STORAGE_ACCESS, DEFAULT_REQUEST_CODE_STORAGE_ACCESS)
         requestCodeFolderPicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FOLDER_PICKER, DEFAULT_REQUEST_CODE_FOLDER_PICKER)
         requestCodeFilePicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FILE_PICKER, DEFAULT_REQUEST_CODE_FILE_PICKER)
@@ -576,11 +561,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         private const val DEFAULT_REQUEST_CODE_FILE_PICKER: Int = 3
         private const val DEFAULT_REQUEST_CODE_CREATE_FILE: Int = 4
 
-        const val KITKAT_SD_CARD_ID = "sdcard"
-        const val KITKAT_SD_CARD_PATH = "/storage/$KITKAT_SD_CARD_ID"
-
         @JvmStatic
-        @Suppress("DEPRECATION")
         val externalStoragePath: String
             get() = Environment.getExternalStorageDirectory().absolutePath
 

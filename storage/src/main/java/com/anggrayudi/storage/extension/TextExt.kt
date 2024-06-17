@@ -2,12 +2,9 @@
 
 package com.anggrayudi.storage.extension
 
-import android.os.Build
 import androidx.annotation.RestrictTo
 import com.anggrayudi.storage.SimpleStorage
-import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
-import com.anggrayudi.storage.file.StorageId
 
 /**
  * Created on 19/08/20
@@ -47,10 +44,6 @@ fun String.replaceCompletely(match: String, replaceWith: String) = let {
 }
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun String.isKitkatSdCardStorageId() =
-    Build.VERSION.SDK_INT < 21 && (this == StorageId.KITKAT_SDCARD || this.matches(DocumentFileCompat.SD_CARD_STORAGE_ID_REGEX))
-
-@RestrictTo(RestrictTo.Scope.LIBRARY)
 fun String.hasParent(parentPath: String): Boolean {
     val parentTree = parentPath.getFolderTree()
     val subFolderTree = getFolderTree()
@@ -73,7 +66,6 @@ fun String.parent(): String {
     val parentPath = folderTree.take(folderTree.size - 1).joinToString("/", "/")
     return if (parentPath.startsWith(SimpleStorage.externalStoragePath)
         || parentPath.matches(Regex("/storage/[A-Z0-9]{4}-[A-Z0-9]{4}(.*?)"))
-        || Build.VERSION.SDK_INT < 21 && parentPath.startsWith(SimpleStorage.KITKAT_SD_CARD_PATH)
     ) {
         parentPath
     } else {

@@ -24,12 +24,11 @@ enum class MediaType(val readUri: Uri?, val writeUri: Uri?) {
     /**
      * Get all directories associated with this media type.
      */
-    @Suppress("DEPRECATION")
     val directories: List<File>
         get() = when (this) {
-            IMAGE -> ImageMediaDirectory.values().map { Environment.getExternalStoragePublicDirectory(it.folderName) }
-            AUDIO -> AudioMediaDirectory.values().map { Environment.getExternalStoragePublicDirectory(it.folderName) }
-            VIDEO -> VideoMediaDirectory.values().map { Environment.getExternalStoragePublicDirectory(it.folderName) }
+            IMAGE -> ImageMediaDirectory.entries.map { Environment.getExternalStoragePublicDirectory(it.folderName) }
+            AUDIO -> AudioMediaDirectory.entries.map { Environment.getExternalStoragePublicDirectory(it.folderName) }
+            VIDEO -> VideoMediaDirectory.entries.map { Environment.getExternalStoragePublicDirectory(it.folderName) }
             DOWNLOADS -> listOf(PublicDirectory.DOWNLOADS.file)
         }
 
