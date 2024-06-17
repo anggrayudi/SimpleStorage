@@ -282,7 +282,7 @@ class MainActivity : AppCompatActivity() {
             }
             Toast.makeText(this, "Copying...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
-                sources.copyTo(applicationContext, targetFolder, callback = createMultipleFileCallback())
+                sources.copyTo(applicationContext, targetFolder, onConflict = createMultipleFileCallback())
                     .onCompletion {
                         if (it is CancellationException) {
                             // maybe you want to show to the user that the operation was cancelled
@@ -336,7 +336,7 @@ class MainActivity : AppCompatActivity() {
             }
             Toast.makeText(this, "Moving...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
-                sources.moveTo(applicationContext, targetFolder, callback = createMultipleFileCallback())
+                sources.moveTo(applicationContext, targetFolder, onConflict = createMultipleFileCallback())
                     .onCompletion {
                         if (it is CancellationException) {
                             // maybe you want to show to the user that the operation was cancelled
@@ -403,7 +403,7 @@ class MainActivity : AppCompatActivity() {
             }
             Toast.makeText(this, "Copying...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
-                folder.copyFolderTo(applicationContext, targetFolder, false, callback = createFolderCallback())
+                folder.copyFolderTo(applicationContext, targetFolder, false, onConflict = createFolderCallback())
                     .onCompletion {
                         if (it is CancellationException) {
                             // maybe you want to show to the user that the operation was cancelled
@@ -451,7 +451,7 @@ class MainActivity : AppCompatActivity() {
             }
             Toast.makeText(this, "Moving...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
-                folder.moveFolderTo(applicationContext, targetFolder, false, callback = createFolderCallback())
+                folder.moveFolderTo(applicationContext, targetFolder, false, onConflict = createFolderCallback())
                     .onCompletion {
                         if (it is CancellationException) {
                             // maybe you want to show to the user that the operation was cancelled
@@ -513,7 +513,7 @@ class MainActivity : AppCompatActivity() {
             val targetFolder = binding.layoutCopyFileTargetFolder.tvFilePath.tag as DocumentFile
             Toast.makeText(this, "Copying...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
-                file.copyFileTo(applicationContext, targetFolder, callback = createFileCallback())
+                file.copyFileTo(applicationContext, targetFolder, onConflict = createFileCallback())
                     .onCompletion {
                         if (it is CancellationException) {
                             // maybe you want to show to the user that the operation was cancelled
@@ -565,7 +565,7 @@ class MainActivity : AppCompatActivity() {
                 var tvStatus: TextView? = null
                 var progressBar: ProgressBar? = null
 
-                file.moveFileTo(applicationContext, targetFolder, callback = createFileCallback())
+                file.moveFileTo(applicationContext, targetFolder, onConflict = createFileCallback())
                     .onCompletion {
                         if (it is CancellationException) {
                             // maybe you want to show to the user that the operation was cancelled

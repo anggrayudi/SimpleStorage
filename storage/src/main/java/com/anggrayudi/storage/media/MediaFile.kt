@@ -91,6 +91,7 @@ class MediaFile(context: Context, val uri: Uri) {
     /**
      * Some media files do not return file extension. This function helps you to fix this kind of issue.
      */
+    @Suppress("DEPRECATION")
     val fullName: String
         get() = if (isRawFile) {
             toRawFile()?.name.orEmpty()
@@ -103,6 +104,7 @@ class MediaFile(context: Context, val uri: Uri) {
     /**
      * @see [fullName]
      */
+    @Suppress("DEPRECATION")
     val name: String?
         get() = toRawFile()?.name ?: getColumnInfoString(MediaStore.MediaColumns.DISPLAY_NAME)
 
@@ -115,6 +117,7 @@ class MediaFile(context: Context, val uri: Uri) {
     /**
      * @see [mimeType]
      */
+    @Suppress("DEPRECATION")
     val type: String?
         get() = toRawFile()?.name?.let { MimeType.getMimeTypeFromExtension(MimeType.getExtensionFromFileName(it)) }
             ?: getColumnInfoString(MediaStore.MediaColumns.MIME_TYPE)
@@ -126,6 +129,7 @@ class MediaFile(context: Context, val uri: Uri) {
         get() = getColumnInfoString(MediaStore.MediaColumns.MIME_TYPE)
             ?: MimeType.getMimeTypeFromExtension(extension)
 
+    @Suppress("DEPRECATION")
     var length: Long
         get() = toRawFile()?.length() ?: getColumnInfoLong(MediaStore.MediaColumns.SIZE)
         set(value) {
@@ -164,6 +168,7 @@ class MediaFile(context: Context, val uri: Uri) {
     val isRawFile: Boolean
         get() = uri.isRawFile
 
+    @Suppress("DEPRECATION")
     val lastModified: Long
         get() = toRawFile()?.lastModified()
             ?: getColumnInfoLong(MediaStore.MediaColumns.DATE_MODIFIED)
@@ -187,6 +192,7 @@ class MediaFile(context: Context, val uri: Uri) {
 
     fun toDocumentFile() = absolutePath.let { if (it.isEmpty()) null else DocumentFileCompat.fromFullPath(context, it) }
 
+    @Suppress("DEPRECATION")
     val absolutePath: String
         @SuppressLint("InlinedApi")
         get() {
@@ -224,6 +230,7 @@ class MediaFile(context: Context, val uri: Uri) {
     /**
      * @see MediaStore.MediaColumns.RELATIVE_PATH
      */
+    @Suppress("DEPRECATION")
     val relativePath: String
         @SuppressLint("InlinedApi")
         get() {
@@ -258,6 +265,7 @@ class MediaFile(context: Context, val uri: Uri) {
             }
         }
 
+    @Suppress("DEPRECATION")
     fun delete(): Boolean {
         val file = toRawFile()
         return if (file != null) {
@@ -274,6 +282,7 @@ class MediaFile(context: Context, val uri: Uri) {
      * Please note that this function does not move file if you input `newName` as `Download/filename.mp4`.
      * If you want to move media files, please use [moveFileTo] instead.
      */
+    @Suppress("DEPRECATION")
     fun renameTo(newName: String): Boolean {
         val file = toRawFile()
         val contentValues = ContentValues(1).apply { put(MediaStore.MediaColumns.DISPLAY_NAME, newName) }
@@ -319,6 +328,7 @@ class MediaFile(context: Context, val uri: Uri) {
     /**
      * @param append if `false` and the file already exists, it will recreate the file.
      */
+    @Suppress("DEPRECATION")
     @WorkerThread
     @JvmOverloads
     fun openOutputStream(append: Boolean = true): OutputStream? {
@@ -334,6 +344,7 @@ class MediaFile(context: Context, val uri: Uri) {
         }
     }
 
+    @Suppress("DEPRECATION")
     @WorkerThread
     fun openInputStream(): InputStream? {
         return try {
@@ -365,11 +376,11 @@ class MediaFile(context: Context, val uri: Uri) {
         fileDescription: FileDescription? = null,
         updateInterval: Long = 500,
         isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-        callback: SingleFileConflictCallback<DocumentFile>
+        onConflict: SingleFileConflictCallback<DocumentFile>
     ): Flow<SingleFileResult> = callbackFlow {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sourceFile.moveFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, callback)
+            sourceFile.moveFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict)
             return@callbackFlow
         }
 
@@ -392,7 +403,7 @@ class MediaFile(context: Context, val uri: Uri) {
 
         val cleanFileName = MimeType.getFullFileName(fileDescription?.name ?: name.orEmpty(), fileDescription?.mimeType ?: type)
             .removeForbiddenCharsFromFilename().trimFileSeparator()
-        val conflictResolution = handleFileConflict(targetDirectory, cleanFileName, this, callback)
+        val conflictResolution = handleFileConflict(targetDirectory, cleanFileName, this, onConflict)
         if (conflictResolution == SingleFileConflictCallback.ConflictResolution.SKIP) {
             return@callbackFlow
         }
@@ -418,11 +429,11 @@ class MediaFile(context: Context, val uri: Uri) {
         fileDescription: FileDescription? = null,
         updateInterval: Long = 500,
         isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-        callback: SingleFileConflictCallback<DocumentFile>
+        onConflict: SingleFileConflictCallback<DocumentFile>
     ): Flow<SingleFileResult> = callbackFlow {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sourceFile.copyFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, callback)
+            sourceFile.copyFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict)
             return@callbackFlow
         }
 
@@ -445,7 +456,7 @@ class MediaFile(context: Context, val uri: Uri) {
 
         val cleanFileName = MimeType.getFullFileName(fileDescription?.name ?: name.orEmpty(), fileDescription?.mimeType ?: type)
             .removeForbiddenCharsFromFilename().trimFileSeparator()
-        val conflictResolution = handleFileConflict(targetDirectory, cleanFileName, this, callback)
+        val conflictResolution = handleFileConflict(targetDirectory, cleanFileName, this, onConflict)
         if (conflictResolution == SingleFileConflictCallback.ConflictResolution.SKIP) {
             return@callbackFlow
         }
@@ -559,11 +570,11 @@ class MediaFile(context: Context, val uri: Uri) {
         targetFolder: DocumentFile,
         fileName: String,
         scope: ProducerScope<SingleFileResult>,
-        callback: SingleFileConflictCallback<DocumentFile>
+        onConflict: SingleFileConflictCallback<DocumentFile>
     ): SingleFileConflictCallback.ConflictResolution {
         targetFolder.child(context, fileName)?.let { targetFile ->
-            val resolution = awaitUiResultWithPending(callback.uiScope) {
-                callback.onFileConflict(targetFile, SingleFileConflictCallback.FileConflictAction(it))
+            val resolution = awaitUiResultWithPending(onConflict.uiScope) {
+                onConflict.onFileConflict(targetFile, SingleFileConflictCallback.FileConflictAction(it))
             }
             if (resolution == SingleFileConflictCallback.ConflictResolution.REPLACE) {
                 if (!targetFile.forceDelete(context)) {
