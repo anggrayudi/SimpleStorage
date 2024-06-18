@@ -53,7 +53,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Runnable
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -562,7 +561,8 @@ class MainActivity : AppCompatActivity() {
             val file = binding.layoutMoveSrcFile.tvFilePath.tag as DocumentFile
             val targetFolder = binding.layoutMoveFileTargetFolder.tvFilePath.tag as DocumentFile
             Toast.makeText(this, "Moving...", Toast.LENGTH_SHORT).show()
-            ioScope.launch {
+            var job: Job? = null
+            job = ioScope.launch {
                 var dialog: MaterialDialog? = null
                 var tvStatus: TextView? = null
                 var progressBar: ProgressBar? = null
@@ -586,7 +586,7 @@ class MainActivity : AppCompatActivity() {
                                 if (dialog == null) {
                                     dialog = MaterialDialog(this@MainActivity)
                                         .cancelable(false)
-                                        .positiveButton(android.R.string.cancel) { cancel() }
+                                        .positiveButton(android.R.string.cancel) { job?.cancel() }
                                         .customView(R.layout.dialog_copy_progress).apply {
                                             tvStatus = getCustomView().findViewById<TextView>(R.id.tvProgressStatus).apply {
                                                 text = "Copying file: 0%"
