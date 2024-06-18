@@ -1312,7 +1312,7 @@ fun List<DocumentFile>.compressToZip(
     if (success) {
         if (deleteSourceWhenComplete) {
             send(ZipCompressionResult.DeletingEntryFiles)
-            forEach { it.deleteRecursively(context) }
+            forEach { it.forceDelete(context) }
         }
         val sizeReduction = (actualFilesSize - zipFile.length()).toFloat() / actualFilesSize * 100
         send(ZipCompressionResult.Completed(zipFile, actualFilesSize, totalFiles, sizeReduction))
@@ -1506,21 +1506,31 @@ private fun List<DocumentFile>.copyTo(
 
     send(MultipleFilesResult.CountingFiles)
 
-    class SourceInfo(val children: List<DocumentFile>, val size: Long, val totalFiles: Int, val conflictResolution: FolderConflictCallback.ConflictResolution)
+    class SourceInfo(val children: List<DocumentFile>?, val size: Long, val totalFiles: Int, val conflictResolution: FolderConflictCallback.ConflictResolution)
 
     val sourceInfos = validSources.associateWith { src ->
-        val children = if (skipEmptyFiles) src.walkFileTreeAndSkipEmptyFiles() else src.walkFileTree(context)
-        var totalFilesToCopy = 0
-        var totalSizeToCopy = 0L
-        children.forEach {
-            if (it.isFile) {
-                totalFilesToCopy++
-                totalSizeToCopy += it.length()
-            }
-        }
         val resolution = conflictResolutions.find { it.source == src }?.solution ?: FolderConflictCallback.ConflictResolution.CREATE_NEW
-        SourceInfo(children, totalSizeToCopy, totalFilesToCopy, resolution)
-    }.toMutableMap()
+        if (src.isFile) {
+            SourceInfo(null, src.length(), 1, resolution)
+        } else {
+            val children = if (skipEmptyFiles) src.walkFileTreeAndSkipEmptyFiles() else src.walkFileTree(context)
+            var totalFilesToCopy = 0
+            var totalSizeToCopy = 0L
+            children.forEach {
+                if (it.isFile) {
+                    totalFilesToCopy++
+                    totalSizeToCopy += it.length()
+                }
+            }
+            SourceInfo(children, totalSizeToCopy, totalFilesToCopy, resolution)
+        }
+        // allow empty folders, but empty files need check
+    }.filterValues { it.children != null || (skipEmptyFiles && it.size > 0 || !skipEmptyFiles) }.toMutableMap()
+
+    if (sourceInfos.isEmpty()) {
+        sendAndClose(MultipleFilesResult.Completed(emptyList(), 0, 0, true))
+        return@callbackFlow
+    }
 
     // key=src, value=result
     val results = mutableMapOf<DocumentFile, DocumentFile>()
@@ -1573,7 +1583,7 @@ private fun List<DocumentFile>.copyTo(
         return@callbackFlow
     }
 
-    val totalFilesToCopy = validSources.count { it.isFile } + sourceInfos.values.sumOf { it.totalFiles }
+    val totalFilesToCopy = sourceInfos.values.sumOf { it.totalFiles }
     send(MultipleFilesResult.Starting(sourceInfos.map { it.key }, totalFilesToCopy))
 
     var totalCopiedFiles = 0
@@ -1668,7 +1678,7 @@ private fun List<DocumentFile>.copyTo(
         }
 
         try {
-            if (targetRootFile.isFile) {
+            if (targetRootFile.isFile || info.children == null) {
                 copy(src, targetRootFile)
                 results[src] = targetRootFile
                 continue
@@ -1727,7 +1737,7 @@ private fun List<DocumentFile>.copyTo(
         timer?.cancel()
         if (!success || conflictedFiles.isEmpty()) {
             if (deleteSourceWhenComplete && success) {
-                sourceInfos.forEach { (src, _) -> src.deleteRecursively(context) }
+                sourceInfos.forEach { (src, _) -> src.forceDelete(context) }
             }
             trySend(MultipleFilesResult.Completed(results.map { it.value }, totalFilesToCopy, totalCopiedFiles, success))
             true
@@ -2889,7 +2899,7 @@ private fun List<DocumentFile>.handleParentFolderConflict(
         resolution.forEach { conflict ->
             when (conflict.solution) {
                 FolderConflictCallback.ConflictResolution.REPLACE -> {
-                    if (!conflict.target.let { it.deleteRecursively(context, true) || !it.exists() }) {
+                    if (!conflict.target.let { it.forceDelete(context, true) || !it.exists() }) {
                         scope.trySend(MultipleFilesResult.Error(MultipleFilesErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                         return null
                     }

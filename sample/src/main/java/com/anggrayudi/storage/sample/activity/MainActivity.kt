@@ -322,7 +322,7 @@ class MainActivity : AppCompatActivity() {
         binding.layoutMoveMultipleFilesTargetFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_MOVE)
         }
-        binding.btnStartCopyMultipleFiles.setOnClickListener {
+        binding.btnStartMoveMultipleFiles.setOnClickListener {
             val targetFolder = binding.layoutMoveMultipleFilesTargetFolder.tvFilePath.tag as? DocumentFile
             if (targetFolder == null) {
                 Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()
