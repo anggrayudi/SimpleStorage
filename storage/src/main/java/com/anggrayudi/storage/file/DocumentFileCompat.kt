@@ -62,7 +62,7 @@ object DocumentFileCompat {
     val FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION = Regex("(.*?) \\(\\d+\\)")
 
     @RestrictTo(RestrictTo.Scope.LIBRARY)
-    val SD_CARD_STORAGE_ID_REGEX = Regex("[A-Z0-9]{4}-[A-Z0-9]{4}")
+    val SD_CARD_STORAGE_ID_REGEX = Regex("[A-Z0-9-]+")
 
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     val SD_CARD_STORAGE_PATH_REGEX = Regex("/storage/$SD_CARD_STORAGE_ID_REGEX(.*?)")
