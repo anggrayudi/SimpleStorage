@@ -24,7 +24,7 @@ import com.anggrayudi.storage.extension.getString
 import com.anggrayudi.storage.extension.isRawFile
 import com.anggrayudi.storage.extension.openInputStream
 import com.anggrayudi.storage.extension.replaceCompletely
-import com.anggrayudi.storage.extension.resumeWith
+import com.anggrayudi.storage.extension.sendAll
 import com.anggrayudi.storage.extension.sendAndClose
 import com.anggrayudi.storage.extension.startCoroutineTimer
 import com.anggrayudi.storage.extension.toDocumentFile
@@ -382,7 +382,7 @@ class MediaFile(context: Context, val uri: Uri) {
     ): Flow<SingleFileResult> = callbackFlow {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            resumeWith(sourceFile.moveFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict))
+            sendAll(sourceFile.moveFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict))
             return@callbackFlow
         }
 
@@ -441,7 +441,7 @@ class MediaFile(context: Context, val uri: Uri) {
     ): Flow<SingleFileResult> = callbackFlow {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            resumeWith(sourceFile.copyFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict))
+            sendAll(sourceFile.copyFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict))
             return@callbackFlow
         }
 

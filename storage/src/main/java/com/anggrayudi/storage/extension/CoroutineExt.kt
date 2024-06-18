@@ -74,7 +74,7 @@ suspend fun <E> SendChannel<E>.sendAndClose(element: E) {
     close()
 }
 
-suspend inline fun <E> SendChannel<E>.resumeWith(flow: Flow<E>) {
+suspend inline fun <E> SendChannel<E>.sendAll(flow: Flow<E>) {
     flow.collect { send(it) }
     close()
 }

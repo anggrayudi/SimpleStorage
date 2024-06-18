@@ -37,7 +37,7 @@ import com.anggrayudi.storage.extension.isTreeDocumentFile
 import com.anggrayudi.storage.extension.openInputStream
 import com.anggrayudi.storage.extension.openOutputStream
 import com.anggrayudi.storage.extension.parent
-import com.anggrayudi.storage.extension.resumeWith
+import com.anggrayudi.storage.extension.sendAll
 import com.anggrayudi.storage.extension.sendAndClose
 import com.anggrayudi.storage.extension.startCoroutineTimer
 import com.anggrayudi.storage.extension.toDocumentFile
@@ -2263,7 +2263,7 @@ fun DocumentFile.copyFileTo(
     if (targetFolder == null) {
         sendAndClose(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
     } else {
-        resumeWith(copyFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict))
+        sendAll(copyFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict))
     }
 }
 
@@ -2471,7 +2471,7 @@ fun DocumentFile.moveFileTo(
     if (targetFolder == null) {
         sendAndClose(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
     } else {
-        resumeWith(moveFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict))
+        sendAll(moveFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict))
     }
 }
 

@@ -287,7 +287,7 @@ class MainActivity : AppCompatActivity() {
                 sources.copyTo(applicationContext, targetFolder, onConflict = createMultipleFileCallback())
                     .onCompletion {
                         if (it is CancellationException) {
-                            // maybe you want to show to the user that the operation was cancelled
+                            Timber.d("Multiple copies is aborted")
                         }
                     }.collect { result ->
                         when (result) {
@@ -341,7 +341,7 @@ class MainActivity : AppCompatActivity() {
                 sources.moveTo(applicationContext, targetFolder, onConflict = createMultipleFileCallback())
                     .onCompletion {
                         if (it is CancellationException) {
-                            // maybe you want to show to the user that the operation was cancelled
+                            Timber.d("Multiple file moves is aborted")
                         }
                     }.collect { result ->
                         when (result) {
@@ -408,7 +408,7 @@ class MainActivity : AppCompatActivity() {
                 folder.copyFolderTo(applicationContext, targetFolder, false, onConflict = createFolderCallback())
                     .onCompletion {
                         if (it is CancellationException) {
-                            // maybe you want to show to the user that the operation was cancelled
+                            Timber.d("Folder copy is aborted")
                         }
                     }.collect { result ->
                         when (result) {
@@ -456,7 +456,7 @@ class MainActivity : AppCompatActivity() {
                 folder.moveFolderTo(applicationContext, targetFolder, false, onConflict = createFolderCallback())
                     .onCompletion {
                         if (it is CancellationException) {
-                            // maybe you want to show to the user that the operation was cancelled
+                            Timber.d("Folder move is aborted")
                         }
                     }.collect { result ->
                         when (result) {
@@ -518,7 +518,7 @@ class MainActivity : AppCompatActivity() {
                 file.copyFileTo(applicationContext, targetFolder, onConflict = createFileCallback())
                     .onCompletion {
                         if (it is CancellationException) {
-                            // maybe you want to show to the user that the operation was cancelled
+                            Timber.d("File copy is aborted")
                         }
                     }.collect {
                         when (it) {
@@ -570,7 +570,7 @@ class MainActivity : AppCompatActivity() {
                 file.moveFileTo(applicationContext, targetFolder, onConflict = createFileCallback())
                     .onCompletion {
                         if (it is CancellationException) {
-                            // maybe you want to show to the user that the operation was cancelled
+                            Timber.d("File move is aborted")
                         }
                         dialog?.dismiss()
                         dialog = null
