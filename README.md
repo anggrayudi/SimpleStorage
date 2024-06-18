@@ -310,11 +310,13 @@ Having trouble? Read the [Frequently Asked Questions](FAQ.md).
 
 SimpleStorage is used in these open source projects.
 Check how these repositories use it:
-* [Snapdrop](https://github.com/anggrayudi/snapdrop-android)
+
+* [Snapdrop](https://github.com/fm-sys/snapdrop-android)
 * [MaterialPreference](https://github.com/anggrayudi/MaterialPreference)
 * [Super Productivity](https://github.com/johannesjo/super-productivity-android)
 * [Shared Storage for Flutter](https://pub.dev/packages/shared_storage)
 * [Nextcloud Cookbook](https://codeberg.org/MicMun/nextcloud-cookbook)
+* [Audiobookshelf](https://github.com/advplyr/audiobookshelf-app)
 
 ## License
 
