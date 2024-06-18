@@ -27,7 +27,18 @@ import com.anggrayudi.storage.callback.FileCallback
 import com.anggrayudi.storage.callback.FolderCallback
 import com.anggrayudi.storage.callback.MultipleFileCallback
 import com.anggrayudi.storage.extension.launchOnUiThread
-import com.anggrayudi.storage.file.*
+import com.anggrayudi.storage.file.FileSize
+import com.anggrayudi.storage.file.baseName
+import com.anggrayudi.storage.file.changeName
+import com.anggrayudi.storage.file.copyFileTo
+import com.anggrayudi.storage.file.copyFolderTo
+import com.anggrayudi.storage.file.copyTo
+import com.anggrayudi.storage.file.fullName
+import com.anggrayudi.storage.file.getAbsolutePath
+import com.anggrayudi.storage.file.moveFileTo
+import com.anggrayudi.storage.file.moveFolderTo
+import com.anggrayudi.storage.file.moveTo
+import com.anggrayudi.storage.file.openOutputStream
 import com.anggrayudi.storage.permission.ActivityPermissionRequest
 import com.anggrayudi.storage.permission.PermissionCallback
 import com.anggrayudi.storage.permission.PermissionReport
@@ -35,7 +46,11 @@ import com.anggrayudi.storage.permission.PermissionResult
 import com.anggrayudi.storage.sample.R
 import com.anggrayudi.storage.sample.StorageInfoAdapter
 import com.anggrayudi.storage.sample.databinding.ActivityMainBinding
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.Runnable
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.IOException
 import kotlin.concurrent.thread
@@ -280,7 +295,7 @@ class MainActivity : AppCompatActivity() {
         binding.layoutMoveMultipleFilesTargetFolder.btnBrowse.setOnClickListener {
             storageHelper.openFolderPicker(REQUEST_CODE_PICK_TARGET_FOLDER_FOR_MULTIPLE_FILE_MOVE)
         }
-        binding.btnStartCopyMultipleFiles.setOnClickListener {
+        binding.btnStartMoveMultipleFiles.setOnClickListener {
             val targetFolder = binding.layoutMoveMultipleFilesTargetFolder.tvFilePath.tag as? DocumentFile
             if (targetFolder == null) {
                 Toast.makeText(this, "Please select target folder", Toast.LENGTH_SHORT).show()

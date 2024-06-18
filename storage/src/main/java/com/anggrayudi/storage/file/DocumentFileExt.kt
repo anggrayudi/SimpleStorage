@@ -18,8 +18,35 @@ import androidx.core.content.FileProvider
 import androidx.core.content.MimeTypeFilter
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
-import com.anggrayudi.storage.callback.*
-import com.anggrayudi.storage.extension.*
+import com.anggrayudi.storage.callback.BaseFileCallback
+import com.anggrayudi.storage.callback.FileCallback
+import com.anggrayudi.storage.callback.FileConflictCallback
+import com.anggrayudi.storage.callback.FolderCallback
+import com.anggrayudi.storage.callback.MultipleFileCallback
+import com.anggrayudi.storage.callback.ZipCompressionCallback
+import com.anggrayudi.storage.callback.ZipDecompressionCallback
+import com.anggrayudi.storage.extension.awaitUiResult
+import com.anggrayudi.storage.extension.awaitUiResultWithPending
+import com.anggrayudi.storage.extension.childOf
+import com.anggrayudi.storage.extension.closeEntryQuietly
+import com.anggrayudi.storage.extension.closeStreamQuietly
+import com.anggrayudi.storage.extension.fromTreeUri
+import com.anggrayudi.storage.extension.getStorageId
+import com.anggrayudi.storage.extension.hasParent
+import com.anggrayudi.storage.extension.isDocumentsDocument
+import com.anggrayudi.storage.extension.isDownloadsDocument
+import com.anggrayudi.storage.extension.isExternalStorageDocument
+import com.anggrayudi.storage.extension.isKitkatSdCardStorageId
+import com.anggrayudi.storage.extension.isMediaDocument
+import com.anggrayudi.storage.extension.isRawFile
+import com.anggrayudi.storage.extension.isTreeDocumentFile
+import com.anggrayudi.storage.extension.openInputStream
+import com.anggrayudi.storage.extension.openOutputStream
+import com.anggrayudi.storage.extension.parent
+import com.anggrayudi.storage.extension.postToUi
+import com.anggrayudi.storage.extension.startCoroutineTimer
+import com.anggrayudi.storage.extension.toDocumentFile
+import com.anggrayudi.storage.extension.trimFileSeparator
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 import com.anggrayudi.storage.file.StorageId.DATA
 import com.anggrayudi.storage.file.StorageId.PRIMARY
@@ -27,8 +54,13 @@ import com.anggrayudi.storage.media.FileDescription
 import com.anggrayudi.storage.media.MediaFile
 import com.anggrayudi.storage.media.MediaStoreCompat
 import kotlinx.coroutines.Job
-import java.io.*
-import java.util.*
+import java.io.File
+import java.io.FileNotFoundException
+import java.io.IOException
+import java.io.InputStream
+import java.io.InterruptedIOException
+import java.io.OutputStream
+import java.util.Date
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -347,6 +379,7 @@ fun DocumentFile.child(context: Context, path: String, requiresWriteAccess: Bool
             }
             file?.takeIfWritable(context, requiresWriteAccess)
         }
+
         else -> null
     }
 }
@@ -445,6 +478,7 @@ fun DocumentFile.getBasePath(context: Context): String {
                 else -> path.substringAfterLast(SimpleStorage.externalStoragePath, "").trimFileSeparator()
             }
         }
+
         else -> ""
     }
 }
@@ -898,6 +932,7 @@ fun DocumentFile.search(
                 walkFileTreeForSearch(DocumentFileType.FILE, mimeTypes, name, regex, thread)
             }
         }
+
         else -> {
             var sequence = listFiles().asSequence().filter { it.canRead() }
             if (regex != null) {
@@ -1260,7 +1295,7 @@ fun List<DocumentFile>.compressToZip(
     if (success) {
         if (deleteSourceWhenComplete) {
             callback.uiScope.postToUi { callback.onDeleteEntryFiles() }
-            forEach { it.deleteRecursively(context) }
+            forEach { it.forceDelete(context) }
         }
         val sizeReduction = (actualFilesSize - zipFile.length()).toFloat() / actualFilesSize * 100
         callback.uiScope.postToUi { callback.onCompleted(zipFile, actualFilesSize, totalFiles, sizeReduction) }
@@ -1440,21 +1475,32 @@ private fun List<DocumentFile>.copyTo(
 
     callback.uiScope.postToUi { callback.onCountingFiles() }
 
-    class SourceInfo(val children: List<DocumentFile>, val size: Long, val totalFiles: Int, val conflictResolution: FolderCallback.ConflictResolution)
+    class SourceInfo(val children: List<DocumentFile>?, val size: Long, val totalFiles: Int, val conflictResolution: FolderCallback.ConflictResolution)
 
     val sourceInfos = validSources.associateWith { src ->
-        val children = if (skipEmptyFiles) src.walkFileTreeAndSkipEmptyFiles() else src.walkFileTree(context)
-        var totalFilesToCopy = 0
-        var totalSizeToCopy = 0L
-        children.forEach {
-            if (it.isFile) {
-                totalFilesToCopy++
-                totalSizeToCopy += it.length()
-            }
-        }
         val resolution = conflictResolutions.find { it.source == src }?.solution ?: FolderCallback.ConflictResolution.CREATE_NEW
-        SourceInfo(children, totalSizeToCopy, totalFilesToCopy, resolution)
-    }.toMutableMap()
+        if (src.isFile) {
+            SourceInfo(null, src.length(), 1, resolution)
+        } else {
+            val children = if (skipEmptyFiles) src.walkFileTreeAndSkipEmptyFiles() else src.walkFileTree(context)
+            var totalFilesToCopy = 0
+            var totalSizeToCopy = 0L
+            children.forEach {
+                if (it.isFile) {
+                    totalFilesToCopy++
+                    totalSizeToCopy += it.length()
+                }
+            }
+            SourceInfo(children, totalSizeToCopy, totalFilesToCopy, resolution)
+        }
+        // allow empty folders, but empty files need check
+    }.filterValues { it.children != null || (skipEmptyFiles && it.size > 0 || !skipEmptyFiles) }.toMutableMap()
+
+    if (sourceInfos.isEmpty()) {
+        val result = MultipleFileCallback.Result(emptyList(), 0, 0, true)
+        callback.uiScope.postToUi { callback.onCompleted(result) }
+        return
+    }
 
     // key=src, value=result
     val results = mutableMapOf<DocumentFile, DocumentFile>()
@@ -1507,7 +1553,7 @@ private fun List<DocumentFile>.copyTo(
     }
 
     val thread = Thread.currentThread()
-    val totalFilesToCopy = validSources.count { it.isFile } + sourceInfos.values.sumOf { it.totalFiles }
+    val totalFilesToCopy = sourceInfos.values.sumOf { it.totalFiles }
     val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(sourceInfos.map { it.key }, totalFilesToCopy, thread) }
     if (reportInterval < 0) return
 
@@ -1594,7 +1640,7 @@ private fun List<DocumentFile>.copyTo(
         }
 
         try {
-            if (targetRootFile.isFile) {
+            if (targetRootFile.isFile || info.children == null) {
                 copy(src, targetRootFile)
                 results[src] = targetRootFile
                 continue
@@ -1648,7 +1694,7 @@ private fun List<DocumentFile>.copyTo(
         timer?.cancel()
         if (!success || conflictedFiles.isEmpty()) {
             if (deleteSourceWhenComplete && success) {
-                sourceInfos.forEach { (src, _) -> src.deleteRecursively(context) }
+                sourceInfos.forEach { (src, _) -> src.forceDelete(context) }
             }
             val result = MultipleFileCallback.Result(results.map { it.value }, totalFilesToCopy, totalCopiedFiles, success)
             callback.uiScope.postToUi { callback.onCompleted(result) }
@@ -1726,6 +1772,7 @@ private fun List<DocumentFile>.doesMeetCopyRequirements(
             !it.canRead() -> Pair(it, FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
             targetParentFolderPath == it.parentFile?.getAbsolutePath(context) ->
                 Pair(it, FolderCallback.ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER)
+
             else -> null
         }
     }.toMap()
@@ -2752,7 +2799,7 @@ private fun List<DocumentFile>.handleParentFolderConflict(
         resolution.forEach { conflict ->
             when (conflict.solution) {
                 FolderCallback.ConflictResolution.REPLACE -> {
-                    if (!conflict.target.let { it.deleteRecursively(context, true) || !it.exists() }) {
+                    if (!conflict.target.let { it.forceDelete(context, true) || !it.exists() }) {
                         callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
                         return null
                     }
