@@ -42,9 +42,9 @@ import com.anggrayudi.storage.permission.ActivityPermissionRequest
 import com.anggrayudi.storage.permission.PermissionCallback
 import com.anggrayudi.storage.permission.PermissionReport
 import com.anggrayudi.storage.permission.PermissionResult
-import com.anggrayudi.storage.result.FolderResult
 import com.anggrayudi.storage.result.MultipleFilesResult
 import com.anggrayudi.storage.result.SingleFileResult
+import com.anggrayudi.storage.result.SingleFolderResult
 import com.anggrayudi.storage.sample.R
 import com.anggrayudi.storage.sample.StorageInfoAdapter
 import com.anggrayudi.storage.sample.databinding.ActivityMainBinding
@@ -411,18 +411,18 @@ class MainActivity : AppCompatActivity() {
                         }
                     }.collect { result ->
                         when (result) {
-                            is FolderResult.Validating -> Timber.d("Validating...")
-                            is FolderResult.Preparing -> Timber.d("Preparing...")
-                            is FolderResult.CountingFiles -> Timber.d("Counting files...")
-                            is FolderResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
-                            is FolderResult.Starting -> Timber.d("Starting...")
-                            is FolderResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
-                            is FolderResult.Completed -> uiScope.launch {
+                            is SingleFolderResult.Validating -> Timber.d("Validating...")
+                            is SingleFolderResult.Preparing -> Timber.d("Preparing...")
+                            is SingleFolderResult.CountingFiles -> Timber.d("Counting files...")
+                            is SingleFolderResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
+                            is SingleFolderResult.Starting -> Timber.d("Starting...")
+                            is SingleFolderResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
+                            is SingleFolderResult.Completed -> uiScope.launch {
                                 Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")
                                 Toast.makeText(baseContext, "Copied ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
                             }
 
-                            is FolderResult.Error -> uiScope.launch {
+                            is SingleFolderResult.Error -> uiScope.launch {
                                 Timber.e(result.errorCode.name)
                                 Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
                             }
@@ -459,18 +459,18 @@ class MainActivity : AppCompatActivity() {
                         }
                     }.collect { result ->
                         when (result) {
-                            is FolderResult.Validating -> Timber.d("Validating...")
-                            is FolderResult.Preparing -> Timber.d("Preparing...")
-                            is FolderResult.CountingFiles -> Timber.d("Counting files...")
-                            is FolderResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
-                            is FolderResult.Starting -> Timber.d("Starting...")
-                            is FolderResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
-                            is FolderResult.Completed -> uiScope.launch {
+                            is SingleFolderResult.Validating -> Timber.d("Validating...")
+                            is SingleFolderResult.Preparing -> Timber.d("Preparing...")
+                            is SingleFolderResult.CountingFiles -> Timber.d("Counting files...")
+                            is SingleFolderResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
+                            is SingleFolderResult.Starting -> Timber.d("Starting...")
+                            is SingleFolderResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
+                            is SingleFolderResult.Completed -> uiScope.launch {
                                 Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")
                                 Toast.makeText(baseContext, "Moved ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
                             }
 
-                            is FolderResult.Error -> uiScope.launch {
+                            is SingleFolderResult.Error -> uiScope.launch {
                                 Timber.e(result.errorCode.name)
                                 Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
                             }

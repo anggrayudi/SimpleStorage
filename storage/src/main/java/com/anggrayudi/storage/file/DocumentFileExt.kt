@@ -51,11 +51,11 @@ import com.anggrayudi.storage.media.MediaStoreCompat
 import com.anggrayudi.storage.result.FileProperties
 import com.anggrayudi.storage.result.FilePropertiesResult
 import com.anggrayudi.storage.result.FolderErrorCode
-import com.anggrayudi.storage.result.FolderResult
 import com.anggrayudi.storage.result.MultipleFilesErrorCode
 import com.anggrayudi.storage.result.MultipleFilesResult
 import com.anggrayudi.storage.result.SingleFileErrorCode
 import com.anggrayudi.storage.result.SingleFileResult
+import com.anggrayudi.storage.result.SingleFolderResult
 import com.anggrayudi.storage.result.ZipCompressionErrorCode
 import com.anggrayudi.storage.result.ZipCompressionResult
 import com.anggrayudi.storage.result.ZipDecompressionErrorCode
@@ -1910,7 +1910,7 @@ fun DocumentFile.moveFolderTo(
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
     onConflict: FolderConflictCallback
-): Flow<FolderResult> {
+): Flow<SingleFolderResult> {
     return copyFolderTo(context, targetParentFolder, skipEmptyFiles, newFolderNameInTargetPath, true, updateInterval, isFileSizeAllowed, onConflict)
 }
 
@@ -1923,7 +1923,7 @@ fun DocumentFile.copyFolderTo(
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
     onConflict: FolderConflictCallback
-): Flow<FolderResult> {
+): Flow<SingleFolderResult> {
     return copyFolderTo(context, targetParentFolder, skipEmptyFiles, newFolderNameInTargetPath, false, updateInterval, isFileSizeAllowed, onConflict)
 }
 
@@ -1940,14 +1940,14 @@ private fun DocumentFile.copyFolderTo(
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
     onConflict: FolderConflictCallback
-): Flow<FolderResult> = callbackFlow {
+): Flow<SingleFolderResult> = callbackFlow {
     val writableTargetParentFolder = doesMeetFolderCopyRequirements(context, targetParentFolder, newFolderNameInTargetPath, this)
     if (writableTargetParentFolder == null) {
         close()
         return@callbackFlow
     }
 
-    send(FolderResult.Preparing)
+    send(SingleFolderResult.Preparing)
 
     val targetFolderParentName = (newFolderNameInTargetPath ?: name.orEmpty()).removeForbiddenCharsFromFilename().trimFileSeparator()
     val conflictResolution = handleParentFolderConflict(context, targetParentFolder, targetFolderParentName, this, onConflict)
@@ -1956,16 +1956,16 @@ private fun DocumentFile.copyFolderTo(
         return@callbackFlow
     }
 
-    send(FolderResult.CountingFiles)
+    send(SingleFolderResult.CountingFiles)
 
     val filesToCopy = if (skipEmptyFiles) walkFileTreeAndSkipEmptyFiles() else walkFileTree(context)
     if (filesToCopy.isEmpty()) {
         val targetFolder = writableTargetParentFolder.makeFolder(context, targetFolderParentName, conflictResolution.toCreateMode())
         if (targetFolder == null) {
-            sendAndClose(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+            sendAndClose(SingleFolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
         } else {
             if (deleteSourceWhenComplete) delete()
-            sendAndClose(FolderResult.Completed(targetFolder, 0, 0, true))
+            sendAndClose(SingleFolderResult.Completed(targetFolder, 0, 0, true))
         }
         return@callbackFlow
     }
@@ -1993,25 +1993,25 @@ private fun DocumentFile.copyFolderTo(
             conflictResolution
         )) {
             is DocumentFile -> {
-                sendAndClose(FolderResult.Completed(result, totalFilesToCopy, totalFilesToCopy, true))
+                sendAndClose(SingleFolderResult.Completed(result, totalFilesToCopy, totalFilesToCopy, true))
                 return@callbackFlow
             }
 
             is FolderErrorCode -> {
-                sendAndClose(FolderResult.Error(result))
+                sendAndClose(SingleFolderResult.Error(result))
                 return@callbackFlow
             }
         }
     }
 
     if (!isFileSizeAllowed(DocumentFileCompat.getFreeSpace(context, writableTargetParentFolder.getStorageId(context)), totalSizeToCopy)) {
-        sendAndClose(FolderResult.Error(FolderErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
+        sendAndClose(SingleFolderResult.Error(FolderErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
         return@callbackFlow
     }
 
     val targetFolder = writableTargetParentFolder.makeFolder(context, targetFolderParentName, conflictResolution.toCreateMode())
     if (targetFolder == null) {
-        sendAndClose(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+        sendAndClose(SingleFolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
         return@callbackFlow
     }
 
@@ -2022,7 +2022,7 @@ private fun DocumentFile.copyFolderTo(
     val startTimer: (Boolean) -> Unit = { start ->
         if (start && updateInterval > 0) {
             timer = startCoroutineTimer(repeatMillis = updateInterval) {
-                trySend(FolderResult.InProgress(bytesMoved * 100f / totalSizeToCopy, bytesMoved, writeSpeed, totalCopiedFiles))
+                trySend(SingleFolderResult.InProgress(bytesMoved * 100f / totalSizeToCopy, bytesMoved, writeSpeed, totalCopiedFiles))
                 writeSpeed = 0
             }
         }
@@ -2036,7 +2036,7 @@ private fun DocumentFile.copyFolderTo(
             canceled = true
             timer?.cancel()
             targetFile?.delete()
-            trySend(FolderResult.Error(errorCode, completedData = FolderResult.Completed(targetFolder, totalFilesToCopy, totalCopiedFiles, false)))
+            trySend(SingleFolderResult.Error(errorCode, completedData = SingleFolderResult.Completed(targetFolder, totalFilesToCopy, totalCopiedFiles, false)))
         }
     }
 
@@ -2048,13 +2048,13 @@ private fun DocumentFile.copyFolderTo(
     fun copy(sourceFile: DocumentFile, destFile: DocumentFile) {
         val outputStream = destFile.openOutputStream(context)
         if (outputStream == null) {
-            trySend(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+            trySend(SingleFolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
             return
         }
         val inputStream = sourceFile.openInputStream(context)
         if (inputStream == null) {
             outputStream.closeStreamQuietly()
-            trySend(FolderResult.Error(FolderErrorCode.SOURCE_FILE_NOT_FOUND))
+            trySend(SingleFolderResult.Error(FolderErrorCode.SOURCE_FILE_NOT_FOUND))
             return
         }
         try {
@@ -2080,7 +2080,7 @@ private fun DocumentFile.copyFolderTo(
             true
         } else {
             timer?.cancel()
-            trySend(FolderResult.Error(errorCode))
+            trySend(SingleFolderResult.Error(errorCode))
             false
         }
     }
@@ -2135,7 +2135,7 @@ private fun DocumentFile.copyFolderTo(
         timer?.cancel()
         if (!success || conflictedFiles.isEmpty()) {
             if (deleteSourceWhenComplete && success) forceDelete(context)
-            trySend(FolderResult.Completed(targetFolder, totalFilesToCopy, totalCopiedFiles, success))
+            trySend(SingleFolderResult.Completed(targetFolder, totalFilesToCopy, totalCopiedFiles, success))
             true
         } else false
     }
@@ -2210,33 +2210,33 @@ private fun DocumentFile.doesMeetFolderCopyRequirements(
     context: Context,
     targetParentFolder: DocumentFile,
     newFolderNameInTargetPath: String?,
-    scope: ProducerScope<FolderResult>,
+    scope: ProducerScope<SingleFolderResult>,
 ): DocumentFile? {
-    scope.trySend(FolderResult.Validating)
+    scope.trySend(SingleFolderResult.Validating)
 
     if (!isDirectory) {
-        scope.trySend(FolderResult.Error(FolderErrorCode.SOURCE_FOLDER_NOT_FOUND))
+        scope.trySend(SingleFolderResult.Error(FolderErrorCode.SOURCE_FOLDER_NOT_FOUND))
         return null
     }
 
     if (!targetParentFolder.isDirectory) {
-        scope.trySend(FolderResult.Error(FolderErrorCode.INVALID_TARGET_FOLDER))
+        scope.trySend(SingleFolderResult.Error(FolderErrorCode.INVALID_TARGET_FOLDER))
         return null
     }
 
     if (!canRead() || !targetParentFolder.isWritable(context)) {
-        scope.trySend(FolderResult.Error(FolderErrorCode.STORAGE_PERMISSION_DENIED))
+        scope.trySend(SingleFolderResult.Error(FolderErrorCode.STORAGE_PERMISSION_DENIED))
         return null
     }
 
     if (targetParentFolder.getAbsolutePath(context) == parentFile?.getAbsolutePath(context) && (newFolderNameInTargetPath.isNullOrEmpty() || name == newFolderNameInTargetPath)) {
-        scope.trySend(FolderResult.Error(FolderErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER))
+        scope.trySend(SingleFolderResult.Error(FolderErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER))
         return null
     }
 
     val writableFolder = targetParentFolder.let { if (it.isDownloadsDocument) it.toWritableDownloadsDocumentFile(context) else it }
     if (writableFolder == null) {
-        scope.trySend(FolderResult.Error(FolderErrorCode.STORAGE_PERMISSION_DENIED))
+        scope.trySend(SingleFolderResult.Error(FolderErrorCode.STORAGE_PERMISSION_DENIED))
     }
     return writableFolder
 }
@@ -2816,7 +2816,7 @@ private fun handleParentFolderConflict(
     context: Context,
     targetParentFolder: DocumentFile,
     targetFolderParentName: String,
-    scope: ProducerScope<FolderResult>,
+    scope: ProducerScope<SingleFolderResult>,
     onConflict: FolderConflictCallback
 ): FolderConflictCallback.ConflictResolution {
     targetParentFolder.child(context, targetFolderParentName)?.let { targetFolder ->
@@ -2831,18 +2831,18 @@ private fun handleParentFolderConflict(
 
         when (resolution) {
             FolderConflictCallback.ConflictResolution.REPLACE -> {
-                scope.trySend(FolderResult.DeletingConflictedFiles)
+                scope.trySend(SingleFolderResult.DeletingConflictedFiles)
                 val isFolder = targetFolder.isDirectory
                 if (targetFolder.forceDelete(context, true)) {
                     if (!isFolder) {
                         val newFolder = targetFolder.parentFile?.createDirectory(targetFolderParentName)
                         if (newFolder == null) {
-                            scope.trySend(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+                            scope.trySend(SingleFolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                             return FolderConflictCallback.ConflictResolution.SKIP
                         }
                     }
                 } else {
-                    scope.trySend(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+                    scope.trySend(SingleFolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                     return FolderConflictCallback.ConflictResolution.SKIP
                 }
             }
@@ -2852,11 +2852,11 @@ private fun handleParentFolderConflict(
                     if (targetFolder.delete()) {
                         val newFolder = targetFolder.parentFile?.createDirectory(targetFolderParentName)
                         if (newFolder == null) {
-                            scope.trySend(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+                            scope.trySend(SingleFolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                             return FolderConflictCallback.ConflictResolution.SKIP
                         }
                     } else {
-                        scope.trySend(FolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
+                        scope.trySend(SingleFolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                         return FolderConflictCallback.ConflictResolution.SKIP
                     }
                 }
