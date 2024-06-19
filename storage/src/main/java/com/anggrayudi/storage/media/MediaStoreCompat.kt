@@ -25,6 +25,8 @@ import com.anggrayudi.storage.file.child
 import com.anggrayudi.storage.file.createNewFileIfPossible
 import com.anggrayudi.storage.file.recreateFile
 import com.anggrayudi.storage.file.search
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /**
@@ -266,18 +268,19 @@ object MediaStoreCompat {
      * @see MediaStore.MediaColumns.RELATIVE_PATH
      */
     @JvmStatic
-    fun fromRelativePath(context: Context, relativePath: String): List<MediaFile> {
+    fun fromRelativePath(context: Context, relativePath: String): List<MediaFile> = runBlocking {
         val cleanRelativePath = relativePath.trimFileSeparator()
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             DocumentFile.fromFile(File(Environment.getExternalStorageDirectory(), cleanRelativePath))
                 .search(true, DocumentFileType.FILE)
+                .first()
                 .map { MediaFile(context, File(it.uri.path!!)) }
         } else {
-            val mediaType = mediaTypeFromRelativePath(cleanRelativePath) ?: return emptyList()
+            val mediaType = mediaTypeFromRelativePath(cleanRelativePath) ?: return@runBlocking emptyList()
             val relativePathWithSlashSuffix = relativePath.trimEnd('/') + '/'
             val selection = "${MediaStore.MediaColumns.RELATIVE_PATH} IN(?, ?)"
             val selectionArgs = arrayOf(relativePathWithSlashSuffix, cleanRelativePath)
-            return context.contentResolver.query(mediaType.readUri ?: return emptyList(), arrayOf(BaseColumns._ID), selection, selectionArgs, null)?.use {
+            context.contentResolver.query(mediaType.readUri ?: return@runBlocking emptyList(), arrayOf(BaseColumns._ID), selection, selectionArgs, null)?.use {
                 fromCursorToMediaFiles(context, mediaType, it)
             }.orEmpty()
         }
@@ -287,66 +290,71 @@ object MediaStoreCompat {
      * @see MediaStore.MediaColumns.RELATIVE_PATH
      */
     @JvmStatic
-    fun fromRelativePath(context: Context, relativePath: String, name: String): MediaFile? {
+    fun fromRelativePath(context: Context, relativePath: String, name: String): MediaFile? = runBlocking {
         val cleanRelativePath = relativePath.trimFileSeparator()
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             DocumentFile.fromFile(File(Environment.getExternalStorageDirectory(), cleanRelativePath))
                 .search(true, DocumentFileType.FILE, name = name)
+                .first()
                 .map { MediaFile(context, File(it.uri.path!!)) }
                 .firstOrNull()
         } else {
-            val mediaType = mediaTypeFromRelativePath(cleanRelativePath) ?: return null
+            val mediaType = mediaTypeFromRelativePath(cleanRelativePath) ?: return@runBlocking null
             val relativePathWithSlashSuffix = relativePath.trimEnd('/') + '/'
             val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} IN(?, ?)"
             val selectionArgs = arrayOf(name, relativePathWithSlashSuffix, cleanRelativePath)
-            return context.contentResolver.query(mediaType.readUri ?: return null, arrayOf(BaseColumns._ID), selection, selectionArgs, null)?.use {
+            context.contentResolver.query(mediaType.readUri ?: return@runBlocking null, arrayOf(BaseColumns._ID), selection, selectionArgs, null)?.use {
                 fromCursorToMediaFile(context, mediaType, it)
             }
         }
     }
 
     @JvmStatic
-    fun fromFileNameContains(context: Context, mediaType: MediaType, containsName: String): List<MediaFile> {
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+    fun fromFileNameContains(context: Context, mediaType: MediaType, containsName: String): List<MediaFile> = runBlocking {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
                 DocumentFile.fromFile(directory)
                     .search(true, regex = Regex("^.*$containsName.*\$"), mimeTypes = arrayOf(mediaType.mimeType))
+                    .first()
                     .map { MediaFile(context, File(it.uri.path!!)) }
             }.flatten()
         } else {
             val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} LIKE '%$containsName%'"
-            return context.contentResolver.query(mediaType.readUri ?: return emptyList(), arrayOf(BaseColumns._ID), selection, null, null)?.use {
+            context.contentResolver.query(mediaType.readUri ?: return@runBlocking emptyList(), arrayOf(BaseColumns._ID), selection, null, null)?.use {
                 fromCursorToMediaFiles(context, mediaType, it)
             }.orEmpty()
         }
     }
 
     @JvmStatic
-    fun fromMimeType(context: Context, mediaType: MediaType, mimeType: String): List<MediaFile> {
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+    fun fromMimeType(context: Context, mediaType: MediaType, mimeType: String): List<MediaFile> = runBlocking {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
                 DocumentFile.fromFile(directory)
                     .search(true, DocumentFileType.FILE, arrayOf(mimeType))
+                    .first()
                     .map { MediaFile(context, File(it.uri.path!!)) }
             }.flatten()
         } else {
             val selection = "${MediaStore.MediaColumns.MIME_TYPE} = ?"
-            return context.contentResolver.query(mediaType.readUri ?: return emptyList(), arrayOf(BaseColumns._ID), selection, arrayOf(mimeType), null)?.use {
-                fromCursorToMediaFiles(context, mediaType, it)
-            }.orEmpty()
+            context.contentResolver.query(mediaType.readUri ?: return@runBlocking emptyList(), arrayOf(BaseColumns._ID), selection, arrayOf(mimeType), null)
+                ?.use {
+                    fromCursorToMediaFiles(context, mediaType, it)
+                }.orEmpty()
         }
     }
 
     @JvmStatic
-    fun fromMediaType(context: Context, mediaType: MediaType): List<MediaFile> {
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+    fun fromMediaType(context: Context, mediaType: MediaType): List<MediaFile> = runBlocking {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
                 DocumentFile.fromFile(directory)
                     .search(true, mimeTypes = arrayOf(mediaType.mimeType))
+                    .first()
                     .map { MediaFile(context, File(it.uri.path!!)) }
             }.flatten()
         } else {
-            return context.contentResolver.query(mediaType.readUri ?: return emptyList(), arrayOf(BaseColumns._ID), null, null, null)?.use {
+            context.contentResolver.query(mediaType.readUri ?: return@runBlocking emptyList(), arrayOf(BaseColumns._ID), null, null, null)?.use {
                 fromCursorToMediaFiles(context, mediaType, it)
             }.orEmpty()
         }

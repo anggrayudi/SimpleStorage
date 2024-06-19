@@ -58,7 +58,7 @@ allprojects {
 
 Simple Storage is built in Kotlin. Follow this [documentation](JAVA_COMPATIBILITY.md) to use it in your Java project.
 
-Note that some long-running functions like copy, move, compress, and unzip are now only available in Kotlin.
+Note that some long-running functions like copy, move, search, compress, and unzip are now only available in Kotlin.
 They are powered by Kotlin Coroutines & Flow, which are easy to use.
 You can still use these Java features in your project, but you will need [v1.5.6](https://github.com/anggrayudi/SimpleStorage/releases/tag/1.5.6) which is the latest version that
 supports Java.
@@ -301,6 +301,53 @@ whenever a conflict is found via `onConflict()`. Here're screenshots of the samp
 
 Read [`MainActivity`](sample/src/main/java/com/anggrayudi/storage/sample/activity/MainActivity.kt)
 from the sample code if you want to mimic above dialogs.
+
+## Search: Files & Folders
+
+You can search files and folders by using `DocumentFile.search()` extension function:
+
+```kotlin
+ioScope.launch {
+  val nameToFind = "nicko" // search files with name containing "nicko"
+  folder.search(recursive = true, regex = Regex("^.*$nameToFind.*\$"), updateInterval = 1000).collect {
+    // update results every 1 second
+    Timber.d("Found ${it.size} files, last: ${it.lastOrNull()?.fullName}")
+  }
+}
+```
+
+## Compress & Unzip: Files & Folders
+
+To compress files and folders, use `List<DocumentFile>.compressToZip()` extension function:
+
+```kotlin
+// make sure you have an URI access to /storage/emulated/0/Documents, otherwise it will return null
+val targetZipFile = DocumentFileCompat.createFile(baseContext, basePath = "Documents/compress test.zip", mimeType = "application/zip")
+if (targetZipFile != null) {
+  listOf(folder).compressToZip(baseContext, targetZipFile, deleteSourceWhenComplete = false, updateInterval = 500).collect {
+    when (it) {
+      is ZipCompressionResult.CountingFiles -> Timber.d("Calculating...")
+      is ZipCompressionResult.Compressing -> Timber.d("Compressing... ${it.progress.toInt()}%")
+      is ZipCompressionResult.Completed -> Timber.d("Completed: ${it.zipFile.fullName}")
+      is ZipCompressionResult.Error -> Timber.e(it.errorCode.name)
+      is ZipCompressionResult.DeletingEntryFiles -> Timber.d("Deleting ...") // will be emitted if `deleteSourceWhenComplete` is true
+    }
+  }
+}
+```
+
+If you don't have any URI access, then you can request the user to create a ZIP file in the desired location:
+
+```kotlin
+storageHelper.onFileCreated = { requestCode, file ->
+  ioScope.launch {
+    listOf(folder).compressToZip(baseContext, file).collect {
+      // do stuff
+    }
+  }
+}
+storageHelper.createFile(mimeType = "application/zip", fileName = "compress test", initialPath = FileFullPath(baseContext, StorageId.PRIMARY, "Documents"))
+```
 
 ## FAQ
 

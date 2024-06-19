@@ -19,7 +19,7 @@ You'll find that the most useful extension functions come from `DocumentFileExtK
 * `DocumentFile.copyFileTo()` and `File.copyFileTo()`
 * `DocumentFile.search()` and `File.search()`, etc.
 
-Note that some long-running functions like copy, move, compress, and unzip are now only available in Kotlin.
+Note that some long-running functions like copy, move, search, compress, and unzip are now only available in Kotlin.
 You can still use these Java features in your project, but you will need [v1.5.6](https://github.com/anggrayudi/SimpleStorage/releases/tag/1.5.6) which is the latest version that
 supports Java.
 

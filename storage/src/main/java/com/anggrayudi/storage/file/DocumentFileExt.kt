@@ -406,6 +406,12 @@ fun DocumentFile.child(context: Context, path: String, requiresWriteAccess: Bool
     }
 }
 
+/**
+ * Safer method than [DocumentFile.listFiles] which throws [UnsupportedOperationException] if this [DocumentFile] is a file.
+ */
+val DocumentFile.children: List<DocumentFile>
+    get() = if (isDirectory) listFiles().toList() else emptyList()
+
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 fun DocumentFile.quickFindRawFile(name: String): DocumentFile? {
     return DocumentFile.fromFile(File(uri.path!!, name)).takeIf { it.canRead() }
@@ -701,7 +707,7 @@ fun DocumentFile.autoIncrementFileName(context: Context, filename: String): Stri
         if (it.canRead())
             return it.autoIncrementFileName(filename)
     }
-    val files = listFiles()
+    val files = children
     return if (files.find { it.name == filename }?.exists() == true) {
         val baseName = MimeType.getBaseFileName(filename)
         val ext = MimeType.getExtensionFromFileName(filename)
@@ -913,7 +919,7 @@ fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile
  * @param names full file names, with their extension
  */
 fun DocumentFile.findFiles(names: Array<String>, documentType: DocumentFileType = DocumentFileType.ANY): List<DocumentFile> {
-    val files = listFiles().filter { it.name in names }
+    val files = children.filter { it.name in names }
     return when (documentType) {
         DocumentFileType.FILE -> files.filter { it.isFile }
         DocumentFileType.FOLDER -> files.filter { it.isDirectory }
@@ -921,18 +927,20 @@ fun DocumentFile.findFiles(names: Array<String>, documentType: DocumentFileType 
     }
 }
 
-fun DocumentFile.findFolder(name: String): DocumentFile? = listFiles().find { it.name == name && it.isDirectory }
+fun DocumentFile.findFolder(name: String): DocumentFile? = children.find { it.name == name && it.isDirectory }
 
 /**
  * Expect the file is a file literally, not a folder.
  */
-fun DocumentFile.findFileLiterally(name: String): DocumentFile? = listFiles().find { it.name == name && it.isFile }
+fun DocumentFile.findFileLiterally(name: String): DocumentFile? = children.find { it.name == name && it.isFile }
 
 /**
  * @param recursive walk into sub folders
  * @param name find file name exactly
  * @param regex you can use regex `^.*containsName.*\$` to search file name that contains specific words
+ * @param updateInterval in milliseconds. Set to `0` to emit all results at once.
  */
+@OptIn(DelicateCoroutinesApi::class)
 @JvmOverloads
 @WorkerThread
 fun DocumentFile.search(
@@ -940,17 +948,23 @@ fun DocumentFile.search(
     documentType: DocumentFileType = DocumentFileType.ANY,
     mimeTypes: Array<String>? = null,
     name: String = "",
-    regex: Regex? = null
-): List<DocumentFile> {
-    return when {
-        !isDirectory || !canRead() -> emptyList()
+    regex: Regex? = null,
+    updateInterval: Long = 0
+): Flow<List<DocumentFile>> = callbackFlow {
+    when {
+        !isDirectory || !canRead() -> send(emptyList())
         recursive -> {
-            val thread = Thread.currentThread()
-            if (mimeTypes.isNullOrEmpty() || mimeTypes.any { it == MimeType.UNKNOWN }) {
-                walkFileTreeForSearch(documentType, emptyArray(), name, regex, thread)
-            } else {
-                walkFileTreeForSearch(DocumentFileType.FILE, mimeTypes, name, regex, thread)
+            val fileTree = mutableListOf<DocumentFile>()
+            val timer = if (updateInterval < 1) null else startCoroutineTimer(repeatMillis = updateInterval) {
+                trySend(fileTree)
             }
+            if (mimeTypes.isNullOrEmpty() || mimeTypes.any { it == MimeType.UNKNOWN }) {
+                walkFileTreeForSearch(fileTree, documentType, emptyArray(), name, regex, this)
+            } else {
+                walkFileTreeForSearch(fileTree, DocumentFileType.FILE, mimeTypes, name, regex, this)
+            }
+            timer?.cancel()
+            send(fileTree)
         }
 
         else -> {
@@ -966,26 +980,42 @@ fun DocumentFile.search(
             if (hasMimeTypeFilter) {
                 sequence = sequence.filter { it.matchesMimeTypes(mimeTypes!!) }
             }
-            val result = sequence.toList()
-            if (name.isEmpty()) result else result.firstOrNull { it.name == name }?.let { listOf(it) } ?: emptyList()
+            if (name.isNotEmpty()) {
+                sequence = sequence.filter { it.name == name }
+            }
+
+            val fileTree = mutableListOf<DocumentFile>()
+            val timer = if (updateInterval < 1) null else startCoroutineTimer(repeatMillis = updateInterval) {
+                trySend(fileTree)
+            }
+            sequence.forEach {
+                if (isClosedForSend) {
+                    return@forEach
+                }
+                fileTree.add(it)
+            }
+            timer?.cancel()
+            send(fileTree)
         }
     }
+    close()
 }
 
 private fun DocumentFile.matchesMimeTypes(filterMimeTypes: Array<String>): Boolean {
     return filterMimeTypes.isEmpty() || !MimeTypeFilter.matches(mimeTypeByFileName, filterMimeTypes).isNullOrEmpty()
 }
 
+@OptIn(DelicateCoroutinesApi::class)
 private fun DocumentFile.walkFileTreeForSearch(
+    fileTree: MutableList<DocumentFile>,
     documentType: DocumentFileType,
     mimeTypes: Array<String>,
     nameFilter: String,
     regex: Regex?,
-    thread: Thread
+    scope: ProducerScope<List<DocumentFile>>
 ): List<DocumentFile> {
-    val fileTree = mutableListOf<DocumentFile>()
     for (file in listFiles()) {
-        if (thread.isInterrupted) break
+        if (scope.isClosedForSend) break
         if (!canRead()) continue
 
         if (file.isFile) {
@@ -1006,7 +1036,7 @@ private fun DocumentFile.walkFileTreeForSearch(
                     fileTree.add(file)
                 }
             }
-            fileTree.addAll(file.walkFileTreeForSearch(documentType, mimeTypes, nameFilter, regex, thread))
+            fileTree.addAll(file.walkFileTreeForSearch(fileTree, documentType, mimeTypes, nameFilter, regex, scope))
         }
     }
     return fileTree
@@ -1841,7 +1871,7 @@ private fun List<DocumentFile>.doesMeetCopyRequirements(
     }
 
     val writableFolder = targetParentFolder.let { if (it.isDownloadsDocument) it.toWritableDownloadsDocumentFile(context) else it }
-    if (writableFolder == null) {
+    if (writableFolder == null || !writableFolder.isDirectory) {
         scope.trySend(MultipleFilesResult.Error(MultipleFilesErrorCode.STORAGE_PERMISSION_DENIED))
         return null
     }
@@ -2878,7 +2908,7 @@ private fun List<DocumentFile>.handleParentFolderConflict(
     onConflict: MultipleFileConflictCallback
 ): List<MultipleFileConflictCallback.ParentConflict>? {
     val sourceFileNames = map { it.name }
-    val conflictedFiles = targetParentFolder.listFiles().filter { it.name in sourceFileNames }
+    val conflictedFiles = targetParentFolder.children.filter { it.name in sourceFileNames }
     val conflicts = conflictedFiles.map {
         val sourceFile = first { src -> src.name == it.name }
         val canMerge = sourceFile.isDirectory && it.isDirectory
