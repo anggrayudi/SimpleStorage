@@ -17,6 +17,10 @@
   + [`MediaFile`](#mediafile)
 * [Request Storage Access, Pick Folder & Files, Request Create File, etc.](#request-storage-access-pick-folder--files-request-create-file-etc)
 * [Move & Copy: Files & Folders](#move--copy-files--folders)
+* [Search: Files & Folders](#search-files--folders)
+* [Compress & Unzip: Files & Folders](#compress--unzip-files--folders)
+  + [Compression](#compression)
+  + [Decompression](#decompression)
 * [FAQ](#faq)
 * [Other SimpleStorage Usage Examples](#other-simpleStorage-usage-examples)
 * [License](#license)
@@ -25,7 +29,7 @@
 
 The more higher API level, the more Google restricted file access on Android storage.
 Although Storage Access Framework (SAF) is designed to secure user's storage from malicious apps,
-but this makes us even more difficult in accessing files. Let's take an example where
+but this makes us even more difficult in accessing files as a developer. Let's take an example where
 [`java.io.File` has been deprecated in Android 10](https://commonsware.com/blog/2019/06/07/death-external-storage-end-saga.html).
 
 Simple Storage ease you in accessing and managing files across API levels.
@@ -318,19 +322,23 @@ ioScope.launch {
 
 ## Compress & Unzip: Files & Folders
 
+### Compression
+
 To compress files and folders, use `List<DocumentFile>.compressToZip()` extension function:
 
 ```kotlin
-// make sure you have an URI access to /storage/emulated/0/Documents, otherwise it will return null
-val targetZipFile = DocumentFileCompat.createFile(baseContext, basePath = "Documents/compress test.zip", mimeType = "application/zip")
-if (targetZipFile != null) {
-  listOf(folder).compressToZip(baseContext, targetZipFile, deleteSourceWhenComplete = false, updateInterval = 500).collect {
-    when (it) {
-      is ZipCompressionResult.CountingFiles -> Timber.d("Calculating...")
-      is ZipCompressionResult.Compressing -> Timber.d("Compressing... ${it.progress.toInt()}%")
-      is ZipCompressionResult.Completed -> Timber.d("Completed: ${it.zipFile.fullName}")
-      is ZipCompressionResult.Error -> Timber.e(it.errorCode.name)
-      is ZipCompressionResult.DeletingEntryFiles -> Timber.d("Deleting ...") // will be emitted if `deleteSourceWhenComplete` is true
+ioScope.launch {
+  // make sure you have an URI access to /storage/emulated/0/Documents, otherwise it will return null
+  val targetZipFile = DocumentFileCompat.createFile(baseContext, basePath = "Documents/compress test.zip", mimeType = "application/zip")
+  if (targetZipFile != null) {
+    listOf(folder).compressToZip(baseContext, targetZipFile, deleteSourceWhenComplete = false, updateInterval = 500).collect {
+      when (it) {
+        is ZipCompressionResult.CountingFiles -> Timber.d("Calculating...")
+        is ZipCompressionResult.Compressing -> Timber.d("Compressing... ${it.progress.toInt()}%")
+        is ZipCompressionResult.Completed -> Timber.d("Completed: ${it.zipFile.fullName}")
+        is ZipCompressionResult.Error -> Timber.e(it.errorCode.name)
+        is ZipCompressionResult.DeletingEntryFiles -> Timber.d("Deleting ...") // will be emitted if `deleteSourceWhenComplete` is true
+      }
     }
   }
 }
@@ -349,9 +357,36 @@ storageHelper.onFileCreated = { requestCode, file ->
 storageHelper.createFile(mimeType = "application/zip", fileName = "compress test", initialPath = FileFullPath(baseContext, StorageId.PRIMARY, "Documents"))
 ```
 
+### Decompression
+
+FYI, decompressing ZIP files is also easy:
+
+```kotlin
+ioScope.launch {
+  file.decompressZip(baseContext, targetFolder)
+    .onCompletion {
+      if (it is CancellationException) {
+        Timber.d("Decompression is aborted")
+      }
+    }.collect {
+      when (it) {
+        is ZipDecompressionResult.Validating -> Timber.d("Validating...")
+        is ZipDecompressionResult.Decompressing -> Timber.d("Decompressing... ${it.bytesDecompressed}")
+        is ZipDecompressionResult.Completed -> uiScope.launch {
+          Toast.makeText(baseContext, "Decompressed successfully", Toast.LENGTH_SHORT).show()
+        }
+
+        is ZipDecompressionResult.Error -> uiScope.launch {
+          Toast.makeText(baseContext, "An error has occurred: ${it.errorCode.name}", Toast.LENGTH_SHORT).show()
+        }
+      }
+    }
+}
+```
+
 ## FAQ
 
-Having trouble? Read the [Frequently Asked Questions](FAQ.md).
+Having trouble? Read the [Frequently Asked Questions](FAQ.md) or join the [Discussions](https://github.com/anggrayudi/SimpleStorage/discussions).
 
 ## Other SimpleStorage Usage Examples
 
