@@ -14,7 +14,7 @@ import kotlinx.coroutines.GlobalScope
  * Created on 31/05/21
  * @author Anggrayudi H
  */
-abstract class MultipleFileConflictCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
+abstract class MultipleFilesConflictCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
     var uiScope: CoroutineScope = GlobalScope
 ) {
     /**

@@ -24,7 +24,7 @@ import com.afollestad.materialdialogs.input.input
 import com.afollestad.materialdialogs.list.listItems
 import com.anggrayudi.storage.SimpleStorageHelper
 import com.anggrayudi.storage.callback.FolderConflictCallback
-import com.anggrayudi.storage.callback.MultipleFileConflictCallback
+import com.anggrayudi.storage.callback.MultipleFilesConflictCallback
 import com.anggrayudi.storage.callback.SingleFileConflictCallback
 import com.anggrayudi.storage.extension.launchOnUiThread
 import com.anggrayudi.storage.file.baseName
@@ -365,7 +365,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun createMultipleFileCallback() = object : MultipleFileConflictCallback(uiScope) {
+    private fun createMultipleFileCallback() = object : MultipleFilesConflictCallback(uiScope) {
         override fun onParentConflict(
             destinationParentFolder: DocumentFile,
             conflictedFolders: MutableList<ParentConflict>,
@@ -640,19 +640,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleParentFolderConflict(
-        conflictedFolders: MutableList<MultipleFileConflictCallback.ParentConflict>,
-        conflictedFiles: MutableList<MultipleFileConflictCallback.ParentConflict>,
-        action: MultipleFileConflictCallback.ParentFolderConflictAction
+        conflictedFolders: MutableList<MultipleFilesConflictCallback.ParentConflict>,
+        conflictedFiles: MutableList<MultipleFilesConflictCallback.ParentConflict>,
+        action: MultipleFilesConflictCallback.ParentFolderConflictAction
     ) {
-        val newSolution = ArrayList<MultipleFileConflictCallback.ParentConflict>(conflictedFiles.size)
+        val newSolution = ArrayList<MultipleFilesConflictCallback.ParentConflict>(conflictedFiles.size)
         askFolderSolution(action, conflictedFolders, conflictedFiles, newSolution)
     }
 
     private fun askFolderSolution(
-        action: MultipleFileConflictCallback.ParentFolderConflictAction,
-        conflictedFolders: MutableList<MultipleFileConflictCallback.ParentConflict>,
-        conflictedFiles: MutableList<MultipleFileConflictCallback.ParentConflict>,
-        newSolution: MutableList<MultipleFileConflictCallback.ParentConflict>
+        action: MultipleFilesConflictCallback.ParentFolderConflictAction,
+        conflictedFolders: MutableList<MultipleFilesConflictCallback.ParentConflict>,
+        conflictedFiles: MutableList<MultipleFilesConflictCallback.ParentConflict>,
+        newSolution: MutableList<MultipleFilesConflictCallback.ParentConflict>
     ) {
         val currentSolution = conflictedFolders.removeFirstOrNull()
         if (currentSolution == null) {
@@ -681,10 +681,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun askFileSolution(
-        action: MultipleFileConflictCallback.ParentFolderConflictAction,
-        conflictedFolders: MutableList<MultipleFileConflictCallback.ParentConflict>,
-        conflictedFiles: MutableList<MultipleFileConflictCallback.ParentConflict>,
-        newSolution: MutableList<MultipleFileConflictCallback.ParentConflict>
+        action: MultipleFilesConflictCallback.ParentFolderConflictAction,
+        conflictedFolders: MutableList<MultipleFilesConflictCallback.ParentConflict>,
+        conflictedFiles: MutableList<MultipleFilesConflictCallback.ParentConflict>,
+        newSolution: MutableList<MultipleFilesConflictCallback.ParentConflict>
     ) {
         val currentSolution = conflictedFiles.removeFirstOrNull()
         if (currentSolution == null) {
