@@ -1,9 +1,9 @@
 package com.anggrayudi.storage.result
 
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.callback.FolderConflictCallback
-import com.anggrayudi.storage.callback.FolderConflictCallback.ConflictResolution
 import com.anggrayudi.storage.callback.SingleFileConflictCallback
+import com.anggrayudi.storage.callback.SingleFolderConflictCallback
+import com.anggrayudi.storage.callback.SingleFolderConflictCallback.ConflictResolution
 
 /**
  * Created on 7/6/24
@@ -15,7 +15,7 @@ sealed class SingleFolderResult {
     data object CountingFiles : SingleFolderResult()
 
     /**
-     * Called after the user chooses [FolderConflictCallback.ConflictResolution.REPLACE] or [SingleFileConflictCallback.ConflictResolution.REPLACE]
+     * Called after the user chooses [SingleFolderConflictCallback.ConflictResolution.REPLACE] or [SingleFileConflictCallback.ConflictResolution.REPLACE]
      */
     data object DeletingConflictedFiles : SingleFolderResult()
     data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) : SingleFolderResult()

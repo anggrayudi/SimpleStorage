@@ -2,8 +2,8 @@ package com.anggrayudi.storage.callback
 
 import androidx.annotation.UiThread
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.callback.FolderConflictCallback.ConflictResolution
 import com.anggrayudi.storage.callback.SingleFileConflictCallback.FileConflictAction
+import com.anggrayudi.storage.callback.SingleFolderConflictCallback.ConflictResolution
 import com.anggrayudi.storage.result.FolderErrorCode
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
@@ -49,8 +49,8 @@ abstract class MultipleFilesConflictCallback @OptIn(DelicateCoroutinesApi::class
     @UiThread
     open fun onContentConflict(
         destinationParentFolder: DocumentFile,
-        conflictedFiles: MutableList<FolderConflictCallback.FileConflict>,
-        action: FolderConflictCallback.FolderContentConflictAction
+        conflictedFiles: MutableList<SingleFolderConflictCallback.FileConflict>,
+        action: SingleFolderConflictCallback.FolderContentConflictAction
     ) {
         action.confirmResolution(conflictedFiles)
     }

@@ -23,9 +23,9 @@ import com.afollestad.materialdialogs.customview.getCustomView
 import com.afollestad.materialdialogs.input.input
 import com.afollestad.materialdialogs.list.listItems
 import com.anggrayudi.storage.SimpleStorageHelper
-import com.anggrayudi.storage.callback.FolderConflictCallback
 import com.anggrayudi.storage.callback.MultipleFilesConflictCallback
 import com.anggrayudi.storage.callback.SingleFileConflictCallback
+import com.anggrayudi.storage.callback.SingleFolderConflictCallback
 import com.anggrayudi.storage.extension.launchOnUiThread
 import com.anggrayudi.storage.file.baseName
 import com.anggrayudi.storage.file.changeName
@@ -377,8 +377,8 @@ class MainActivity : AppCompatActivity() {
 
         override fun onContentConflict(
             destinationParentFolder: DocumentFile,
-            conflictedFiles: MutableList<FolderConflictCallback.FileConflict>,
-            action: FolderConflictCallback.FolderContentConflictAction
+            conflictedFiles: MutableList<SingleFolderConflictCallback.FileConflict>,
+            action: SingleFolderConflictCallback.FolderContentConflictAction
         ) {
             handleFolderContentConflict(action, conflictedFiles)
         }
@@ -480,7 +480,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun createFolderCallback() = object : FolderConflictCallback(uiScope) {
+    private fun createFolderCallback() = object : SingleFolderConflictCallback(uiScope) {
         override fun onParentConflict(destinationFolder: DocumentFile, action: ParentFolderConflictAction, canMerge: Boolean) {
             handleParentFolderConflict(destinationFolder, action, canMerge)
         }
@@ -667,7 +667,7 @@ class MainActivity : AppCompatActivity() {
             .message(text = "Folder \"${currentSolution.target.name}\" already exists in destination. What's your action?")
             .checkBoxPrompt(text = "Apply to all") { doForAll = it }
             .listItems(items = mutableListOf("Replace", "Merge", "Create New", "Skip Duplicate").apply { if (!canMerge) remove("Merge") }) { _, index, _ ->
-                currentSolution.solution = FolderConflictCallback.ConflictResolution.entries[if (!canMerge && index > 0) index + 1 else index]
+                currentSolution.solution = SingleFolderConflictCallback.ConflictResolution.entries[if (!canMerge && index > 0) index + 1 else index]
                 newSolution.add(currentSolution)
                 if (doForAll) {
                     conflictedFolders.forEach { it.solution = currentSolution.solution }
@@ -698,7 +698,7 @@ class MainActivity : AppCompatActivity() {
             .message(text = "File \"${currentSolution.target.name}\" already exists in destination. What's your action?")
             .checkBoxPrompt(text = "Apply to all") { doForAll = it }
             .listItems(items = mutableListOf("Replace", "Create New", "Skip Duplicate")) { _, index, _ ->
-                currentSolution.solution = FolderConflictCallback.ConflictResolution.entries[if (index > 0) index + 1 else index]
+                currentSolution.solution = SingleFolderConflictCallback.ConflictResolution.entries[if (index > 0) index + 1 else index]
                 newSolution.add(currentSolution)
                 if (doForAll) {
                     conflictedFiles.forEach { it.solution = currentSolution.solution }
@@ -711,15 +711,19 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun handleParentFolderConflict(destinationFolder: DocumentFile, action: FolderConflictCallback.ParentFolderConflictAction, canMerge: Boolean) {
+    private fun handleParentFolderConflict(
+        destinationFolder: DocumentFile,
+        action: SingleFolderConflictCallback.ParentFolderConflictAction,
+        canMerge: Boolean
+    ) {
         MaterialDialog(this)
             .cancelable(false)
             .title(text = "Conflict Found")
             .message(text = "Folder \"${destinationFolder.name}\" already exists in destination. What's your action?")
             .listItems(items = mutableListOf("Replace", "Merge", "Create New", "Skip Duplicate").apply { if (!canMerge) remove("Merge") }) { _, index, _ ->
-                val resolution = FolderConflictCallback.ConflictResolution.entries[if (!canMerge && index > 0) index + 1 else index]
+                val resolution = SingleFolderConflictCallback.ConflictResolution.entries[if (!canMerge && index > 0) index + 1 else index]
                 action.confirmResolution(resolution)
-                if (resolution == FolderConflictCallback.ConflictResolution.SKIP) {
+                if (resolution == SingleFolderConflictCallback.ConflictResolution.SKIP) {
                     Toast.makeText(this, "Skipped duplicate folders & files", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -727,17 +731,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleFolderContentConflict(
-        action: FolderConflictCallback.FolderContentConflictAction,
-        conflictedFiles: MutableList<FolderConflictCallback.FileConflict>
+        action: SingleFolderConflictCallback.FolderContentConflictAction,
+        conflictedFiles: MutableList<SingleFolderConflictCallback.FileConflict>
     ) {
-        val newSolution = ArrayList<FolderConflictCallback.FileConflict>(conflictedFiles.size)
+        val newSolution = ArrayList<SingleFolderConflictCallback.FileConflict>(conflictedFiles.size)
         askSolution(action, conflictedFiles, newSolution)
     }
 
     private fun askSolution(
-        action: FolderConflictCallback.FolderContentConflictAction,
-        conflictedFiles: MutableList<FolderConflictCallback.FileConflict>,
-        newSolution: MutableList<FolderConflictCallback.FileConflict>
+        action: SingleFolderConflictCallback.FolderContentConflictAction,
+        conflictedFiles: MutableList<SingleFolderConflictCallback.FileConflict>,
+        newSolution: MutableList<SingleFolderConflictCallback.FileConflict>
     ) {
         val currentSolution = conflictedFiles.removeFirstOrNull()
         if (currentSolution == null) {

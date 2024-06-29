@@ -14,7 +14,7 @@ import kotlinx.coroutines.GlobalScope
  * Created on 3/1/21
  * @author Anggrayudi H
  */
-abstract class FolderConflictCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
+abstract class SingleFolderConflictCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
     var uiScope: CoroutineScope = GlobalScope
 ) {
 

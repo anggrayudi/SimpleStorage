@@ -1,7 +1,7 @@
 package com.anggrayudi.storage.result
 
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.callback.FolderConflictCallback.ConflictResolution
+import com.anggrayudi.storage.callback.SingleFolderConflictCallback.ConflictResolution
 
 /**
  * Created on 7/6/24

@@ -18,9 +18,9 @@ import androidx.core.content.FileProvider
 import androidx.core.content.MimeTypeFilter
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.SimpleStorage
-import com.anggrayudi.storage.callback.FolderConflictCallback
 import com.anggrayudi.storage.callback.MultipleFilesConflictCallback
 import com.anggrayudi.storage.callback.SingleFileConflictCallback
+import com.anggrayudi.storage.callback.SingleFolderConflictCallback
 import com.anggrayudi.storage.extension.awaitUiResultWithPending
 import com.anggrayudi.storage.extension.childOf
 import com.anggrayudi.storage.extension.closeEntryQuietly
@@ -1528,7 +1528,7 @@ private fun List<DocumentFile>.copyTo(
         close()
         return@callbackFlow
     }
-    validSources.removeAll(conflictResolutions.filter { it.solution == FolderConflictCallback.ConflictResolution.SKIP }.map { it.source })
+    validSources.removeAll(conflictResolutions.filter { it.solution == SingleFolderConflictCallback.ConflictResolution.SKIP }.map { it.source })
     if (validSources.isEmpty()) {
         close()
         return@callbackFlow
@@ -1536,10 +1536,15 @@ private fun List<DocumentFile>.copyTo(
 
     send(MultipleFilesResult.CountingFiles)
 
-    class SourceInfo(val children: List<DocumentFile>?, val size: Long, val totalFiles: Int, val conflictResolution: FolderConflictCallback.ConflictResolution)
+    class SourceInfo(
+        val children: List<DocumentFile>?,
+        val size: Long,
+        val totalFiles: Int,
+        val conflictResolution: SingleFolderConflictCallback.ConflictResolution
+    )
 
     val sourceInfos = validSources.associateWith { src ->
-        val resolution = conflictResolutions.find { it.source == src }?.solution ?: FolderConflictCallback.ConflictResolution.CREATE_NEW
+        val resolution = conflictResolutions.find { it.source == src }?.solution ?: SingleFolderConflictCallback.ConflictResolution.CREATE_NEW
         if (src.isFile) {
             SourceInfo(null, src.length(), 1, resolution)
         } else {
@@ -1689,7 +1694,7 @@ private fun List<DocumentFile>.copyTo(
         }
     }
 
-    val conflictedFiles = mutableListOf<FolderConflictCallback.FileConflict>()
+    val conflictedFiles = mutableListOf<SingleFolderConflictCallback.FileConflict>()
 
     for ((src, info) in sourceInfos) {
         if (isClosedForSend) {
@@ -1740,7 +1745,7 @@ private fun List<DocumentFile>.copyTo(
 
                 targetFile = targetRootFile.makeFile(context, filename, sourceFile.type, CreateMode.REUSE)
                 if (targetFile != null && targetFile.length() > 0) {
-                    conflictedFiles.add(FolderConflictCallback.FileConflict(sourceFile, targetFile))
+                    conflictedFiles.add(SingleFolderConflictCallback.FileConflict(sourceFile, targetFile))
                     continue
                 }
 
@@ -1779,7 +1784,7 @@ private fun List<DocumentFile>.copyTo(
     }
 
     val solutions = awaitUiResultWithPending(onConflict.uiScope) {
-        onConflict.onContentConflict(writableTargetParentFolder, conflictedFiles, FolderConflictCallback.FolderContentConflictAction(it))
+        onConflict.onContentConflict(writableTargetParentFolder, conflictedFiles, SingleFolderConflictCallback.FolderContentConflictAction(it))
     }.filter {
         // free up space first, by deleting some files
         if (it.solution == SingleFileConflictCallback.ConflictResolution.SKIP) {
@@ -1885,7 +1890,7 @@ private fun DocumentFile.tryMoveFolderByRenamingPath(
     targetFolderParentName: String,
     skipEmptyFiles: Boolean,
     newFolderNameInTargetPath: String?,
-    conflictResolution: FolderConflictCallback.ConflictResolution
+    conflictResolution: SingleFolderConflictCallback.ConflictResolution
 ): Any? {
     if (inSameMountPointWith(context, writableTargetParentFolder)) {
         if (inInternalStorage(context)) {
@@ -1939,7 +1944,7 @@ fun DocumentFile.moveFolderTo(
     newFolderNameInTargetPath: String? = null,
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    onConflict: FolderConflictCallback
+    onConflict: SingleFolderConflictCallback
 ): Flow<SingleFolderResult> {
     return copyFolderTo(context, targetParentFolder, skipEmptyFiles, newFolderNameInTargetPath, true, updateInterval, isFileSizeAllowed, onConflict)
 }
@@ -1952,7 +1957,7 @@ fun DocumentFile.copyFolderTo(
     newFolderNameInTargetPath: String? = null,
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    onConflict: FolderConflictCallback
+    onConflict: SingleFolderConflictCallback
 ): Flow<SingleFolderResult> {
     return copyFolderTo(context, targetParentFolder, skipEmptyFiles, newFolderNameInTargetPath, false, updateInterval, isFileSizeAllowed, onConflict)
 }
@@ -1969,7 +1974,7 @@ private fun DocumentFile.copyFolderTo(
     deleteSourceWhenComplete: Boolean,
     updateInterval: Long = 500,
     isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
-    onConflict: FolderConflictCallback
+    onConflict: SingleFolderConflictCallback
 ): Flow<SingleFolderResult> = callbackFlow {
     val writableTargetParentFolder = doesMeetFolderCopyRequirements(context, targetParentFolder, newFolderNameInTargetPath, this)
     if (writableTargetParentFolder == null) {
@@ -1981,7 +1986,7 @@ private fun DocumentFile.copyFolderTo(
 
     val targetFolderParentName = (newFolderNameInTargetPath ?: name.orEmpty()).removeForbiddenCharsFromFilename().trimFileSeparator()
     val conflictResolution = handleParentFolderConflict(context, targetParentFolder, targetFolderParentName, this, onConflict)
-    if (conflictResolution == FolderConflictCallback.ConflictResolution.SKIP) {
+    if (conflictResolution == SingleFolderConflictCallback.ConflictResolution.SKIP) {
         close()
         return@callbackFlow
     }
@@ -2070,7 +2075,7 @@ private fun DocumentFile.copyFolderTo(
         }
     }
 
-    val conflictedFiles = ArrayList<FolderConflictCallback.FileConflict>(totalFilesToCopy)
+    val conflictedFiles = ArrayList<SingleFolderConflictCallback.FileConflict>(totalFilesToCopy)
     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
     var success = true
 
@@ -2140,7 +2145,7 @@ private fun DocumentFile.copyFolderTo(
 
             targetFile = targetFolder.makeFile(context, filename, sourceFile.type, CreateMode.REUSE)
             if (targetFile != null && targetFile.length() > 0) {
-                conflictedFiles.add(FolderConflictCallback.FileConflict(sourceFile, targetFile))
+                conflictedFiles.add(SingleFolderConflictCallback.FileConflict(sourceFile, targetFile))
                 continue
             }
 
@@ -2175,7 +2180,7 @@ private fun DocumentFile.copyFolderTo(
     }
 
     val solutions = awaitUiResultWithPending(onConflict.uiScope) {
-        onConflict.onContentConflict(targetFolder, conflictedFiles, FolderConflictCallback.FolderContentConflictAction(it))
+        onConflict.onContentConflict(targetFolder, conflictedFiles, SingleFolderConflictCallback.FolderContentConflictAction(it))
     }.filter {
         // free up space first, by deleting some files
         if (it.solution == SingleFileConflictCallback.ConflictResolution.SKIP) {
@@ -2847,20 +2852,20 @@ private fun handleParentFolderConflict(
     targetParentFolder: DocumentFile,
     targetFolderParentName: String,
     scope: ProducerScope<SingleFolderResult>,
-    onConflict: FolderConflictCallback
-): FolderConflictCallback.ConflictResolution {
+    onConflict: SingleFolderConflictCallback
+): SingleFolderConflictCallback.ConflictResolution {
     targetParentFolder.child(context, targetFolderParentName)?.let { targetFolder ->
         val canMerge = targetFolder.isDirectory
         if (canMerge && targetFolder.isEmpty(context)) {
-            return FolderConflictCallback.ConflictResolution.MERGE
+            return SingleFolderConflictCallback.ConflictResolution.MERGE
         }
 
         val resolution = awaitUiResultWithPending(onConflict.uiScope) {
-            onConflict.onParentConflict(targetFolder, FolderConflictCallback.ParentFolderConflictAction(it), canMerge)
+            onConflict.onParentConflict(targetFolder, SingleFolderConflictCallback.ParentFolderConflictAction(it), canMerge)
         }
 
         when (resolution) {
-            FolderConflictCallback.ConflictResolution.REPLACE -> {
+            SingleFolderConflictCallback.ConflictResolution.REPLACE -> {
                 scope.trySend(SingleFolderResult.DeletingConflictedFiles)
                 val isFolder = targetFolder.isDirectory
                 if (targetFolder.forceDelete(context, true)) {
@@ -2868,26 +2873,26 @@ private fun handleParentFolderConflict(
                         val newFolder = targetFolder.parentFile?.createDirectory(targetFolderParentName)
                         if (newFolder == null) {
                             scope.trySend(SingleFolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
-                            return FolderConflictCallback.ConflictResolution.SKIP
+                            return SingleFolderConflictCallback.ConflictResolution.SKIP
                         }
                     }
                 } else {
                     scope.trySend(SingleFolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
-                    return FolderConflictCallback.ConflictResolution.SKIP
+                    return SingleFolderConflictCallback.ConflictResolution.SKIP
                 }
             }
 
-            FolderConflictCallback.ConflictResolution.MERGE -> {
+            SingleFolderConflictCallback.ConflictResolution.MERGE -> {
                 if (targetFolder.isFile) {
                     if (targetFolder.delete()) {
                         val newFolder = targetFolder.parentFile?.createDirectory(targetFolderParentName)
                         if (newFolder == null) {
                             scope.trySend(SingleFolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
-                            return FolderConflictCallback.ConflictResolution.SKIP
+                            return SingleFolderConflictCallback.ConflictResolution.SKIP
                         }
                     } else {
                         scope.trySend(SingleFolderResult.Error(FolderErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
-                        return FolderConflictCallback.ConflictResolution.SKIP
+                        return SingleFolderConflictCallback.ConflictResolution.SKIP
                     }
                 }
             }
@@ -2898,7 +2903,7 @@ private fun handleParentFolderConflict(
         }
         return resolution
     }
-    return FolderConflictCallback.ConflictResolution.CREATE_NEW
+    return SingleFolderConflictCallback.ConflictResolution.CREATE_NEW
 }
 
 private fun List<DocumentFile>.handleParentFolderConflict(
@@ -2913,29 +2918,29 @@ private fun List<DocumentFile>.handleParentFolderConflict(
         val sourceFile = first { src -> src.name == it.name }
         val canMerge = sourceFile.isDirectory && it.isDirectory
         val solution =
-            if (canMerge && it.isEmpty(context)) FolderConflictCallback.ConflictResolution.MERGE else FolderConflictCallback.ConflictResolution.CREATE_NEW
+            if (canMerge && it.isEmpty(context)) SingleFolderConflictCallback.ConflictResolution.MERGE else SingleFolderConflictCallback.ConflictResolution.CREATE_NEW
         MultipleFilesConflictCallback.ParentConflict(sourceFile, it, canMerge, solution)
     }
-    val unresolvedConflicts = conflicts.filter { it.solution != FolderConflictCallback.ConflictResolution.MERGE }.toMutableList()
+    val unresolvedConflicts = conflicts.filter { it.solution != SingleFolderConflictCallback.ConflictResolution.MERGE }.toMutableList()
     if (unresolvedConflicts.isNotEmpty()) {
         val unresolvedFiles = unresolvedConflicts.filter { it.source.isFile }.toMutableList()
         val unresolvedFolders = unresolvedConflicts.filter { it.source.isDirectory }.toMutableList()
         val resolution = awaitUiResultWithPending(onConflict.uiScope) {
             onConflict.onParentConflict(targetParentFolder, unresolvedFolders, unresolvedFiles, MultipleFilesConflictCallback.ParentFolderConflictAction(it))
         }
-        if (resolution.any { it.solution == FolderConflictCallback.ConflictResolution.REPLACE }) {
+        if (resolution.any { it.solution == SingleFolderConflictCallback.ConflictResolution.REPLACE }) {
             scope.trySend(MultipleFilesResult.DeletingConflictedFiles)
         }
         resolution.forEach { conflict ->
             when (conflict.solution) {
-                FolderConflictCallback.ConflictResolution.REPLACE -> {
+                SingleFolderConflictCallback.ConflictResolution.REPLACE -> {
                     if (!conflict.target.let { it.forceDelete(context, true) || !it.exists() }) {
                         scope.trySend(MultipleFilesResult.Error(MultipleFilesErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                         return null
                     }
                 }
 
-                FolderConflictCallback.ConflictResolution.MERGE -> {
+                SingleFolderConflictCallback.ConflictResolution.MERGE -> {
                     if (conflict.target.isFile && !conflict.target.delete()) {
                         scope.trySend(MultipleFilesResult.Error(MultipleFilesErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                         return null
@@ -2947,7 +2952,7 @@ private fun List<DocumentFile>.handleParentFolderConflict(
                 }
             }
         }
-        return resolution.toMutableList().apply { addAll(conflicts.filter { it.solution == FolderConflictCallback.ConflictResolution.MERGE }) }
+        return resolution.toMutableList().apply { addAll(conflicts.filter { it.solution == SingleFolderConflictCallback.ConflictResolution.MERGE }) }
     }
     return emptyList()
 }
