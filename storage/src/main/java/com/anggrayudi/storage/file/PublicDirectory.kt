@@ -68,7 +68,6 @@ enum class PublicDirectory(val folderName: String) {
      */
     DOCUMENTS(Environment.DIRECTORY_DOCUMENTS);
 
-    @Suppress("DEPRECATION")
     val file: File
         get() = Environment.getExternalStoragePublicDirectory(folderName)
 

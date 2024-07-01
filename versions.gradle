@@ -4,12 +4,12 @@
  **/
 ext.deps = [:]
 def versions = [:]
-versions.activity = "1.6.0"
-versions.appcompat = "1.5.1"
-versions.core_ktx = "1.9.0"
-versions.coroutines = "1.6.4"
+versions.activity = "1.9.0"
+versions.appcompat = "1.7.0"
+versions.core_ktx = "1.13.1"
+versions.coroutines = "1.8.1"
 versions.documentfile = "1.0.1"
-versions.fragment = "1.5.3"
+versions.fragment = "1.8.0"
 versions.junit = "5.9.1"
 versions.material_dialogs = "3.3.0"
 versions.material_progressbar = "1.6.1"

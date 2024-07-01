@@ -11,7 +11,11 @@ import com.afollestad.materialdialogs.MaterialDialog
 import com.anggrayudi.storage.SimpleStorageHelper
 import com.anggrayudi.storage.file.fullName
 import com.anggrayudi.storage.file.getAbsolutePath
-import com.anggrayudi.storage.permission.*
+import com.anggrayudi.storage.permission.FragmentPermissionRequest
+import com.anggrayudi.storage.permission.PermissionCallback
+import com.anggrayudi.storage.permission.PermissionReport
+import com.anggrayudi.storage.permission.PermissionRequest
+import com.anggrayudi.storage.permission.PermissionResult
 import com.anggrayudi.storage.sample.R
 import com.anggrayudi.storage.sample.activity.MainActivity
 import com.anggrayudi.storage.sample.databinding.InclBaseOperationBinding
@@ -63,10 +67,7 @@ class SampleFragment : Fragment(R.layout.incl_base_operation) {
             isEnabled = Build.VERSION.SDK_INT in 23..28
         }
 
-        binding.btnRequestStorageAccess.run {
-            isEnabled = Build.VERSION.SDK_INT >= 21
-            setOnClickListener { storageHelper.requestStorageAccess(MainActivity.REQUEST_CODE_STORAGE_ACCESS) }
-        }
+        binding.btnRequestStorageAccess.setOnClickListener { storageHelper.requestStorageAccess(MainActivity.REQUEST_CODE_STORAGE_ACCESS) }
 
         binding.btnRequestFullStorageAccess.run {
             isEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
