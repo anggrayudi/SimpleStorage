@@ -11,8 +11,8 @@ import kotlinx.coroutines.GlobalScope
  * @author Anggrayudi Hardiannico A.
  */
 abstract class FileConflictCallback<T> @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
-    var uiScope: CoroutineScope = GlobalScope
-) {
+    override val uiScope: CoroutineScope = GlobalScope
+): ScopeHoldingCallback {
 
     /**
      * Do not call `super` when you override this function.

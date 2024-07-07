@@ -14,9 +14,7 @@ import kotlinx.coroutines.GlobalScope
  * Created on 17/08/20
  * @author Anggrayudi H
  */
-abstract class FileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
-    uiScope: CoroutineScope = GlobalScope
-) : BaseFileCallback<FileCallback.ErrorCode, FileCallback.Report, FileCallback.Result>(uiScope) {
+abstract class FileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(uiScope: CoroutineScope = GlobalScope) : BaseFileCallback<FileCallback.ErrorCode, FileCallback.Report, FileCallback.Result>(uiScope) {
 
     /**
      * @param file can be [DocumentFile] or [MediaFile]

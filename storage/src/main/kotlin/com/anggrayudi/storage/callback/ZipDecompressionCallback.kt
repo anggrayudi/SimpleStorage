@@ -75,7 +75,7 @@ abstract class ZipDecompressionCallback<T> @OptIn(DelicateCoroutinesApi::class) 
      * so only `bytesDecompressed` and `fileCount` that can be provided.
      * @param fileCount decompressed files in total
      */
-    class Report(val bytesDecompressed: Long, val writeSpeed: Int, val fileCount: Int)
+    data class Report(val bytesDecompressed: Long, val writeSpeed: Int, val fileCount: Int)
 
     /**
      * @param decompressionRate size expansion in percent, e.g. 23.5.

@@ -1,6 +1,5 @@
 package com.anggrayudi.storage.callback
 
-import androidx.annotation.RestrictTo
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import com.anggrayudi.storage.file.FileSize
@@ -10,8 +9,8 @@ import kotlinx.coroutines.CoroutineScope
  * Created on 02/06/21
  * @author Anggrayudi H
  */
-abstract class BaseFileCallback<ErrorCode, Report, Result>
-@RestrictTo(RestrictTo.Scope.LIBRARY) constructor(var uiScope: CoroutineScope) {
+abstract class BaseFileCallback<ErrorCode, Report, Result>(override val uiScope: CoroutineScope) :
+    ScopeHoldingCallback {
 
     @UiThread
     open fun onValidate() {
