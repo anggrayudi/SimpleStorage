@@ -17,7 +17,6 @@ import java.io.File
  *
  * @author Anggrayudi H
  */
-@Suppress("DEPRECATION")
 class DocumentFileCompatTest {
 
     private val context = mockk<Context> {

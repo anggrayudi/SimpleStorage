@@ -33,8 +33,7 @@ dependencies {
     api deps.documentfile
     api deps.coroutines.core
     api deps.coroutines.android
-    api 'com.afollestad.material-dialogs:files:3.3.0'
-    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.2"
 
     testImplementation deps.junit
     testImplementation deps.mockk

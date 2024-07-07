@@ -10,16 +10,24 @@ import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
-import com.anggrayudi.storage.callback.*
+import com.anggrayudi.storage.callback.CreateFileCallback
+import com.anggrayudi.storage.callback.FilePickerCallback
+import com.anggrayudi.storage.callback.FileReceiverCallback
+import com.anggrayudi.storage.callback.FolderPickerCallback
+import com.anggrayudi.storage.callback.StorageAccessCallback
 import com.anggrayudi.storage.extension.getStorageId
 import com.anggrayudi.storage.file.FileFullPath
 import com.anggrayudi.storage.file.StorageType
 import com.anggrayudi.storage.file.getAbsolutePath
-import com.anggrayudi.storage.permission.*
+import com.anggrayudi.storage.permission.ActivityPermissionRequest
+import com.anggrayudi.storage.permission.FragmentPermissionRequest
+import com.anggrayudi.storage.permission.PermissionCallback
+import com.anggrayudi.storage.permission.PermissionReport
+import com.anggrayudi.storage.permission.PermissionRequest
+import com.anggrayudi.storage.permission.PermissionResult
 
 /**
  * Helper class to ease you using file & folder picker.
@@ -344,7 +352,6 @@ class SimpleStorageHelper {
         }
     }
 
-    @RequiresApi(21)
     @JvmOverloads
     fun requestStorageAccess(
         requestCode: Int = storage.requestCodeStorageAccess,

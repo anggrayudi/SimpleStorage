@@ -23,11 +23,10 @@ import com.afollestad.materialdialogs.customview.getCustomView
 import com.afollestad.materialdialogs.input.input
 import com.afollestad.materialdialogs.list.listItems
 import com.anggrayudi.storage.SimpleStorageHelper
-import com.anggrayudi.storage.callback.FileCallback
-import com.anggrayudi.storage.callback.FolderCallback
-import com.anggrayudi.storage.callback.MultipleFileCallback
+import com.anggrayudi.storage.callback.MultipleFilesConflictCallback
+import com.anggrayudi.storage.callback.SingleFileConflictCallback
+import com.anggrayudi.storage.callback.SingleFolderConflictCallback
 import com.anggrayudi.storage.extension.launchOnUiThread
-import com.anggrayudi.storage.file.FileSize
 import com.anggrayudi.storage.file.baseName
 import com.anggrayudi.storage.file.changeName
 import com.anggrayudi.storage.file.copyFileTo
@@ -43,13 +42,18 @@ import com.anggrayudi.storage.permission.ActivityPermissionRequest
 import com.anggrayudi.storage.permission.PermissionCallback
 import com.anggrayudi.storage.permission.PermissionReport
 import com.anggrayudi.storage.permission.PermissionResult
+import com.anggrayudi.storage.result.MultipleFilesResult
+import com.anggrayudi.storage.result.SingleFileResult
+import com.anggrayudi.storage.result.SingleFolderResult
 import com.anggrayudi.storage.sample.R
 import com.anggrayudi.storage.sample.StorageInfoAdapter
 import com.anggrayudi.storage.sample.databinding.ActivityMainBinding
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Runnable
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.IOException
@@ -108,10 +112,7 @@ class MainActivity : AppCompatActivity() {
             isEnabled = Build.VERSION.SDK_INT in 23..28
         }
 
-        binding.layoutBaseOperation.btnRequestStorageAccess.run {
-            isEnabled = Build.VERSION.SDK_INT >= 21
-            setOnClickListener { storageHelper.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS) }
-        }
+        binding.layoutBaseOperation.btnRequestStorageAccess.setOnClickListener { storageHelper.requestStorageAccess(REQUEST_CODE_STORAGE_ACCESS) }
 
         binding.layoutBaseOperation.btnRequestFullStorageAccess.run {
             isEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -198,7 +199,9 @@ class MainActivity : AppCompatActivity() {
                     folder
                 )
 
-                else -> Toast.makeText(baseContext, folder.getAbsolutePath(this), Toast.LENGTH_SHORT).show()
+                else -> {
+                    Toast.makeText(baseContext, folder.getAbsolutePath(this), Toast.LENGTH_SHORT).show()
+                }
             }
         }
         storageHelper.onFileCreated = { requestCode, file ->
@@ -280,7 +283,30 @@ class MainActivity : AppCompatActivity() {
             }
             Toast.makeText(this, "Copying...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
-                sources.copyTo(applicationContext, targetFolder, callback = createMultipleFileCallback(false))
+                sources.copyTo(applicationContext, targetFolder, onConflict = createMultipleFileCallback())
+                    .onCompletion {
+                        if (it is CancellationException) {
+                            Timber.d("Multiple copies is aborted")
+                        }
+                    }.collect { result ->
+                        when (result) {
+                            is MultipleFilesResult.Validating -> Timber.d("Validating...")
+                            is MultipleFilesResult.Preparing -> Timber.d("Preparing...")
+                            is MultipleFilesResult.CountingFiles -> Timber.d("Counting files...")
+                            is MultipleFilesResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
+                            is MultipleFilesResult.Starting -> Timber.d("Starting...")
+                            is MultipleFilesResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
+                            is MultipleFilesResult.Completed -> uiScope.launch {
+                                Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")
+                                Toast.makeText(baseContext, "Copied ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
+                            }
+
+                            is MultipleFilesResult.Error -> uiScope.launch {
+                                Timber.e(result.errorCode.name)
+                                Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
             }
         }
     }
@@ -311,18 +337,35 @@ class MainActivity : AppCompatActivity() {
             }
             Toast.makeText(this, "Moving...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
-                sources.moveTo(applicationContext, targetFolder, callback = createMultipleFileCallback(true))
+                sources.moveTo(applicationContext, targetFolder, onConflict = createMultipleFileCallback())
+                    .onCompletion {
+                        if (it is CancellationException) {
+                            Timber.d("Multiple file moves is aborted")
+                        }
+                    }.collect { result ->
+                        when (result) {
+                            is MultipleFilesResult.Validating -> Timber.d("Validating...")
+                            is MultipleFilesResult.Preparing -> Timber.d("Preparing...")
+                            is MultipleFilesResult.CountingFiles -> Timber.d("Counting files...")
+                            is MultipleFilesResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
+                            is MultipleFilesResult.Starting -> Timber.d("Starting...")
+                            is MultipleFilesResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
+                            is MultipleFilesResult.Completed -> uiScope.launch {
+                                Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")
+                                Toast.makeText(baseContext, "Moved ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
+                            }
+
+                            is MultipleFilesResult.Error -> uiScope.launch {
+                                Timber.e(result.errorCode.name)
+                                Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
             }
         }
     }
 
-    private fun createMultipleFileCallback(isMoveFileMode: Boolean) = object : MultipleFileCallback(uiScope) {
-        val mode = if (isMoveFileMode) "Moved" else "Copied"
-
-        override fun onStart(files: List<DocumentFile>, totalFilesToCopy: Int, workerThread: Thread): Long {
-            return 1000 // update progress every 1 second
-        }
-
+    private fun createMultipleFileCallback() = object : MultipleFilesConflictCallback(uiScope) {
         override fun onParentConflict(
             destinationParentFolder: DocumentFile,
             conflictedFolders: MutableList<ParentConflict>,
@@ -334,22 +377,10 @@ class MainActivity : AppCompatActivity() {
 
         override fun onContentConflict(
             destinationParentFolder: DocumentFile,
-            conflictedFiles: MutableList<FolderCallback.FileConflict>,
-            action: FolderCallback.FolderContentConflictAction
+            conflictedFiles: MutableList<SingleFolderConflictCallback.FileConflict>,
+            action: SingleFolderConflictCallback.FolderContentConflictAction
         ) {
             handleFolderContentConflict(action, conflictedFiles)
-        }
-
-        override fun onReport(report: Report) {
-            Timber.d("onReport() -> ${report.progress.toInt()}% | $mode ${report.fileCount} files")
-        }
-
-        override fun onCompleted(result: Result) {
-            Toast.makeText(baseContext, "$mode ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
-        }
-
-        override fun onFailed(errorCode: ErrorCode) {
-            Toast.makeText(baseContext, "An error has occurred: $errorCode", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -373,7 +404,30 @@ class MainActivity : AppCompatActivity() {
             }
             Toast.makeText(this, "Copying...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
-                folder.copyFolderTo(applicationContext, targetFolder, false, callback = createFolderCallback(false))
+                folder.copyFolderTo(applicationContext, targetFolder, false, onConflict = createFolderCallback())
+                    .onCompletion {
+                        if (it is CancellationException) {
+                            Timber.d("Folder copy is aborted")
+                        }
+                    }.collect { result ->
+                        when (result) {
+                            is SingleFolderResult.Validating -> Timber.d("Validating...")
+                            is SingleFolderResult.Preparing -> Timber.d("Preparing...")
+                            is SingleFolderResult.CountingFiles -> Timber.d("Counting files...")
+                            is SingleFolderResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
+                            is SingleFolderResult.Starting -> Timber.d("Starting...")
+                            is SingleFolderResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
+                            is SingleFolderResult.Completed -> uiScope.launch {
+                                Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")
+                                Toast.makeText(baseContext, "Copied ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
+                            }
+
+                            is SingleFolderResult.Error -> uiScope.launch {
+                                Timber.e(result.errorCode.name)
+                                Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
             }
         }
     }
@@ -398,26 +452,35 @@ class MainActivity : AppCompatActivity() {
             }
             Toast.makeText(this, "Moving...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
-                folder.moveFolderTo(applicationContext, targetFolder, false, callback = createFolderCallback(true))
+                folder.moveFolderTo(applicationContext, targetFolder, false, onConflict = createFolderCallback())
+                    .onCompletion {
+                        if (it is CancellationException) {
+                            Timber.d("Folder move is aborted")
+                        }
+                    }.collect { result ->
+                        when (result) {
+                            is SingleFolderResult.Validating -> Timber.d("Validating...")
+                            is SingleFolderResult.Preparing -> Timber.d("Preparing...")
+                            is SingleFolderResult.CountingFiles -> Timber.d("Counting files...")
+                            is SingleFolderResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
+                            is SingleFolderResult.Starting -> Timber.d("Starting...")
+                            is SingleFolderResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
+                            is SingleFolderResult.Completed -> uiScope.launch {
+                                Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")
+                                Toast.makeText(baseContext, "Moved ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
+                            }
+
+                            is SingleFolderResult.Error -> uiScope.launch {
+                                Timber.e(result.errorCode.name)
+                                Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
             }
         }
     }
 
-    private fun createFolderCallback(isMoveFileMode: Boolean) = object : FolderCallback(uiScope) {
-        val mode = if (isMoveFileMode) "Moved" else "Copied"
-
-        override fun onPrepare() {
-            // Show notification or progress bar dialog with indeterminate state
-        }
-
-        override fun onCountingFiles() {
-            // Inform user that the app is counting & calculating files
-        }
-
-        override fun onStart(folder: DocumentFile, totalFilesToCopy: Int, workerThread: Thread): Long {
-            return 1000 // update progress every 1 second
-        }
-
+    private fun createFolderCallback() = object : SingleFolderConflictCallback(uiScope) {
         override fun onParentConflict(destinationFolder: DocumentFile, action: ParentFolderConflictAction, canMerge: Boolean) {
             handleParentFolderConflict(destinationFolder, action, canMerge)
         }
@@ -428,18 +491,6 @@ class MainActivity : AppCompatActivity() {
             action: FolderContentConflictAction
         ) {
             handleFolderContentConflict(action, conflictedFiles)
-        }
-
-        override fun onReport(report: Report) {
-            Timber.d("onReport() -> ${report.progress.toInt()}% | $mode ${report.fileCount} files")
-        }
-
-        override fun onCompleted(result: Result) {
-            Toast.makeText(baseContext, "$mode ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
-        }
-
-        override fun onFailed(errorCode: ErrorCode) {
-            Toast.makeText(baseContext, "An error has occurred: $errorCode", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -463,7 +514,30 @@ class MainActivity : AppCompatActivity() {
             val targetFolder = binding.layoutCopyFileTargetFolder.tvFilePath.tag as DocumentFile
             Toast.makeText(this, "Copying...", Toast.LENGTH_SHORT).show()
             ioScope.launch {
-                file.copyFileTo(applicationContext, targetFolder, callback = createFileCallback())
+                file.copyFileTo(applicationContext, targetFolder, onConflict = createFileCallback())
+                    .onCompletion {
+                        if (it is CancellationException) {
+                            Timber.d("File copy is aborted")
+                        }
+                    }.collect {
+                        when (it) {
+                            is SingleFileResult.Validating -> Timber.d("Validating...")
+                            is SingleFileResult.Preparing -> Timber.d("Preparing...")
+                            is SingleFileResult.CountingFiles -> Timber.d("Counting files...")
+                            is SingleFileResult.DeletingConflictedFile -> Timber.d("Deleting conflicted file...")
+                            is SingleFileResult.Starting -> Timber.d("Starting...")
+                            is SingleFileResult.InProgress -> Timber.d("Progress: ${it.progress.toInt()}%")
+                            is SingleFileResult.Completed -> uiScope.launch {
+                                Timber.d("Completed")
+                                Toast.makeText(baseContext, "Copied successfully", Toast.LENGTH_SHORT).show()
+                            }
+
+                            is SingleFileResult.Error -> uiScope.launch {
+                                Timber.e(it.errorCode.name)
+                                Toast.makeText(baseContext, "An error has occurred: ${it.errorCode.name}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
             }
         }
     }
@@ -487,68 +561,78 @@ class MainActivity : AppCompatActivity() {
             val file = binding.layoutMoveSrcFile.tvFilePath.tag as DocumentFile
             val targetFolder = binding.layoutMoveFileTargetFolder.tvFilePath.tag as DocumentFile
             Toast.makeText(this, "Moving...", Toast.LENGTH_SHORT).show()
-            ioScope.launch {
-                file.moveFileTo(applicationContext, targetFolder, callback = createFileCallback())
-            }
-        }
-    }
+            var job: Job? = null
+            job = ioScope.launch {
+                var dialog: MaterialDialog? = null
+                var tvStatus: TextView? = null
+                var progressBar: ProgressBar? = null
 
-    private fun createFileCallback() = object : FileCallback(uiScope) {
-
-        var dialog: MaterialDialog? = null
-        var tvStatus: TextView? = null
-        var progressBar: ProgressBar? = null
-
-        override fun onConflict(destinationFile: DocumentFile, action: FileConflictAction) {
-            handleFileConflict(action)
-        }
-
-        override fun onStart(file: Any, workerThread: Thread): Long {
-            // only show dialog if file size greater than 10Mb
-            if ((file as DocumentFile).length() > 10 * FileSize.MB) {
-                dialog = MaterialDialog(this@MainActivity)
-                    .cancelable(false)
-                    .positiveButton(android.R.string.cancel) { workerThread.interrupt() }
-                    .customView(R.layout.dialog_copy_progress).apply {
-                        tvStatus = getCustomView().findViewById<TextView>(R.id.tvProgressStatus).apply {
-                            text = "Copying file: 0%"
+                file.moveFileTo(applicationContext, targetFolder, onConflict = createFileCallback())
+                    .onCompletion {
+                        if (it is CancellationException) {
+                            Timber.d("File move is aborted")
                         }
+                        dialog?.dismiss()
+                        dialog = null
+                    }.collect { result ->
+                        when (result) {
+                            is SingleFileResult.Validating -> Timber.d("Validating...")
+                            is SingleFileResult.Preparing -> Timber.d("Preparing...")
+                            is SingleFileResult.CountingFiles -> Timber.d("Counting files...")
+                            is SingleFileResult.DeletingConflictedFile -> Timber.d("Deleting conflicted file...")
+                            is SingleFileResult.Starting -> Timber.d("Starting...")
+                            is SingleFileResult.InProgress -> uiScope.launch {
+                                Timber.d("Progress: ${result.progress.toInt()}%")
+                                if (dialog == null) {
+                                    dialog = MaterialDialog(this@MainActivity)
+                                        .cancelable(false)
+                                        .positiveButton(android.R.string.cancel) { job?.cancel() }
+                                        .customView(R.layout.dialog_copy_progress).apply {
+                                            tvStatus = getCustomView().findViewById<TextView>(R.id.tvProgressStatus).apply {
+                                                text = "Copying file: 0%"
+                                            }
 
-                        progressBar = getCustomView().findViewById<ProgressBar>(R.id.progressCopy).apply {
-                            isIndeterminate = true
+                                            progressBar = getCustomView().findViewById<ProgressBar>(R.id.progressCopy).apply {
+                                                isIndeterminate = true
+                                            }
+                                            show()
+                                        }
+                                }
+                                tvStatus?.text = "Copying file: ${result.progress.toInt()}%"
+                                progressBar?.isIndeterminate = false
+                                progressBar?.progress = result.progress.toInt()
+                            }
+
+                            is SingleFileResult.Completed -> uiScope.launch {
+                                Timber.d("Completed")
+                                Toast.makeText(baseContext, "Moved successfully", Toast.LENGTH_SHORT).show()
+                            }
+
+                            is SingleFileResult.Error -> uiScope.launch {
+                                Timber.e(result.errorCode.name)
+                                Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
+                            }
                         }
-                        show()
                     }
             }
-            return 500 // 0.5 second
-        }
-
-        override fun onReport(report: Report) {
-            tvStatus?.text = "Copying file: ${report.progress.toInt()}%"
-            progressBar?.isIndeterminate = false
-            progressBar?.progress = report.progress.toInt()
-        }
-
-        override fun onFailed(errorCode: ErrorCode) {
-            dialog?.dismiss()
-            Toast.makeText(baseContext, "Failed copying file: $errorCode", Toast.LENGTH_SHORT).show()
-        }
-
-        override fun onCompleted(result: Any) {
-            dialog?.dismiss()
-            Toast.makeText(baseContext, "File copied successfully", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun handleFileConflict(action: FileCallback.FileConflictAction) {
+    private fun createFileCallback() = object : SingleFileConflictCallback<DocumentFile>(uiScope) {
+        override fun onFileConflict(destinationFile: DocumentFile, action: FileConflictAction) {
+            handleFileConflict(action)
+        }
+    }
+
+    private fun handleFileConflict(action: SingleFileConflictCallback.FileConflictAction) {
         MaterialDialog(this)
             .cancelable(false)
             .title(text = "Conflict Found")
             .message(text = "What do you want to do with the file already exists in destination?")
             .listItems(items = listOf("Replace", "Create New", "Skip Duplicate")) { _, index, _ ->
-                val resolution = FileCallback.ConflictResolution.values()[index]
+                val resolution = SingleFileConflictCallback.ConflictResolution.entries[index]
                 action.confirmResolution(resolution)
-                if (resolution == FileCallback.ConflictResolution.SKIP) {
+                if (resolution == SingleFileConflictCallback.ConflictResolution.SKIP) {
                     Toast.makeText(this, "Skipped duplicate file", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -556,19 +640,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleParentFolderConflict(
-        conflictedFolders: MutableList<MultipleFileCallback.ParentConflict>,
-        conflictedFiles: MutableList<MultipleFileCallback.ParentConflict>,
-        action: MultipleFileCallback.ParentFolderConflictAction
+        conflictedFolders: MutableList<MultipleFilesConflictCallback.ParentConflict>,
+        conflictedFiles: MutableList<MultipleFilesConflictCallback.ParentConflict>,
+        action: MultipleFilesConflictCallback.ParentFolderConflictAction
     ) {
-        val newSolution = ArrayList<MultipleFileCallback.ParentConflict>(conflictedFiles.size)
+        val newSolution = ArrayList<MultipleFilesConflictCallback.ParentConflict>(conflictedFiles.size)
         askFolderSolution(action, conflictedFolders, conflictedFiles, newSolution)
     }
 
     private fun askFolderSolution(
-        action: MultipleFileCallback.ParentFolderConflictAction,
-        conflictedFolders: MutableList<MultipleFileCallback.ParentConflict>,
-        conflictedFiles: MutableList<MultipleFileCallback.ParentConflict>,
-        newSolution: MutableList<MultipleFileCallback.ParentConflict>
+        action: MultipleFilesConflictCallback.ParentFolderConflictAction,
+        conflictedFolders: MutableList<MultipleFilesConflictCallback.ParentConflict>,
+        conflictedFiles: MutableList<MultipleFilesConflictCallback.ParentConflict>,
+        newSolution: MutableList<MultipleFilesConflictCallback.ParentConflict>
     ) {
         val currentSolution = conflictedFolders.removeFirstOrNull()
         if (currentSolution == null) {
@@ -583,7 +667,7 @@ class MainActivity : AppCompatActivity() {
             .message(text = "Folder \"${currentSolution.target.name}\" already exists in destination. What's your action?")
             .checkBoxPrompt(text = "Apply to all") { doForAll = it }
             .listItems(items = mutableListOf("Replace", "Merge", "Create New", "Skip Duplicate").apply { if (!canMerge) remove("Merge") }) { _, index, _ ->
-                currentSolution.solution = FolderCallback.ConflictResolution.values()[if (!canMerge && index > 0) index + 1 else index]
+                currentSolution.solution = SingleFolderConflictCallback.ConflictResolution.entries[if (!canMerge && index > 0) index + 1 else index]
                 newSolution.add(currentSolution)
                 if (doForAll) {
                     conflictedFolders.forEach { it.solution = currentSolution.solution }
@@ -597,10 +681,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun askFileSolution(
-        action: MultipleFileCallback.ParentFolderConflictAction,
-        conflictedFolders: MutableList<MultipleFileCallback.ParentConflict>,
-        conflictedFiles: MutableList<MultipleFileCallback.ParentConflict>,
-        newSolution: MutableList<MultipleFileCallback.ParentConflict>
+        action: MultipleFilesConflictCallback.ParentFolderConflictAction,
+        conflictedFolders: MutableList<MultipleFilesConflictCallback.ParentConflict>,
+        conflictedFiles: MutableList<MultipleFilesConflictCallback.ParentConflict>,
+        newSolution: MutableList<MultipleFilesConflictCallback.ParentConflict>
     ) {
         val currentSolution = conflictedFiles.removeFirstOrNull()
         if (currentSolution == null) {
@@ -614,7 +698,7 @@ class MainActivity : AppCompatActivity() {
             .message(text = "File \"${currentSolution.target.name}\" already exists in destination. What's your action?")
             .checkBoxPrompt(text = "Apply to all") { doForAll = it }
             .listItems(items = mutableListOf("Replace", "Create New", "Skip Duplicate")) { _, index, _ ->
-                currentSolution.solution = FolderCallback.ConflictResolution.values()[if (index > 0) index + 1 else index]
+                currentSolution.solution = SingleFolderConflictCallback.ConflictResolution.entries[if (index > 0) index + 1 else index]
                 newSolution.add(currentSolution)
                 if (doForAll) {
                     conflictedFiles.forEach { it.solution = currentSolution.solution }
@@ -627,30 +711,37 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun handleParentFolderConflict(destinationFolder: DocumentFile, action: FolderCallback.ParentFolderConflictAction, canMerge: Boolean) {
+    private fun handleParentFolderConflict(
+        destinationFolder: DocumentFile,
+        action: SingleFolderConflictCallback.ParentFolderConflictAction,
+        canMerge: Boolean
+    ) {
         MaterialDialog(this)
             .cancelable(false)
             .title(text = "Conflict Found")
             .message(text = "Folder \"${destinationFolder.name}\" already exists in destination. What's your action?")
             .listItems(items = mutableListOf("Replace", "Merge", "Create New", "Skip Duplicate").apply { if (!canMerge) remove("Merge") }) { _, index, _ ->
-                val resolution = FolderCallback.ConflictResolution.values()[if (!canMerge && index > 0) index + 1 else index]
+                val resolution = SingleFolderConflictCallback.ConflictResolution.entries[if (!canMerge && index > 0) index + 1 else index]
                 action.confirmResolution(resolution)
-                if (resolution == FolderCallback.ConflictResolution.SKIP) {
+                if (resolution == SingleFolderConflictCallback.ConflictResolution.SKIP) {
                     Toast.makeText(this, "Skipped duplicate folders & files", Toast.LENGTH_SHORT).show()
                 }
             }
             .show()
     }
 
-    private fun handleFolderContentConflict(action: FolderCallback.FolderContentConflictAction, conflictedFiles: MutableList<FolderCallback.FileConflict>) {
-        val newSolution = ArrayList<FolderCallback.FileConflict>(conflictedFiles.size)
+    private fun handleFolderContentConflict(
+        action: SingleFolderConflictCallback.FolderContentConflictAction,
+        conflictedFiles: MutableList<SingleFolderConflictCallback.FileConflict>
+    ) {
+        val newSolution = ArrayList<SingleFolderConflictCallback.FileConflict>(conflictedFiles.size)
         askSolution(action, conflictedFiles, newSolution)
     }
 
     private fun askSolution(
-        action: FolderCallback.FolderContentConflictAction,
-        conflictedFiles: MutableList<FolderCallback.FileConflict>,
-        newSolution: MutableList<FolderCallback.FileConflict>
+        action: SingleFolderConflictCallback.FolderContentConflictAction,
+        conflictedFiles: MutableList<SingleFolderConflictCallback.FileConflict>,
+        newSolution: MutableList<SingleFolderConflictCallback.FileConflict>
     ) {
         val currentSolution = conflictedFiles.removeFirstOrNull()
         if (currentSolution == null) {
@@ -664,7 +755,7 @@ class MainActivity : AppCompatActivity() {
             .message(text = "File \"${currentSolution.target.name}\" already exists in destination. What's your action?")
             .checkBoxPrompt(text = "Apply to all") { doForAll = it }
             .listItems(items = listOf("Replace", "Create New", "Skip")) { _, index, _ ->
-                currentSolution.solution = FileCallback.ConflictResolution.values()[index]
+                currentSolution.solution = SingleFileConflictCallback.ConflictResolution.entries[index]
                 newSolution.add(currentSolution)
                 if (doForAll) {
                     conflictedFiles.forEach { it.solution = currentSolution.solution }
@@ -677,7 +768,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         storageHelper.storage.checkIfFileReceived(intent)
     }
@@ -759,7 +850,6 @@ class MainActivity : AppCompatActivity() {
             thread {
                 file.openOutputStream(context)?.use {
                     try {
-                        @Suppress("BlockingMethodInNonBlockingContext")
                         it.write("Welcome to SimpleStorage!\nRequest code: $requestCode\nTime: ${System.currentTimeMillis()}".toByteArray())
                         launchOnUiThread { Toast.makeText(context, "Successfully created file \"${file.name}\"", Toast.LENGTH_SHORT).show() }
                     } catch (e: IOException) {

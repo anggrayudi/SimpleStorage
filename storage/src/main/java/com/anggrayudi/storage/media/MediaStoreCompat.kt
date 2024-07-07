@@ -13,8 +13,20 @@ import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.extension.getString
 import com.anggrayudi.storage.extension.trimFileName
 import com.anggrayudi.storage.extension.trimFileSeparator
-import com.anggrayudi.storage.file.*
+import com.anggrayudi.storage.file.CreateMode
+import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
+import com.anggrayudi.storage.file.DocumentFileType
+import com.anggrayudi.storage.file.MimeType
+import com.anggrayudi.storage.file.PublicDirectory
+import com.anggrayudi.storage.file.autoIncrementFileName
+import com.anggrayudi.storage.file.canModify
+import com.anggrayudi.storage.file.child
+import com.anggrayudi.storage.file.createNewFileIfPossible
+import com.anggrayudi.storage.file.recreateFile
+import com.anggrayudi.storage.file.search
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /**
@@ -77,9 +89,9 @@ object MediaStoreCompat {
         val mediaFolder = basePath.substringBefore('/')
         val mediaType = when (mediaFolder) {
             Environment.DIRECTORY_DOWNLOADS -> MediaType.DOWNLOADS
-            in ImageMediaDirectory.values().map { it.folderName } -> MediaType.IMAGE
-            in AudioMediaDirectory.values().map { it.folderName } -> MediaType.AUDIO
-            in VideoMediaDirectory.values().map { it.folderName } -> MediaType.VIDEO
+            in ImageMediaDirectory.entries.map { it.folderName } -> MediaType.IMAGE
+            in AudioMediaDirectory.entries.map { it.folderName } -> MediaType.AUDIO
+            in VideoMediaDirectory.entries.map { it.folderName } -> MediaType.VIDEO
             else -> return null
         }
         val subFolder = basePath.substringAfter('/', "")
@@ -140,10 +152,10 @@ object MediaStoreCompat {
 
                     tryInsertMediaFile(context, mediaType, contentValues)
                 }
+
                 else -> tryInsertMediaFile(context, mediaType, contentValues)
             }
         } else {
-            @Suppress("DEPRECATION")
             val publicDirectory = Environment.getExternalStoragePublicDirectory(folderName)
             if (publicDirectory.canModify(context)) {
                 val filename = file.fullName
@@ -203,7 +215,6 @@ object MediaStoreCompat {
     @JvmStatic
     fun fromFileName(context: Context, mediaType: MediaType, name: String): MediaFile? {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
             File(PublicDirectory.DOWNLOADS.file, name).let {
                 if (it.isFile && it.canRead()) MediaFile(context, it) else null
             }
@@ -223,7 +234,6 @@ object MediaStoreCompat {
     fun fromBasePath(context: Context, mediaType: MediaType, basePath: String): MediaFile? {
         val cleanBasePath = basePath.removeForbiddenCharsFromFilename().trimFileSeparator()
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
             File(Environment.getExternalStorageDirectory(), cleanBasePath).let { if (it.isFile && it.canRead()) MediaFile(context, it) else null }
         } else {
             val relativePath = cleanBasePath.substringBeforeLast('/', "")
@@ -243,6 +253,7 @@ object MediaStoreCompat {
         Environment.DIRECTORY_MOVIES, Environment.DIRECTORY_DCIM -> MediaType.VIDEO
         Environment.DIRECTORY_MUSIC, Environment.DIRECTORY_PODCASTS, Environment.DIRECTORY_RINGTONES,
         Environment.DIRECTORY_ALARMS, Environment.DIRECTORY_NOTIFICATIONS -> MediaType.AUDIO
+
         Environment.DIRECTORY_DOWNLOADS -> MediaType.DOWNLOADS
         else -> null
     }
@@ -257,19 +268,19 @@ object MediaStoreCompat {
      * @see MediaStore.MediaColumns.RELATIVE_PATH
      */
     @JvmStatic
-    fun fromRelativePath(context: Context, relativePath: String): List<MediaFile> {
+    fun fromRelativePath(context: Context, relativePath: String): List<MediaFile> = runBlocking {
         val cleanRelativePath = relativePath.trimFileSeparator()
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             DocumentFile.fromFile(File(Environment.getExternalStorageDirectory(), cleanRelativePath))
                 .search(true, DocumentFileType.FILE)
+                .first()
                 .map { MediaFile(context, File(it.uri.path!!)) }
         } else {
-            val mediaType = mediaTypeFromRelativePath(cleanRelativePath) ?: return emptyList()
+            val mediaType = mediaTypeFromRelativePath(cleanRelativePath) ?: return@runBlocking emptyList()
             val relativePathWithSlashSuffix = relativePath.trimEnd('/') + '/'
             val selection = "${MediaStore.MediaColumns.RELATIVE_PATH} IN(?, ?)"
             val selectionArgs = arrayOf(relativePathWithSlashSuffix, cleanRelativePath)
-            return context.contentResolver.query(mediaType.readUri ?: return emptyList(), arrayOf(BaseColumns._ID), selection, selectionArgs, null)?.use {
+            context.contentResolver.query(mediaType.readUri ?: return@runBlocking emptyList(), arrayOf(BaseColumns._ID), selection, selectionArgs, null)?.use {
                 fromCursorToMediaFiles(context, mediaType, it)
             }.orEmpty()
         }
@@ -279,70 +290,71 @@ object MediaStoreCompat {
      * @see MediaStore.MediaColumns.RELATIVE_PATH
      */
     @JvmStatic
-    fun fromRelativePath(context: Context, relativePath: String, name: String): MediaFile? {
+    fun fromRelativePath(context: Context, relativePath: String, name: String): MediaFile? = runBlocking {
         val cleanRelativePath = relativePath.trimFileSeparator()
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             DocumentFile.fromFile(File(Environment.getExternalStorageDirectory(), cleanRelativePath))
                 .search(true, DocumentFileType.FILE, name = name)
+                .first()
                 .map { MediaFile(context, File(it.uri.path!!)) }
                 .firstOrNull()
         } else {
-            val mediaType = mediaTypeFromRelativePath(cleanRelativePath) ?: return null
+            val mediaType = mediaTypeFromRelativePath(cleanRelativePath) ?: return@runBlocking null
             val relativePathWithSlashSuffix = relativePath.trimEnd('/') + '/'
             val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} IN(?, ?)"
             val selectionArgs = arrayOf(name, relativePathWithSlashSuffix, cleanRelativePath)
-            return context.contentResolver.query(mediaType.readUri ?: return null, arrayOf(BaseColumns._ID), selection, selectionArgs, null)?.use {
+            context.contentResolver.query(mediaType.readUri ?: return@runBlocking null, arrayOf(BaseColumns._ID), selection, selectionArgs, null)?.use {
                 fromCursorToMediaFile(context, mediaType, it)
             }
         }
     }
 
     @JvmStatic
-    fun fromFileNameContains(context: Context, mediaType: MediaType, containsName: String): List<MediaFile> {
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+    fun fromFileNameContains(context: Context, mediaType: MediaType, containsName: String): List<MediaFile> = runBlocking {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
-                @Suppress("DEPRECATION")
                 DocumentFile.fromFile(directory)
                     .search(true, regex = Regex("^.*$containsName.*\$"), mimeTypes = arrayOf(mediaType.mimeType))
+                    .first()
                     .map { MediaFile(context, File(it.uri.path!!)) }
             }.flatten()
         } else {
             val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} LIKE '%$containsName%'"
-            return context.contentResolver.query(mediaType.readUri ?: return emptyList(), arrayOf(BaseColumns._ID), selection, null, null)?.use {
+            context.contentResolver.query(mediaType.readUri ?: return@runBlocking emptyList(), arrayOf(BaseColumns._ID), selection, null, null)?.use {
                 fromCursorToMediaFiles(context, mediaType, it)
             }.orEmpty()
         }
     }
 
     @JvmStatic
-    fun fromMimeType(context: Context, mediaType: MediaType, mimeType: String): List<MediaFile> {
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+    fun fromMimeType(context: Context, mediaType: MediaType, mimeType: String): List<MediaFile> = runBlocking {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
-                @Suppress("DEPRECATION")
                 DocumentFile.fromFile(directory)
                     .search(true, DocumentFileType.FILE, arrayOf(mimeType))
+                    .first()
                     .map { MediaFile(context, File(it.uri.path!!)) }
             }.flatten()
         } else {
             val selection = "${MediaStore.MediaColumns.MIME_TYPE} = ?"
-            return context.contentResolver.query(mediaType.readUri ?: return emptyList(), arrayOf(BaseColumns._ID), selection, arrayOf(mimeType), null)?.use {
-                fromCursorToMediaFiles(context, mediaType, it)
-            }.orEmpty()
+            context.contentResolver.query(mediaType.readUri ?: return@runBlocking emptyList(), arrayOf(BaseColumns._ID), selection, arrayOf(mimeType), null)
+                ?.use {
+                    fromCursorToMediaFiles(context, mediaType, it)
+                }.orEmpty()
         }
     }
 
     @JvmStatic
-    fun fromMediaType(context: Context, mediaType: MediaType): List<MediaFile> {
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+    fun fromMediaType(context: Context, mediaType: MediaType): List<MediaFile> = runBlocking {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
-                @Suppress("DEPRECATION")
                 DocumentFile.fromFile(directory)
                     .search(true, mimeTypes = arrayOf(mediaType.mimeType))
+                    .first()
                     .map { MediaFile(context, File(it.uri.path!!)) }
             }.flatten()
         } else {
-            return context.contentResolver.query(mediaType.readUri ?: return emptyList(), arrayOf(BaseColumns._ID), null, null, null)?.use {
+            context.contentResolver.query(mediaType.readUri ?: return@runBlocking emptyList(), arrayOf(BaseColumns._ID), null, null, null)?.use {
                 fromCursorToMediaFiles(context, mediaType, it)
             }.orEmpty()
         }

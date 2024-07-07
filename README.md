@@ -17,6 +17,10 @@
   + [`MediaFile`](#mediafile)
 * [Request Storage Access, Pick Folder & Files, Request Create File, etc.](#request-storage-access-pick-folder--files-request-create-file-etc)
 * [Move & Copy: Files & Folders](#move--copy-files--folders)
+* [Search: Files & Folders](#search-files--folders)
+* [Compress & Unzip: Files & Folders](#compress--unzip-files--folders)
+  + [Compression](#compression)
+  + [Decompression](#decompression)
 * [FAQ](#faq)
 * [Other SimpleStorage Usage Examples](#other-simpleStorage-usage-examples)
 * [License](#license)
@@ -25,7 +29,7 @@
 
 The more higher API level, the more Google restricted file access on Android storage.
 Although Storage Access Framework (SAF) is designed to secure user's storage from malicious apps,
-but this makes us even more difficult in accessing files. Let's take an example where
+but this makes us even more difficult in accessing files as a developer. Let's take an example where
 [`java.io.File` has been deprecated in Android 10](https://commonsware.com/blog/2019/06/07/death-external-storage-end-saga.html).
 
 Simple Storage ease you in accessing and managing files across API levels.
@@ -58,6 +62,11 @@ allprojects {
 
 Simple Storage is built in Kotlin. Follow this [documentation](JAVA_COMPATIBILITY.md) to use it in your Java project.
 
+Note that some long-running functions like copy, move, search, compress, and unzip are now only available in Kotlin.
+They are powered by Kotlin Coroutines & Flow, which are easy to use.
+You can still use these Java features in your project, but you will need [v1.5.6](https://github.com/anggrayudi/SimpleStorage/releases/tag/1.5.6) which is the latest version that
+supports Java.
+
 ## Terminology
 
 ![Alt text](art/terminology.png?raw=true "Simple Storage Terms")
@@ -73,7 +82,7 @@ To check whether you have access to particular paths, call `DocumentFileCompat.g
 ![Alt text](art/getAccessibleAbsolutePaths.png?raw=true "DocumentFileCompat.getAccessibleAbsolutePaths()")
 
 All paths in those locations are accessible via functions `DocumentFileCompat.from*()`, otherwise your action will be denied by the system if you want to
-access paths other than those. Functions `DocumentFileCompat.from*()` (next section) will return null as well. On API 28-, you can obtain it by requesting
+access paths other than those, then functions `DocumentFileCompat.from*()` (next section) will return null as well. On API 28-, you can obtain it by requesting
 the runtime permission. For API 29+, it is obtained automatically by calling `SimpleStorageHelper#requestStorageAccess()` or
 `SimpleStorageHelper#openFolderPicker()`. The granted paths are persisted by this library via `ContentResolver#takePersistableUriPermission()`,
 so you don't need to remember them in preferences:
@@ -246,44 +255,46 @@ For example, you can move a folder with few lines of code:
 val folder: DocumentFile = ...
 val targetFolder: DocumentFile = ...
 
-// Since moveFolderTo() is annotated with @WorkerThread, you must execute it in the background thread
-folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, callback = object : FolderCallback() {
-    override fun onPrepare() {
-        // Show notification or progress bar dialog with indeterminate state
-    }
-
-    override fun onCountingFiles() {
-        // Inform user that the app is counting & calculating files
-    }
-
-    override fun onStart(folder: DocumentFile, totalFilesToCopy: Int, workerThread: Thread): Long {
-        return 1000 // update progress every 1 second
-    }
-
-    override fun onParentConflict(destinationFolder: DocumentFile, action: FolderCallback.ParentFolderConflictAction, canMerge: Boolean) {
-        handleParentFolderConflict(destinationFolder, action, canMerge)
+val job = ioScope.launch {
+  folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, updateInterval = 1000, onConflict = object : FolderConflictCallback(uiScope) {
+    override fun onParentConflict(destinationFolder: DocumentFile, action: ParentFolderConflictAction, canMerge: Boolean) {
+      handleParentFolderConflict(destinationFolder, action, canMerge)
     }
 
     override fun onContentConflict(
-        destinationFolder: DocumentFile,
-        conflictedFiles: MutableList<FolderCallback.FileConflict>,
-        action: FolderCallback.FolderContentConflictAction
+      destinationFolder: DocumentFile,
+      conflictedFiles: MutableList<FileConflict>,
+      action: FolderContentConflictAction
     ) {
-        handleFolderContentConflict(action, conflictedFiles)
+      handleFolderContentConflict(action, conflictedFiles)
     }
+  }).onCompletion {
+    if (it is CancellationException) {
+      Timber.d("Folder move is aborted")
+    }
+  }.collect { result ->
+    when (result) {
+      is FolderResult.Validating -> Timber.d("Validating...")
+      is FolderResult.Preparing -> Timber.d("Preparing...")
+      is FolderResult.CountingFiles -> Timber.d("Counting files...")
+      is FolderResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
+      is FolderResult.Starting -> Timber.d("Starting...")
+      is FolderResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
+      is FolderResult.Completed -> uiScope.launch {
+        Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")
+        Toast.makeText(baseContext, "Moved ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
+      }
 
-    override fun onReport(report: Report) {
-        Timber.d("onReport() -> ${report.progress.toInt()}% | Copied ${report.fileCount} files")
+      is FolderResult.Error -> uiScope.launch {
+        Timber.e(result.errorCode.name)
+        Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
+      }
     }
+  }
+}
 
-    override fun onCompleted(result: Result) {
-        Toast.makeText(baseContext, "Copied ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
-    }
-
-    override fun onFailed(errorCode: ErrorCode) {
-        Toast.makeText(baseContext, "An error has occurred: $errorCode", Toast.LENGTH_SHORT).show()
-    }
-})
+// call this function somewhere, for example in a dialog with a cancel button:
+job.cancel() // it will abort the process
 ```
 
 The coolest thing of this library is you can ask users to choose Merge, Replace, Create New, or Skip Duplicate folders & files
@@ -292,26 +303,106 @@ whenever a conflict is found via `onConflict()`. Here're screenshots of the samp
 ![Alt text](art/parent-folder-conflict.png?raw=true "Parent Folder Conflict")
 ![Alt text](art/folder-content-conflict.png?raw=true "Folder Content Conflict")
 
-Read [`MainActivity`](https://github.com/anggrayudi/SimpleStorage/blob/master/sample/src/main/java/com/anggrayudi/storage/sample/activity/MainActivity.kt)
+Read [`MainActivity`](sample/src/main/java/com/anggrayudi/storage/sample/activity/MainActivity.kt)
 from the sample code if you want to mimic above dialogs.
+
+## Search: Files & Folders
+
+You can search files and folders by using `DocumentFile.search()` extension function:
+
+```kotlin
+ioScope.launch {
+  val nameToFind = "nicko" // search files with name containing "nicko"
+  folder.search(recursive = true, regex = Regex("^.*$nameToFind.*\$"), updateInterval = 1000).collect {
+    // update results every 1 second
+    Timber.d("Found ${it.size} files, last: ${it.lastOrNull()?.fullName}")
+  }
+}
+```
+
+## Compress & Unzip: Files & Folders
+
+### Compression
+
+To compress files and folders, use `List<DocumentFile>.compressToZip()` extension function:
+
+```kotlin
+ioScope.launch {
+  // make sure you have an URI access to /storage/emulated/0/Documents, otherwise it will return null
+  val targetZipFile = DocumentFileCompat.createFile(baseContext, basePath = "Documents/compress test.zip", mimeType = "application/zip")
+  if (targetZipFile != null) {
+    listOf(folder).compressToZip(baseContext, targetZipFile, deleteSourceWhenComplete = false, updateInterval = 500).collect {
+      when (it) {
+        is ZipCompressionResult.CountingFiles -> Timber.d("Calculating...")
+        is ZipCompressionResult.Compressing -> Timber.d("Compressing... ${it.progress.toInt()}%")
+        is ZipCompressionResult.Completed -> Timber.d("Completed: ${it.zipFile.fullName}")
+        is ZipCompressionResult.Error -> Timber.e(it.errorCode.name)
+        is ZipCompressionResult.DeletingEntryFiles -> Timber.d("Deleting ...") // will be emitted if `deleteSourceWhenComplete` is true
+      }
+    }
+  }
+}
+```
+
+If you don't have any URI access, then you can request the user to create a ZIP file in the desired location:
+
+```kotlin
+storageHelper.onFileCreated = { requestCode, file ->
+  ioScope.launch {
+    listOf(folder).compressToZip(baseContext, file).collect {
+      // do stuff
+    }
+  }
+}
+storageHelper.createFile(mimeType = "application/zip", fileName = "compress test", initialPath = FileFullPath(baseContext, StorageId.PRIMARY, "Documents"))
+```
+
+### Decompression
+
+FYI, decompressing ZIP files is also easy:
+
+```kotlin
+ioScope.launch {
+  file.decompressZip(baseContext, targetFolder)
+    .onCompletion {
+      if (it is CancellationException) {
+        Timber.d("Decompression is aborted")
+      }
+    }.collect {
+      when (it) {
+        is ZipDecompressionResult.Validating -> Timber.d("Validating...")
+        is ZipDecompressionResult.Decompressing -> Timber.d("Decompressing... ${it.bytesDecompressed}")
+        is ZipDecompressionResult.Completed -> uiScope.launch {
+          Toast.makeText(baseContext, "Decompressed successfully", Toast.LENGTH_SHORT).show()
+        }
+
+        is ZipDecompressionResult.Error -> uiScope.launch {
+          Toast.makeText(baseContext, "An error has occurred: ${it.errorCode.name}", Toast.LENGTH_SHORT).show()
+        }
+      }
+    }
+}
+```
 
 ## FAQ
 
-Having trouble? Read the [Frequently Asked Questions](FAQ.md).
+Having trouble? Read the [Frequently Asked Questions](FAQ.md) or join the [Discussions](https://github.com/anggrayudi/SimpleStorage/discussions).
 
 ## Other SimpleStorage Usage Examples
 
 SimpleStorage is used in these open source projects.
 Check how these repositories use it:
-* [Snapdrop](https://github.com/anggrayudi/snapdrop-android)
+
+* [Snapdrop](https://github.com/fm-sys/snapdrop-android)
 * [MaterialPreference](https://github.com/anggrayudi/MaterialPreference)
 * [Super Productivity](https://github.com/johannesjo/super-productivity-android)
 * [Shared Storage for Flutter](https://pub.dev/packages/shared_storage)
 * [Nextcloud Cookbook](https://codeberg.org/MicMun/nextcloud-cookbook)
+* [Audiobookshelf](https://github.com/advplyr/audiobookshelf-app)
 
 ## License
 
-    Copyright © 2020-2023 Anggrayudi Hardiannico A.
+    Copyright © 2020-2024 Anggrayudi Hardiannico A.
  
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.

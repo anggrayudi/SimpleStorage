@@ -1,6 +1,7 @@
 package com.anggrayudi.storage.sample
 
 import androidx.multidex.MultiDexApplication
+import timber.log.Timber
 
 /**
  * @author Anggrayudi Hardiannico A. (anggrayudi.hardiannico@dana.id)
@@ -10,5 +11,6 @@ class App : MultiDexApplication() {
 
     override fun onCreate() {
         super.onCreate()
+        Timber.plant(Timber.DebugTree())
     }
 }

@@ -3,7 +3,7 @@ package com.anggrayudi.storage.callback
 import androidx.annotation.RestrictTo
 import androidx.annotation.UiThread
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.callback.FileCallback.FileConflictAction
+import com.anggrayudi.storage.callback.SingleFileConflictCallback.FileConflictAction
 import com.anggrayudi.storage.file.CreateMode
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
@@ -14,22 +14,9 @@ import kotlinx.coroutines.GlobalScope
  * Created on 3/1/21
  * @author Anggrayudi H
  */
-abstract class FolderCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
-    uiScope: CoroutineScope = GlobalScope
-) : BaseFileCallback<FolderCallback.ErrorCode, FolderCallback.Report, FolderCallback.Result>(uiScope) {
-
-    @UiThread
-    open fun onCountingFiles() {
-        // default implementation
-    }
-
-    /**
-     * @param folder directory to be copied/moved
-     * @return Time interval to watch folder copy/move progress in milliseconds, otherwise `0` if you don't want to watch at all.
-     * Setting negative value will cancel the operation.
-     */
-    @UiThread
-    open fun onStart(folder: DocumentFile, totalFilesToCopy: Int, workerThread: Thread): Long = 0
+abstract class SingleFolderConflictCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
+    var uiScope: CoroutineScope = GlobalScope
+) {
 
     /**
      * Do not call `super` when you override this function.
@@ -56,14 +43,14 @@ abstract class FolderCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads
     class ParentFolderConflictAction(private val continuation: CancellableContinuation<ConflictResolution>) {
 
         fun confirmResolution(resolution: ConflictResolution) {
-            continuation.resumeWith(kotlin.Result.success(resolution))
+            continuation.resumeWith(Result.success(resolution))
         }
     }
 
     class FolderContentConflictAction(private val continuation: CancellableContinuation<List<FileConflict>>) {
 
         fun confirmResolution(resolutions: List<FileConflict>) {
-            continuation.resumeWith(kotlin.Result.success(resolutions))
+            continuation.resumeWith(Result.success(resolutions))
         }
     }
 
@@ -98,46 +85,15 @@ abstract class FolderCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads
 
         @RestrictTo(RestrictTo.Scope.LIBRARY)
         fun toFileConflictResolution() = when (this) {
-            REPLACE -> FileCallback.ConflictResolution.REPLACE
-            CREATE_NEW -> FileCallback.ConflictResolution.CREATE_NEW
-            else -> FileCallback.ConflictResolution.SKIP
+            REPLACE -> SingleFileConflictCallback.ConflictResolution.REPLACE
+            CREATE_NEW -> SingleFileConflictCallback.ConflictResolution.CREATE_NEW
+            else -> SingleFileConflictCallback.ConflictResolution.SKIP
         }
     }
 
     class FileConflict(
         val source: DocumentFile,
         val target: DocumentFile,
-        var solution: FileCallback.ConflictResolution = FileCallback.ConflictResolution.CREATE_NEW
+        var solution: SingleFileConflictCallback.ConflictResolution = SingleFileConflictCallback.ConflictResolution.CREATE_NEW
     )
-
-    enum class ErrorCode {
-        STORAGE_PERMISSION_DENIED,
-        CANNOT_CREATE_FILE_IN_TARGET,
-        SOURCE_FOLDER_NOT_FOUND,
-        SOURCE_FILE_NOT_FOUND,
-        INVALID_TARGET_FOLDER,
-        UNKNOWN_IO_ERROR,
-        CANCELED,
-        TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER,
-        NO_SPACE_LEFT_ON_TARGET_PATH
-    }
-
-    /**
-     * Only called if the returned [onStart] greater than `0`
-     *
-     * @param progress   in percent
-     * @param writeSpeed in bytes
-     * @param fileCount total files/folders that are successfully copied/moved
-     */
-    class Report(val progress: Float, val bytesMoved: Long, val writeSpeed: Int, val fileCount: Int)
-
-    /**
-     * If `totalCopiedFiles` are less than `totalFilesToCopy`, then some files cannot be copied/moved or the files are skipped due to [ConflictResolution.MERGE]
-     * [BaseFileCallback.onFailed] can be called before [BaseFileCallback.onCompleted] when an error has occurred.
-     * @param folder newly moved/copied file
-     * @param success `true` if the process is not canceled and no error during copy/move
-     * @param totalFilesToCopy total files, not folders
-     * @param totalCopiedFiles total files, not folders
-     */
-    class Result(val folder: DocumentFile, val totalFilesToCopy: Int, val totalCopiedFiles: Int, val success: Boolean)
 }

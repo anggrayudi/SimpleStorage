@@ -4,10 +4,10 @@ buildscript {
 
     addRepos(repositories)
 
-    ext.kotlin_version = '1.8.22'
+    ext.kotlin_version = '2.0.0'
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.0.2'
+        classpath 'com.android.tools.build:gradle:8.4.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.vanniktech:gradle-maven-publish-plugin:0.22.0'
         classpath 'org.jetbrains.dokka:dokka-gradle-plugin:1.7.20'
@@ -18,7 +18,7 @@ allprojects {
     addRepos(repositories)
 
     //Support @JvmDefault
-    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
         kotlinOptions {
             freeCompilerArgs = ['-Xjvm-default=all', '-opt-in=kotlin.RequiresOptIn']
             jvmTarget = '1.8'
@@ -41,11 +41,11 @@ subprojects {
 
     afterEvaluate {
         android {
-            compileSdkVersion 33
+            compileSdkVersion 34
 
             defaultConfig {
-                minSdkVersion 19
-                targetSdkVersion 33
+                minSdkVersion 21
+                targetSdkVersion 34
                 versionCode 1
                 versionName "$VERSION_NAME"
                 testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -61,7 +61,7 @@ subprojects {
                 buildConfig true
             }
         }
-        configurations.all {
+        configurations.configureEach {
             resolutionStrategy {
                 // Force Kotlin to use current version
                 force "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
@@ -79,6 +79,6 @@ subprojects {
     }
 }
 
-task clean(type: Delete) {
+tasks.register('clean', Delete) {
     delete rootProject.buildDir
 }
