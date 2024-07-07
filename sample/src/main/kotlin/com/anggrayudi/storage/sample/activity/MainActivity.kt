@@ -650,7 +650,7 @@ class MainActivity : AppCompatActivity() {
                 .show()
         }
 
-        override fun onCompleted(result: Any) {
+        override fun onCompleted(result: FileCallback.Result) {
             dialog?.dismiss()
             Toast.makeText(baseContext, "File copied successfully", Toast.LENGTH_SHORT).show()
         }
@@ -912,7 +912,6 @@ class MainActivity : AppCompatActivity() {
             thread {
                 file.openOutputStream(context)?.use {
                     try {
-                        @Suppress("BlockingMethodInNonBlockingContext")
                         it.write("Welcome to SimpleStorage!\nRequest code: $requestCode\nTime: ${System.currentTimeMillis()}".toByteArray())
                         launchOnUiThread {
                             Toast.makeText(

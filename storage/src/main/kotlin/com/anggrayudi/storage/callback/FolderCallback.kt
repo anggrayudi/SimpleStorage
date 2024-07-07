@@ -112,7 +112,7 @@ abstract class FolderCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads
         }
     }
 
-    class FileConflict(
+    data class FileConflict(
         val source: DocumentFile,
         val target: DocumentFile,
         var solution: FileCallback.ConflictResolution = FileCallback.ConflictResolution.CREATE_NEW
@@ -137,7 +137,7 @@ abstract class FolderCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads
      * @param writeSpeed in bytes
      * @param fileCount total files/folders that are successfully copied/moved
      */
-    class Report(val progress: Float, val bytesMoved: Long, val writeSpeed: Int, val fileCount: Int)
+    data class Report(val progress: Float, val bytesMoved: Long, val writeSpeed: Int, val fileCount: Int)
 
     /**
      * If `totalCopiedFiles` are less than `totalFilesToCopy`, then some files cannot be copied/moved or the files are skipped due to [ConflictResolution.MERGE]
@@ -147,7 +147,7 @@ abstract class FolderCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads
      * @param totalFilesToCopy total files, not folders
      * @param totalCopiedFiles total files, not folders
      */
-    class Result(
+    data class Result(
         val folder: DocumentFile,
         val totalFilesToCopy: Int,
         val totalCopiedFiles: Int,

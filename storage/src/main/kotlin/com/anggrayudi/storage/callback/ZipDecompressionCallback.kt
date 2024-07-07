@@ -82,7 +82,7 @@ abstract class ZipDecompressionCallback<T> @OptIn(DelicateCoroutinesApi::class) 
      * @param skippedDecompressedBytes total skipped bytes because the file already exists and the user has selected [FileCallback.ConflictResolution.SKIP]
      * @param bytesDecompressed total decompressed bytes, excluded skipped files
      */
-    class DecompressionInfo(
+    data class DecompressionInfo(
         val bytesDecompressed: Long,
         val skippedDecompressedBytes: Long,
         val totalFilesDecompressed: Int,

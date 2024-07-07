@@ -91,7 +91,7 @@ abstract class MultipleFileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOve
         }
     }
 
-    class ParentConflict(
+    data class ParentConflict(
         val source: DocumentFile,
         val target: DocumentFile,
         val canMerge: Boolean,
@@ -115,7 +115,7 @@ abstract class MultipleFileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOve
      * @param writeSpeed in bytes
      * @param fileCount total files/folders that are successfully copied/moved
      */
-    class Report(val progress: Float, val bytesMoved: Long, val writeSpeed: Int, val fileCount: Int)
+    data class Report(val progress: Float, val bytesMoved: Long, val writeSpeed: Int, val fileCount: Int)
 
     /**
      * If `totalCopiedFiles` are less than `totalFilesToCopy`, then some files cannot be copied/moved or the files are skipped due to [ConflictResolution.MERGE]
@@ -125,7 +125,7 @@ abstract class MultipleFileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOve
      * @param totalFilesToCopy total files, not folders
      * @param totalCopiedFiles total files, not folders
      */
-    class Result(
+    data class Result(
         val files: List<DocumentFile>,
         val totalFilesToCopy: Int,
         val totalCopiedFiles: Int,

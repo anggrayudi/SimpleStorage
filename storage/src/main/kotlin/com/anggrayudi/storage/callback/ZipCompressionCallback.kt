@@ -74,7 +74,7 @@ abstract class ZipCompressionCallback<T> @OptIn(DelicateCoroutinesApi::class)
     /**
      * @param progress always `0` when compressing [MediaFile]
      */
-    class Report(
+    data class Report(
         val progress: Float,
         val bytesCompressed: Long,
         val writeSpeed: Int,
