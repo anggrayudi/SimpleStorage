@@ -24,7 +24,6 @@ import com.anggrayudi.storage.extension.closeStreamQuietly
 import com.anggrayudi.storage.extension.getString
 import com.anggrayudi.storage.extension.isRawFile
 import com.anggrayudi.storage.extension.openInputStream
-import com.anggrayudi.storage.extension.postToUi
 import com.anggrayudi.storage.extension.replaceCompletely
 import com.anggrayudi.storage.extension.startCoroutineTimer
 import com.anggrayudi.storage.extension.toDocumentFile
@@ -67,22 +66,6 @@ class MediaFile(context: Context, val uri: Uri) {
     constructor(context: Context, rawFile: File) : this(context, Uri.fromFile(rawFile))
 
     private val context = context.applicationContext
-
-    interface AccessCallback {
-
-        /**
-         * When this function called, you can ask user's consent to modify other app's files.
-         * @see RecoverableSecurityException
-         * @see [android.app.Activity.startIntentSenderForResult]
-         */
-        fun onWriteAccessDenied(mediaFile: MediaFile, sender: IntentSender)
-    }
-
-    /**
-     * Only useful for Android 10 and higher.
-     * @see RecoverableSecurityException
-     */
-    var accessCallback: AccessCallback? = null
 
     /**
      * Some media files do not return file extension. This function helps you to fix this kind of issue.
@@ -185,7 +168,7 @@ class MediaFile(context: Context, val uri: Uri) {
      * from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT].
      * @see toDocumentFile
      */
-    @Deprecated("Accessing files with java.io.File only works on app private directory since Android 10.")
+    @Deprecated("Accessing files with java.io.File only works on app-private directories since Android 10.")
     fun toRawFile() = if (isRawFile) uri.path?.let { File(it) } else null
 
     fun toDocumentFile() = absolutePath.let {
@@ -339,11 +322,20 @@ class MediaFile(context: Context, val uri: Uri) {
             }
         }
 
-    private fun handleSecurityException(e: SecurityException, callback: FileCallback? = null) {
+    /**
+     * @param onWriteAccessDenied To ask for the user's consent to modify other app's files. Only called starting from Android 10.
+     * @see RecoverableSecurityException
+     * @see [android.app.Activity.startIntentSenderForResult]
+     */
+    private fun handleSecurityException(
+        e: SecurityException,
+        callback: FileCallback? = null,
+        onWriteAccessDenied: ((MediaFile, IntentSender) -> Unit)? = null
+    ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && e is RecoverableSecurityException) {
-            accessCallback?.onWriteAccessDenied(this, e.userAction.actionIntent.intentSender)
+            onWriteAccessDenied?.invoke(this, e.userAction.actionIntent.intentSender)
         } else {
-            callback?.uiScope?.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+            callback?.postToUiScope { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
         }
     }
 
@@ -409,9 +401,8 @@ class MediaFile(context: Context, val uri: Uri) {
         fileDescription: FileDescription? = null,
         callback: FileCallback
     ) {
-        val sourceFile = toDocumentFile()
-        if (sourceFile != null) {
-            sourceFile.moveFileTo(context, targetFolder, fileDescription, callback)
+        toDocumentFile()?.let {
+            it.moveFileTo(context, targetFolder, fileDescription, callback)
             return
         }
 
@@ -643,7 +634,13 @@ class MediaFile(context: Context, val uri: Uri) {
             if (deleteSourceFileWhenComplete) {
                 delete()
             }
-            callback.postToUiScope { callback.onCompleted(FileCallback.Result.DocumentFile(targetFile)) }
+            callback.postToUiScope {
+                callback.onCompleted(
+                    FileCallback.Result.DocumentFile(
+                        targetFile
+                    )
+                )
+            }
         } finally {
             timer?.cancel()
             inputStream.closeStreamQuietly()
