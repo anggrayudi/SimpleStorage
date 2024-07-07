@@ -80,7 +80,4 @@ dependencies {
     implementation deps.material_progressbar
     implementation 'androidx.preference:preference-ktx:1.2.0'
 
-    //test
-    testImplementation deps.junit
-    testImplementation deps.mockk
 }
