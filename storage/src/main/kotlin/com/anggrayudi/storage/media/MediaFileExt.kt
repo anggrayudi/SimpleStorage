@@ -39,10 +39,11 @@ fun List<MediaFile>.compressToZip(
     deleteSourceWhenComplete: Boolean = false,
     callback: ZipCompressionCallback<MediaFile>
 ) {
-    callback.uiScope.postToUi { callback.onCountingFiles() }
+    callback.uiScope.postToUi {  }
+    callback.postToUiScope { callback.onCountingFiles() }
     val entryFiles = distinctBy { it.uri }.filter { !it.isEmpty }
     if (entryFiles.isEmpty()) {
-        callback.uiScope.postToUi {
+        callback.postToUiScope {
             callback.onFailed(
                 ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE,
                 "No entry files found"
@@ -57,11 +58,11 @@ fun List<MediaFile>.compressToZip(
             ?.makeFile(context, targetZipFile.fullName, MimeType.ZIP)
     }
     if (zipFile == null) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+        callback.postToUiScope { callback.onFailed(ZipCompressionCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
         return
     }
     if (!zipFile.isWritable(context)) {
-        callback.uiScope.postToUi {
+        callback.postToUiScope {
             callback.onFailed(
                 ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED,
                 "Destination ZIP file is not writable"
@@ -90,7 +91,7 @@ fun List<MediaFile>.compressToZip(
                     writeSpeed,
                     fileCompressedCount
                 )
-                callback.uiScope.postToUi { callback.onReport(report) }
+                callback.postToUiScope { callback.onReport(report) }
                 writeSpeed = 0
             }
         }
@@ -110,9 +111,9 @@ fun List<MediaFile>.compressToZip(
         }
         success = true
     } catch (e: InterruptedIOException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.CANCELED) }
+        callback.postToUiScope { callback.onFailed(ZipCompressionCallback.ErrorCode.CANCELED) }
     } catch (e: FileNotFoundException) {
-        callback.uiScope.postToUi {
+        callback.postToUiScope {
             callback.onFailed(
                 ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE,
                 e.message
@@ -120,12 +121,12 @@ fun List<MediaFile>.compressToZip(
         }
     } catch (e: IOException) {
         if (e.message?.contains("no space", true) == true) {
-            callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
+            callback.postToUiScope { callback.onFailed(ZipCompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
         } else {
-            callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.UNKNOWN_IO_ERROR) }
+            callback.postToUiScope { callback.onFailed(ZipCompressionCallback.ErrorCode.UNKNOWN_IO_ERROR) }
         }
     } catch (e: SecurityException) {
-        callback.uiScope.postToUi {
+        callback.postToUiScope {
             callback.onFailed(
                 ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED,
                 e.message
@@ -138,11 +139,11 @@ fun List<MediaFile>.compressToZip(
     }
     if (success) {
         if (deleteSourceWhenComplete) {
-            callback.uiScope.postToUi { callback.onDeleteEntryFiles() }
+            callback.postToUiScope { callback.onDeleteEntryFiles() }
             forEach { it.delete() }
         }
         val sizeReduction = (bytesCompressed - zipFile.length()).toFloat() / bytesCompressed * 100
-        callback.uiScope.postToUi {
+        callback.postToUiScope {
             callback.onCompleted(
                 zipFile,
                 bytesCompressed,
@@ -161,13 +162,13 @@ fun MediaFile.decompressZip(
     targetFolder: DocumentFile,
     callback: ZipDecompressionCallback<MediaFile>
 ) {
-    callback.uiScope.postToUi { callback.onValidate() }
+    callback.postToUiScope { callback.onValidate() }
     if (isEmpty) {
-        callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.MISSING_ZIP_FILE) }
+        callback.postToUiScope { callback.onFailed(ZipDecompressionCallback.ErrorCode.MISSING_ZIP_FILE) }
         return
     }
     if (mimeType != MimeType.ZIP) {
-        callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.NOT_A_ZIP_FILE) }
+        callback.postToUiScope { callback.onFailed(ZipDecompressionCallback.ErrorCode.NOT_A_ZIP_FILE) }
         return
     }
 
@@ -176,7 +177,7 @@ fun MediaFile.decompressZip(
         destFolder = targetFolder.findParent(context)?.makeFolder(context, targetFolder.fullName)
     }
     if (destFolder == null || !destFolder.isWritable(context)) {
-        callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        callback.postToUiScope { callback.onFailed(ZipDecompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
         return
     }
 
@@ -201,7 +202,7 @@ fun MediaFile.decompressZip(
                     writeSpeed,
                     fileDecompressedCount
                 )
-                callback.uiScope.postToUi { callback.onReport(report) }
+                callback.postToUiScope { callback.onReport(report) }
                 writeSpeed = 0
             }
         }
@@ -222,7 +223,7 @@ fun MediaFile.decompressZip(
                 val fileName = entry.name.substringAfterLast('/')
                 targetFile = folder.makeFile(context, fileName)
                 if (targetFile == null) {
-                    callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+                    callback.postToUiScope { callback.onFailed(ZipDecompressionCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
                     canSuccess = false
                     break
                 }
@@ -247,17 +248,17 @@ fun MediaFile.decompressZip(
         }
         success = canSuccess
     } catch (e: InterruptedIOException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.CANCELED) }
+        callback.postToUiScope { callback.onFailed(ZipDecompressionCallback.ErrorCode.CANCELED) }
     } catch (e: FileNotFoundException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.MISSING_ZIP_FILE) }
+        callback.postToUiScope { callback.onFailed(ZipDecompressionCallback.ErrorCode.MISSING_ZIP_FILE) }
     } catch (e: IOException) {
         if (e.message?.contains("no space", true) == true) {
-            callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
+            callback.postToUiScope { callback.onFailed(ZipDecompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
         } else {
-            callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.UNKNOWN_IO_ERROR) }
+            callback.postToUiScope { callback.onFailed(ZipDecompressionCallback.ErrorCode.UNKNOWN_IO_ERROR) }
         }
     } catch (e: SecurityException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+        callback.postToUiScope { callback.onFailed(ZipDecompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
     } finally {
         timer?.cancel()
         zis.closeEntryQuietly()
@@ -270,7 +271,7 @@ fun MediaFile.decompressZip(
             fileDecompressedCount,
             0f
         )
-        callback.uiScope.postToUi { callback.onCompleted(this, destFolder, info) }
+        callback.postToUiScope { callback.onCompleted(this, destFolder, info) }
     } else {
         targetFile?.delete()
     }

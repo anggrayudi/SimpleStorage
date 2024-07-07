@@ -422,7 +422,7 @@ class MediaFile(context: Context, val uri: Uri) {
                 ), length
             )
         ) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
+            callback.postToUiScope { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
             return
         }
 
@@ -435,7 +435,7 @@ class MediaFile(context: Context, val uri: Uri) {
                 CreateMode.REUSE
             )
             if (directory == null) {
-                callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+                callback.postToUiScope { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
                 return
             } else {
                 directory
@@ -475,7 +475,7 @@ class MediaFile(context: Context, val uri: Uri) {
         } catch (e: SecurityException) {
             handleSecurityException(e, callback)
         } catch (e: Exception) {
-            callback.uiScope.postToUi { callback.onFailed(e.toFileCallbackErrorCode()) }
+            callback.postToUiScope { callback.onFailed(e.toFileCallbackErrorCode()) }
         }
     }
 
@@ -498,7 +498,7 @@ class MediaFile(context: Context, val uri: Uri) {
                 ), length
             )
         ) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
+            callback.postToUiScope { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
             return
         }
 
@@ -511,7 +511,7 @@ class MediaFile(context: Context, val uri: Uri) {
                 CreateMode.REUSE
             )
             if (directory == null) {
-                callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+                callback.postToUiScope { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
                 return
             } else {
                 directory
@@ -550,7 +550,7 @@ class MediaFile(context: Context, val uri: Uri) {
         } catch (e: SecurityException) {
             handleSecurityException(e, callback)
         } catch (e: Exception) {
-            callback.uiScope.postToUi { callback.onFailed(e.toFileCallbackErrorCode()) }
+            callback.postToUiScope { callback.onFailed(e.toFileCallbackErrorCode()) }
         }
     }
 
@@ -569,20 +569,20 @@ class MediaFile(context: Context, val uri: Uri) {
             )
             val targetFolder = DocumentFileCompat.mkdirs(context, absolutePath)
             if (targetFolder == null) {
-                callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
+                callback.postToUiScope { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
                 return null
             }
 
             val targetFile = targetFolder.makeFile(context, fileName, mimeType, mode)
             if (targetFile == null) {
-                callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+                callback.postToUiScope { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
             } else {
                 return targetFile
             }
         } catch (e: SecurityException) {
             handleSecurityException(e, callback)
         } catch (e: Exception) {
-            callback.uiScope.postToUi { callback.onFailed(e.toFileCallbackErrorCode()) }
+            callback.postToUiScope { callback.onFailed(e.toFileCallbackErrorCode()) }
         }
         return null
     }
@@ -594,13 +594,13 @@ class MediaFile(context: Context, val uri: Uri) {
     ) {
         val outputStream = targetFile.openOutputStream(context)
         if (outputStream == null) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.TARGET_FILE_NOT_FOUND) }
+            callback.postToUiScope { callback.onFailed(FileCallback.ErrorCode.TARGET_FILE_NOT_FOUND) }
             return
         }
 
         val inputStream = openInputStream()
         if (inputStream == null) {
-            callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND) }
+            callback.postToUiScope { callback.onFailed(FileCallback.ErrorCode.SOURCE_FILE_NOT_FOUND) }
             outputStream.closeStreamQuietly()
             return
         }
@@ -627,7 +627,7 @@ class MediaFile(context: Context, val uri: Uri) {
                 timer = startCoroutineTimer(repeatMillis = reportInterval) {
                     val report =
                         FileCallback.Report(bytesMoved * 100f / srcSize, bytesMoved, writeSpeed)
-                    callback.uiScope.postToUi { callback.onReport(report) }
+                    callback.postToUiScope { callback.onReport(report) }
                     writeSpeed = 0
                 }
             }
@@ -643,7 +643,7 @@ class MediaFile(context: Context, val uri: Uri) {
             if (deleteSourceFileWhenComplete) {
                 delete()
             }
-            callback.uiScope.postToUi { callback.onCompleted(FileCallback.Result.DocumentFile(targetFile)) }
+            callback.postToUiScope { callback.onCompleted(FileCallback.Result.DocumentFile(targetFile)) }
         } finally {
             timer?.cancel()
             inputStream.closeStreamQuietly()
@@ -662,7 +662,7 @@ class MediaFile(context: Context, val uri: Uri) {
             }
             if (resolution == FileCallback.ConflictResolution.REPLACE) {
                 if (!targetFile.forceDelete(context)) {
-                    callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
+                    callback.postToUiScope { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
                     return FileCallback.ConflictResolution.SKIP
                 }
             }

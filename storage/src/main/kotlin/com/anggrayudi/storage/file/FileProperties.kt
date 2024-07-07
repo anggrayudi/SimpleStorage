@@ -3,6 +3,7 @@ package com.anggrayudi.storage.file
 import android.content.Context
 import android.text.format.Formatter
 import androidx.annotation.UiThread
+import com.anggrayudi.storage.callback.ScopeHoldingCallback
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -29,8 +30,8 @@ data class FileProperties(
     abstract class CalculationCallback(
         val updateInterval: Long = 500, // 500ms
         @OptIn(DelicateCoroutinesApi::class)
-        var uiScope: CoroutineScope = GlobalScope
-    ) {
+        override val uiScope: CoroutineScope = GlobalScope
+    ) : ScopeHoldingCallback {
 
         @UiThread
         open fun onUpdate(properties: FileProperties) {
