@@ -151,7 +151,6 @@ fun File.inKitkatSdCard() =
  * @return `true` if you have full disk access
  * @see Environment.isExternalStorageManager
  */
-@Suppress("DEPRECATION")
 fun File.isExternalStorageManager(context: Context) = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q && Environment.isExternalStorageManager(this)
         || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
         (path.startsWith(SimpleStorage.externalStoragePath) || Build.VERSION.SDK_INT < 21 && path.startsWith(StorageId.KITKAT_SDCARD))

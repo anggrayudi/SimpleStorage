@@ -297,7 +297,6 @@ object DocumentFileCompat {
      */
     @JvmOverloads
     @JvmStatic
-    @Suppress("DEPRECATION")
     fun fromPublicFolder(
         context: Context,
         type: PublicDirectory,
@@ -395,7 +394,6 @@ object DocumentFileCompat {
      * @param fullPath construct it using [buildAbsolutePath] or [buildSimplePath]
      * @return `null` if accessible root path is not found in [ContentResolver.getPersistedUriPermissions], or the folder does not exist.
      */
-    @Suppress("DEPRECATION")
     @JvmOverloads
     @JvmStatic
     fun getAccessibleRootDocumentFile(
@@ -456,7 +454,6 @@ object DocumentFileCompat {
      */
     @JvmOverloads
     @JvmStatic
-    @Suppress("DEPRECATION")
     fun getRootRawFile(
         context: Context,
         storageId: String,

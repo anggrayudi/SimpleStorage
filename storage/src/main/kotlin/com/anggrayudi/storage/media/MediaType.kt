@@ -35,7 +35,6 @@ enum class MediaType(val readUri: Uri?, val writeUri: Uri?) {
     /**
      * Get all directories associated with this media type.
      */
-    @Suppress("DEPRECATION")
     val directories: List<File>
         get() = when (this) {
             IMAGE -> ImageMediaDirectory.values()

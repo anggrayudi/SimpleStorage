@@ -186,7 +186,6 @@ object MediaStoreCompat {
                 else -> tryInsertMediaFile(context, mediaType, contentValues)
             }
         } else {
-            @Suppress("DEPRECATION")
             val publicDirectory = Environment.getExternalStoragePublicDirectory(folderName)
             if (publicDirectory.canModify(context)) {
                 val filename = file.fullName
@@ -253,7 +252,6 @@ object MediaStoreCompat {
     @JvmStatic
     fun fromFileName(context: Context, mediaType: MediaType, name: String): MediaFile? {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
             File(PublicDirectory.DOWNLOADS.file, name).let {
                 if (it.isFile && it.canRead()) MediaFile(context, it) else null
             }
@@ -279,7 +277,6 @@ object MediaStoreCompat {
     fun fromBasePath(context: Context, mediaType: MediaType, basePath: String): MediaFile? {
         val cleanBasePath = basePath.removeForbiddenCharsFromFilename().trimFileSeparator()
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
             File(
                 Environment.getExternalStorageDirectory(),
                 cleanBasePath
@@ -328,7 +325,6 @@ object MediaStoreCompat {
     fun fromRelativePath(context: Context, relativePath: String): List<MediaFile> {
         val cleanRelativePath = relativePath.trimFileSeparator()
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
             DocumentFile.fromFile(
                 File(
                     Environment.getExternalStorageDirectory(),
@@ -361,7 +357,6 @@ object MediaStoreCompat {
     fun fromRelativePath(context: Context, relativePath: String, name: String): MediaFile? {
         val cleanRelativePath = relativePath.trimFileSeparator()
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
             DocumentFile.fromFile(
                 File(
                     Environment.getExternalStorageDirectory(),
@@ -397,7 +392,6 @@ object MediaStoreCompat {
     ): List<MediaFile> {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
-                @Suppress("DEPRECATION")
                 DocumentFile.fromFile(directory)
                     .search(
                         true,
@@ -424,7 +418,6 @@ object MediaStoreCompat {
     fun fromMimeType(context: Context, mediaType: MediaType, mimeType: String): List<MediaFile> {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
-                @Suppress("DEPRECATION")
                 DocumentFile.fromFile(directory)
                     .search(true, DocumentFileType.FILE, arrayOf(mimeType))
                     .map { MediaFile(context, File(it.uri.path!!)) }
@@ -447,7 +440,6 @@ object MediaStoreCompat {
     fun fromMediaType(context: Context, mediaType: MediaType): List<MediaFile> {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mediaType.directories.map { directory ->
-                @Suppress("DEPRECATION")
                 DocumentFile.fromFile(directory)
                     .search(true, mimeTypes = arrayOf(mediaType.mimeType))
                     .map { MediaFile(context, File(it.uri.path!!)) }
