@@ -56,3 +56,4 @@ fastlane/readme.md
 
 # Java dump memory
 *.hprof
+/.kotlin/

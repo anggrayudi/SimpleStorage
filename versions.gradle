@@ -7,7 +7,7 @@ def versions = [:]
 versions.activity = "1.6.0"
 versions.appcompat = "1.5.1"
 versions.core_ktx = "1.9.0"
-versions.coroutines = "1.6.4"
+versions.coroutines = "1.8.1"
 versions.documentfile = "1.0.1"
 versions.fragment = "1.5.3"
 versions.junit = "5.9.1"
@@ -31,9 +31,7 @@ deps.multidex = "androidx.multidex:multidex:$versions.multidex"
 deps.documentfile = "androidx.documentfile:documentfile:$versions.documentfile"
 
 def coroutines = [:]
-coroutines.core = "org.jetbrains.kotlinx:kotlinx-coroutines-core:$versions.coroutines"
 coroutines.android = "org.jetbrains.kotlinx:kotlinx-coroutines-android:$versions.coroutines"
-coroutines.test = "org.jetbrains.kotlinx:kotlinx-coroutines-test:$versions.coroutines"
 deps.coroutines = coroutines
 
 // Testing ------------------------------
