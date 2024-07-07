@@ -121,7 +121,13 @@ class MediaFile(context: Context, val uri: Uri) {
      */
     @Suppress("DEPRECATION")
     val type: String?
-        get() = toRawFile()?.name?.let { MimeType.getMimeTypeFromExtension(MimeType.getExtensionFromFileName(it)) }
+        get() = toRawFile()?.name?.let {
+            MimeType.getMimeTypeFromExtension(
+                MimeType.getExtensionFromFileName(
+                    it
+                )
+            )
+        }
             ?: getColumnInfoString(MediaStore.MediaColumns.MIME_TYPE)
 
     /**
@@ -136,7 +142,8 @@ class MediaFile(context: Context, val uri: Uri) {
         get() = toRawFile()?.length() ?: getColumnInfoLong(MediaStore.MediaColumns.SIZE)
         set(value) {
             try {
-                val contentValues = ContentValues(1).apply { put(MediaStore.MediaColumns.SIZE, value) }
+                val contentValues =
+                    ContentValues(1).apply { put(MediaStore.MediaColumns.SIZE, value) }
                 context.contentResolver.update(uri, contentValues, null, null)
             } catch (e: SecurityException) {
                 handleSecurityException(e)
@@ -192,7 +199,12 @@ class MediaFile(context: Context, val uri: Uri) {
     @Deprecated("Accessing files with java.io.File only works on app private directory since Android 10.")
     fun toRawFile() = if (isRawFile) uri.path?.let { File(it) } else null
 
-    fun toDocumentFile() = absolutePath.let { if (it.isEmpty()) null else DocumentFileCompat.fromFullPath(context, it) }
+    fun toDocumentFile() = absolutePath.let {
+        if (it.isEmpty()) null else DocumentFileCompat.fromFullPath(
+            context,
+            it
+        )
+    }
 
     @Suppress("DEPRECATION")
     val absolutePath: String
@@ -203,7 +215,13 @@ class MediaFile(context: Context, val uri: Uri) {
                 file != null -> file.path
                 Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> {
                     try {
-                        context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)?.use { cursor ->
+                        context.contentResolver.query(
+                            uri,
+                            arrayOf(MediaStore.MediaColumns.DATA),
+                            null,
+                            null,
+                            null
+                        )?.use { cursor ->
                             if (cursor.moveToFirst()) {
                                 cursor.getString(MediaStore.MediaColumns.DATA)
                             } else ""
@@ -214,14 +232,22 @@ class MediaFile(context: Context, val uri: Uri) {
                 }
 
                 else -> {
-                    val projection = arrayOf(MediaStore.MediaColumns.RELATIVE_PATH, MediaStore.MediaColumns.DISPLAY_NAME)
-                    context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-                        if (cursor.moveToFirst()) {
-                            val relativePath = cursor.getString(MediaStore.MediaColumns.RELATIVE_PATH) ?: return ""
-                            val name = cursor.getString(MediaStore.MediaColumns.DISPLAY_NAME)
-                            "${SimpleStorage.externalStoragePath}/$relativePath/$name".trimEnd('/').replaceCompletely("//", "/")
-                        } else ""
-                    }.orEmpty()
+                    val projection = arrayOf(
+                        MediaStore.MediaColumns.RELATIVE_PATH,
+                        MediaStore.MediaColumns.DISPLAY_NAME
+                    )
+                    context.contentResolver.query(uri, projection, null, null, null)
+                        ?.use { cursor ->
+                            if (cursor.moveToFirst()) {
+                                val relativePath =
+                                    cursor.getString(MediaStore.MediaColumns.RELATIVE_PATH)
+                                        ?: return ""
+                                val name = cursor.getString(MediaStore.MediaColumns.DISPLAY_NAME)
+                                "${SimpleStorage.externalStoragePath}/$relativePath/$name".trimEnd(
+                                    '/'
+                                ).replaceCompletely("//", "/")
+                            } else ""
+                        }.orEmpty()
                 }
             }
         }
@@ -239,16 +265,28 @@ class MediaFile(context: Context, val uri: Uri) {
             val file = toRawFile()
             return when {
                 file != null -> {
-                    file.path.substringBeforeLast('/').replaceFirst(SimpleStorage.externalStoragePath, "").trimFileSeparator() + "/"
+                    file.path.substringBeforeLast('/')
+                        .replaceFirst(SimpleStorage.externalStoragePath, "")
+                        .trimFileSeparator() + "/"
                 }
 
                 Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> {
                     try {
-                        context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)?.use { cursor ->
+                        context.contentResolver.query(
+                            uri,
+                            arrayOf(MediaStore.MediaColumns.DATA),
+                            null,
+                            null,
+                            null
+                        )?.use { cursor ->
                             if (cursor.moveToFirst()) {
                                 val realFolderAbsolutePath =
-                                    cursor.getString(MediaStore.MediaColumns.DATA).orEmpty().substringBeforeLast('/')
-                                realFolderAbsolutePath.replaceFirst(SimpleStorage.externalStoragePath, "").trimFileSeparator() + "/"
+                                    cursor.getString(MediaStore.MediaColumns.DATA).orEmpty()
+                                        .substringBeforeLast('/')
+                                realFolderAbsolutePath.replaceFirst(
+                                    SimpleStorage.externalStoragePath,
+                                    ""
+                                ).trimFileSeparator() + "/"
                             } else ""
                         }.orEmpty()
                     } catch (e: Exception) {
@@ -258,11 +296,12 @@ class MediaFile(context: Context, val uri: Uri) {
 
                 else -> {
                     val projection = arrayOf(MediaStore.MediaColumns.RELATIVE_PATH)
-                    context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-                        if (cursor.moveToFirst()) {
-                            cursor.getString(MediaStore.MediaColumns.RELATIVE_PATH)
-                        } else ""
-                    }.orEmpty()
+                    context.contentResolver.query(uri, projection, null, null, null)
+                        ?.use { cursor ->
+                            if (cursor.moveToFirst()) {
+                                cursor.getString(MediaStore.MediaColumns.RELATIVE_PATH)
+                            } else ""
+                        }.orEmpty()
                 }
             }
         }
@@ -287,7 +326,8 @@ class MediaFile(context: Context, val uri: Uri) {
     @Suppress("DEPRECATION")
     fun renameTo(newName: String): Boolean {
         val file = toRawFile()
-        val contentValues = ContentValues(1).apply { put(MediaStore.MediaColumns.DISPLAY_NAME, newName) }
+        val contentValues =
+            ContentValues(1).apply { put(MediaStore.MediaColumns.DISPLAY_NAME, newName) }
         return if (file != null) {
             context.contentResolver.update(uri, contentValues, null, null)
             file.renameTo(File(file.parent, newName))
@@ -305,7 +345,8 @@ class MediaFile(context: Context, val uri: Uri) {
         get() = getColumnInfoInt(MediaStore.MediaColumns.IS_PENDING) == 1
         @RequiresApi(Build.VERSION_CODES.Q)
         set(value) {
-            val contentValues = ContentValues(1).apply { put(MediaStore.MediaColumns.IS_PENDING, value.toInt()) }
+            val contentValues =
+                ContentValues(1).apply { put(MediaStore.MediaColumns.IS_PENDING, value.toInt()) }
             try {
                 context.contentResolver.update(uri, contentValues, null, null)
             } catch (e: SecurityException) {
@@ -313,7 +354,10 @@ class MediaFile(context: Context, val uri: Uri) {
             }
         }
 
-    private fun handleSecurityException(e: SecurityException, scope: ProducerScope<SingleFileResult>? = null) {
+    private fun handleSecurityException(
+        e: SecurityException,
+        scope: ProducerScope<SingleFileResult>? = null
+    ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && e is RecoverableSecurityException) {
             accessCallback?.onWriteAccessDenied(this, e.userAction.actionIntent.intentSender)
         } else {
@@ -323,7 +367,13 @@ class MediaFile(context: Context, val uri: Uri) {
 
     @UiThread
     fun openFileIntent(authority: String) = Intent(Intent.ACTION_VIEW)
-        .setData(if (isRawFile) FileProvider.getUriForFile(context, authority, File(uri.path!!)) else uri)
+        .setData(
+            if (isRawFile) FileProvider.getUriForFile(
+                context,
+                authority,
+                File(uri.path!!)
+            ) else uri
+        )
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
@@ -363,7 +413,8 @@ class MediaFile(context: Context, val uri: Uri) {
 
     @TargetApi(Build.VERSION_CODES.Q)
     fun moveTo(relativePath: String): Boolean {
-        val contentValues = ContentValues(1).apply { put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath) }
+        val contentValues =
+            ContentValues(1).apply { put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath) }
         return try {
             context.contentResolver.update(uri, contentValues, null, null) > 0
         } catch (e: SecurityException) {
@@ -382,11 +433,26 @@ class MediaFile(context: Context, val uri: Uri) {
     ): Flow<SingleFileResult> = callbackFlow {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sendAll(sourceFile.moveFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict))
+            sendAll(
+                sourceFile.moveFileTo(
+                    context,
+                    targetFolder,
+                    fileDescription,
+                    updateInterval,
+                    isFileSizeAllowed,
+                    onConflict
+                )
+            )
             return@callbackFlow
         }
 
-        if (!isFileSizeAllowed(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), length)) {
+        if (!isFileSizeAllowed(
+                DocumentFileCompat.getFreeSpace(
+                    context,
+                    targetFolder.getStorageId(context)
+                ), length
+            )
+        ) {
             sendAndClose(SingleFileResult.Error(SingleFileErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
             return@callbackFlow
         }
@@ -394,7 +460,11 @@ class MediaFile(context: Context, val uri: Uri) {
         val targetDirectory = if (fileDescription?.subFolder.isNullOrEmpty()) {
             targetFolder
         } else {
-            val directory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
+            val directory = targetFolder.makeFolder(
+                context,
+                fileDescription?.subFolder.orEmpty(),
+                CreateMode.REUSE
+            )
             if (directory == null) {
                 sendAndClose(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                 return@callbackFlow
@@ -403,9 +473,13 @@ class MediaFile(context: Context, val uri: Uri) {
             }
         }
 
-        val cleanFileName = MimeType.getFullFileName(fileDescription?.name ?: name.orEmpty(), fileDescription?.mimeType ?: type)
+        val cleanFileName = MimeType.getFullFileName(
+            fileDescription?.name ?: name.orEmpty(),
+            fileDescription?.mimeType ?: type
+        )
             .removeForbiddenCharsFromFilename().trimFileSeparator()
-        val conflictResolution = handleFileConflict(targetDirectory, cleanFileName, this, onConflict)
+        val conflictResolution =
+            handleFileConflict(targetDirectory, cleanFileName, this, onConflict)
         if (conflictResolution == SingleFileConflictCallback.ConflictResolution.SKIP) {
             close()
             return@callbackFlow
@@ -441,11 +515,26 @@ class MediaFile(context: Context, val uri: Uri) {
     ): Flow<SingleFileResult> = callbackFlow {
         val sourceFile = toDocumentFile()
         if (sourceFile != null) {
-            sendAll(sourceFile.copyFileTo(context, targetFolder, fileDescription, updateInterval, isFileSizeAllowed, onConflict))
+            sendAll(
+                sourceFile.copyFileTo(
+                    context,
+                    targetFolder,
+                    fileDescription,
+                    updateInterval,
+                    isFileSizeAllowed,
+                    onConflict
+                )
+            )
             return@callbackFlow
         }
 
-        if (!isFileSizeAllowed(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), length)) {
+        if (!isFileSizeAllowed(
+                DocumentFileCompat.getFreeSpace(
+                    context,
+                    targetFolder.getStorageId(context)
+                ), length
+            )
+        ) {
             sendAndClose(SingleFileResult.Error(SingleFileErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
             return@callbackFlow
         }
@@ -453,7 +542,11 @@ class MediaFile(context: Context, val uri: Uri) {
         val targetDirectory = if (fileDescription?.subFolder.isNullOrEmpty()) {
             targetFolder
         } else {
-            val directory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
+            val directory = targetFolder.makeFolder(
+                context,
+                fileDescription?.subFolder.orEmpty(),
+                CreateMode.REUSE
+            )
             if (directory == null) {
                 sendAndClose(SingleFileResult.Error(SingleFileErrorCode.CANNOT_CREATE_FILE_IN_TARGET))
                 return@callbackFlow
@@ -462,9 +555,13 @@ class MediaFile(context: Context, val uri: Uri) {
             }
         }
 
-        val cleanFileName = MimeType.getFullFileName(fileDescription?.name ?: name.orEmpty(), fileDescription?.mimeType ?: type)
+        val cleanFileName = MimeType.getFullFileName(
+            fileDescription?.name ?: name.orEmpty(),
+            fileDescription?.mimeType ?: type
+        )
             .removeForbiddenCharsFromFilename().trimFileSeparator()
-        val conflictResolution = handleFileConflict(targetDirectory, cleanFileName, this, onConflict)
+        val conflictResolution =
+            handleFileConflict(targetDirectory, cleanFileName, this, onConflict)
         if (conflictResolution == SingleFileConflictCallback.ConflictResolution.SKIP) {
             close()
             return@callbackFlow
@@ -498,7 +595,11 @@ class MediaFile(context: Context, val uri: Uri) {
         scope: ProducerScope<SingleFileResult>,
     ): DocumentFile? {
         try {
-            val absolutePath = DocumentFileCompat.buildAbsolutePath(context, targetDirectory.getStorageId(context), targetDirectory.getBasePath(context))
+            val absolutePath = DocumentFileCompat.buildAbsolutePath(
+                context,
+                targetDirectory.getStorageId(context),
+                targetDirectory.getBasePath(context)
+            )
             val targetFolder = DocumentFileCompat.mkdirs(context, absolutePath)
             if (targetFolder == null) {
                 scope.trySend(SingleFileResult.Error(SingleFileErrorCode.STORAGE_PERMISSION_DENIED))
@@ -556,7 +657,13 @@ class MediaFile(context: Context, val uri: Uri) {
             // using timer on small file is useless. We set minimum 10MB.
             if (updateInterval > 0 && srcSize > 10 * FileSize.MB) {
                 timer = startCoroutineTimer(repeatMillis = updateInterval) {
-                    scope.trySend(SingleFileResult.InProgress(bytesMoved * 100f / srcSize, bytesMoved, writeSpeed))
+                    scope.trySend(
+                        SingleFileResult.InProgress(
+                            bytesMoved * 100f / srcSize,
+                            bytesMoved,
+                            writeSpeed
+                        )
+                    )
                     writeSpeed = 0
                 }
             }
@@ -572,7 +679,7 @@ class MediaFile(context: Context, val uri: Uri) {
             if (deleteSourceFileWhenComplete) {
                 delete()
             }
-            scope.trySend(SingleFileResult.Completed(targetFile))
+            scope.trySend(SingleFileResult.Completed.DocumentFile(targetFile))
         } finally {
             timer?.cancel()
             inputStream.closeStreamQuietly()
@@ -588,7 +695,10 @@ class MediaFile(context: Context, val uri: Uri) {
     ): SingleFileConflictCallback.ConflictResolution {
         targetFolder.child(context, fileName)?.let { targetFile ->
             val resolution = awaitUiResultWithPending(onConflict.uiScope) {
-                onConflict.onFileConflict(targetFile, SingleFileConflictCallback.FileConflictAction(it))
+                onConflict.onFileConflict(
+                    targetFile,
+                    SingleFileConflictCallback.FileConflictAction(it)
+                )
             }
             if (resolution == SingleFileConflictCallback.ConflictResolution.REPLACE) {
                 if (!targetFile.forceDelete(context)) {
