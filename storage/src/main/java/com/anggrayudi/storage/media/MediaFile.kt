@@ -431,10 +431,9 @@ class MediaFile(context: Context, val uri: Uri) {
         isFileSizeAllowed: CheckFileSize = defaultFileSizeChecker,
         onConflict: SingleFileConflictCallback<DocumentFile>
     ): Flow<SingleFileResult> = callbackFlow {
-        val sourceFile = toDocumentFile()
-        if (sourceFile != null) {
+        toDocumentFile()?.let {
             sendAll(
-                sourceFile.moveFileTo(
+                it.moveFileTo(
                     context,
                     targetFolder,
                     fileDescription,
