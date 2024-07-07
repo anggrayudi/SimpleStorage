@@ -11,7 +11,11 @@ import com.afollestad.materialdialogs.MaterialDialog
 import com.anggrayudi.storage.SimpleStorageHelper
 import com.anggrayudi.storage.file.fullName
 import com.anggrayudi.storage.file.getAbsolutePath
-import com.anggrayudi.storage.permission.*
+import com.anggrayudi.storage.permission.FragmentPermissionRequest
+import com.anggrayudi.storage.permission.PermissionCallback
+import com.anggrayudi.storage.permission.PermissionReport
+import com.anggrayudi.storage.permission.PermissionRequest
+import com.anggrayudi.storage.permission.PermissionResult
 import com.anggrayudi.storage.sample.R
 import com.anggrayudi.storage.sample.activity.MainActivity
 import com.anggrayudi.storage.sample.databinding.InclBaseOperationBinding
@@ -24,11 +28,18 @@ class SampleFragment : Fragment(R.layout.incl_base_operation) {
 
     // In Fragment, build permissionRequest before onCreate() is called
     private val permissionRequest = FragmentPermissionRequest.Builder(this)
-        .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
+        .withPermissions(
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        )
         .withCallback(object : PermissionCallback {
             override fun onPermissionsChecked(result: PermissionResult, fromSystemDialog: Boolean) {
                 val grantStatus = if (result.areAllPermissionsGranted) "granted" else "denied"
-                Toast.makeText(requireContext(), "Storage permissions are $grantStatus", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    "Storage permissions are $grantStatus",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
 
             override fun onDisplayConsentDialog(request: PermissionRequest) {
@@ -86,17 +97,29 @@ class SampleFragment : Fragment(R.layout.incl_base_operation) {
         }
 
         binding.btnCreateFile.setOnClickListener {
-            storageHelper.createFile("text/plain", "Test create file", requestCode = MainActivity.REQUEST_CODE_CREATE_FILE)
+            storageHelper.createFile(
+                "text/plain",
+                "Test create file",
+                requestCode = MainActivity.REQUEST_CODE_CREATE_FILE
+            )
         }
     }
 
     private fun setupSimpleStorage(savedInstanceState: Bundle?) {
         storageHelper = SimpleStorageHelper(this, savedInstanceState)
         storageHelper.onFileSelected = { requestCode, files ->
-            Toast.makeText(requireContext(), "File selected: ${files.first().fullName}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                requireContext(),
+                "File selected: ${files.first().fullName}",
+                Toast.LENGTH_SHORT
+            ).show()
         }
         storageHelper.onFolderSelected = { requestCode, folder ->
-            Toast.makeText(requireContext(), folder.getAbsolutePath(requireContext()), Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                requireContext(),
+                folder.getAbsolutePath(requireContext()),
+                Toast.LENGTH_SHORT
+            ).show()
         }
         storageHelper.onFileCreated = { requestCode, file ->
             MainActivity.writeTestFile(requireContext().applicationContext, requestCode, file)

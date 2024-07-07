@@ -11,7 +11,12 @@ import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.StorageId.PRIMARY
 import com.anggrayudi.storage.file.getStorageId
 import com.anggrayudi.storage.media.MediaFile
-import java.io.*
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 
 /**
  * Created on 12/15/20
@@ -67,7 +72,10 @@ fun Uri.openOutputStream(context: Context, append: Boolean = true): OutputStream
         if (isRawFile) {
             FileOutputStream(File(path ?: return null), append)
         } else {
-            context.contentResolver.openOutputStream(this, if (append && isTreeDocumentFile) "wa" else "w")
+            context.contentResolver.openOutputStream(
+                this,
+                if (append && isTreeDocumentFile) "wa" else "w"
+            )
         }
     } catch (e: IOException) {
         null

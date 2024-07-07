@@ -16,9 +16,10 @@ internal class FragmentWrapper(private val fragment: Fragment) : ComponentWrappe
     lateinit var storage: SimpleStorage
     var requestCode = 0
 
-    private val activityResultLauncher = fragment.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        storage.onActivityResult(requestCode, it.resultCode, it.data)
-    }
+    private val activityResultLauncher =
+        fragment.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            storage.onActivityResult(requestCode, it.resultCode, it.data)
+        }
 
     override val context: Context
         get() = fragment.requireContext()

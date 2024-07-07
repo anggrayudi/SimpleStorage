@@ -40,8 +40,13 @@ class FileCompressionActivity : BaseActivity() {
 
         storageHelper.onFileSelected = { requestCode, files ->
             when (requestCode) {
-                REQUEST_CODE_PICK_MEDIA_1 -> binding.layoutCompressFilesSrcMedia1.tvFilePath.updateFileSelectionView(files)
-                REQUEST_CODE_PICK_MEDIA_2 -> binding.layoutCompressFilesSrcMedia2.tvFilePath.updateFileSelectionView(files)
+                REQUEST_CODE_PICK_MEDIA_1 -> binding.layoutCompressFilesSrcMedia1.tvFilePath.updateFileSelectionView(
+                    files
+                )
+
+                REQUEST_CODE_PICK_MEDIA_2 -> binding.layoutCompressFilesSrcMedia2.tvFilePath.updateFileSelectionView(
+                    files
+                )
             }
         }
         binding.layoutCompressFilesSrcMedia1.btnBrowse.setOnClickListener {
@@ -53,8 +58,13 @@ class FileCompressionActivity : BaseActivity() {
 
         storageHelper.onFolderSelected = { requestCode, folder ->
             when (requestCode) {
-                REQUEST_CODE_PICK_FOLDER_1 -> binding.layoutCompressFilesSrcFolder1.tvFilePath.updateFileSelectionView(folder)
-                REQUEST_CODE_PICK_FOLDER_2 -> binding.layoutCompressFilesSrcFolder2.tvFilePath.updateFileSelectionView(folder)
+                REQUEST_CODE_PICK_FOLDER_1 -> binding.layoutCompressFilesSrcFolder1.tvFilePath.updateFileSelectionView(
+                    folder
+                )
+
+                REQUEST_CODE_PICK_FOLDER_2 -> binding.layoutCompressFilesSrcFolder2.tvFilePath.updateFileSelectionView(
+                    folder
+                )
             }
         }
         binding.layoutCompressFilesSrcFolder1.btnBrowse.setOnClickListener {
@@ -84,33 +94,61 @@ class FileCompressionActivity : BaseActivity() {
         }
 
         val files = mutableListOf<DocumentFile>()
-        (binding.layoutCompressFilesSrcMedia1.tvFilePath.tag as? List<DocumentFile>)?.let { files.addAll(it) }
-        (binding.layoutCompressFilesSrcMedia2.tvFilePath.tag as? List<DocumentFile>)?.let { files.addAll(it) }
+        (binding.layoutCompressFilesSrcMedia1.tvFilePath.tag as? List<DocumentFile>)?.let {
+            files.addAll(
+                it
+            )
+        }
+        (binding.layoutCompressFilesSrcMedia2.tvFilePath.tag as? List<DocumentFile>)?.let {
+            files.addAll(
+                it
+            )
+        }
         (binding.layoutCompressFilesSrcFolder1.tvFilePath.tag as? DocumentFile)?.let { files.add(it) }
         (binding.layoutCompressFilesSrcFolder2.tvFilePath.tag as? DocumentFile)?.let { files.add(it) }
 
         ioScope.launch {
-            files.compressToZip(applicationContext, targetZip, callback = object : ZipCompressionCallback<DocumentFile>(uiScope) {
-                override fun onCountingFiles() {
-                    // show a notification or dialog with indeterminate progress bar
-                }
+            files.compressToZip(
+                applicationContext,
+                targetZip,
+                callback = object : ZipCompressionCallback<DocumentFile>(uiScope) {
+                    override fun onCountingFiles() {
+                        // show a notification or dialog with indeterminate progress bar
+                    }
 
-                override fun onStart(files: List<DocumentFile>, workerThread: Thread): Long = 500
+                    override fun onStart(files: List<DocumentFile>, workerThread: Thread): Long =
+                        500
 
-                override fun onReport(report: Report) {
-                    Timber.d("onReport() -> ${report.progress.toInt()}% | Compressed ${report.fileCount} files")
-                }
+                    override fun onReport(report: Report) {
+                        Timber.d("onReport() -> ${report.progress.toInt()}% | Compressed ${report.fileCount} files")
+                    }
 
-                override fun onCompleted(zipFile: DocumentFile, bytesCompressed: Long, totalFilesCompressed: Int, compressionRate: Float) {
-                    Timber.d("onCompleted() -> Compressed $totalFilesCompressed with compression rate %.2f", compressionRate)
-                    Toast.makeText(applicationContext, "Successfully compressed $totalFilesCompressed files", Toast.LENGTH_SHORT).show()
-                }
+                    override fun onCompleted(
+                        zipFile: DocumentFile,
+                        bytesCompressed: Long,
+                        totalFilesCompressed: Int,
+                        compressionRate: Float
+                    ) {
+                        Timber.d(
+                            "onCompleted() -> Compressed $totalFilesCompressed with compression rate %.2f",
+                            compressionRate
+                        )
+                        Toast.makeText(
+                            applicationContext,
+                            "Successfully compressed $totalFilesCompressed files",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
 
-                override fun onFailed(errorCode: ErrorCode, message: String?) {
-                    Timber.d("onFailed() -> $errorCode: $message")
-                    Toast.makeText(applicationContext, "Error compressing files: $errorCode", Toast.LENGTH_SHORT).show()
-                }
-            })
+                    override fun onFailed(errorCode: ErrorCode, message: String?) {
+                        Timber.d("onFailed() -> $errorCode: $message")
+                        Toast.makeText(
+                            applicationContext,
+                            "Error compressing files: $errorCode",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                })
         }
     }
 

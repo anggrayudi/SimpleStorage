@@ -15,7 +15,9 @@ import kotlinx.coroutines.GlobalScope
  */
 abstract class MultipleFileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
     uiScope: CoroutineScope = GlobalScope
-) : BaseFileCallback<MultipleFileCallback.ErrorCode, MultipleFileCallback.Report, MultipleFileCallback.Result>(uiScope) {
+) : BaseFileCallback<MultipleFileCallback.ErrorCode, MultipleFileCallback.Report, MultipleFileCallback.Result>(
+    uiScope
+) {
 
     /**
      * The reason can be one of:
@@ -24,7 +26,10 @@ abstract class MultipleFileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOve
      * * [FolderCallback.ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER]
      */
     @UiThread
-    open fun onInvalidSourceFilesFound(invalidSourceFiles: Map<DocumentFile, FolderCallback.ErrorCode>, action: InvalidSourceFilesAction) {
+    open fun onInvalidSourceFilesFound(
+        invalidSourceFiles: Map<DocumentFile, FolderCallback.ErrorCode>,
+        action: InvalidSourceFilesAction
+    ) {
         action.confirmResolution(false)
     }
 
@@ -39,7 +44,8 @@ abstract class MultipleFileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOve
      * Setting negative value will cancel the operation.
      */
     @UiThread
-    open fun onStart(files: List<DocumentFile>, totalFilesToCopy: Int, workerThread: Thread): Long = 0
+    open fun onStart(files: List<DocumentFile>, totalFilesToCopy: Int, workerThread: Thread): Long =
+        0
 
     /**
      * Do not call `super` when you override this function.
@@ -119,5 +125,10 @@ abstract class MultipleFileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOve
      * @param totalFilesToCopy total files, not folders
      * @param totalCopiedFiles total files, not folders
      */
-    class Result(val files: List<DocumentFile>, val totalFilesToCopy: Int, val totalCopiedFiles: Int, val success: Boolean)
+    class Result(
+        val files: List<DocumentFile>,
+        val totalFilesToCopy: Int,
+        val totalCopiedFiles: Int,
+        val success: Boolean
+    )
 }

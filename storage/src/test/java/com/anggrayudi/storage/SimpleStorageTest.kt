@@ -79,7 +79,12 @@ class SimpleStorageTest {
         SimpleStorage.cleanupRedundantUriPermissions(context)
 
         assertEquals(revokedUris, capturedUris)
-        verify(exactly = revokedUris.size) { resolver.releasePersistableUriPermission(any(), any()) }
+        verify(exactly = revokedUris.size) {
+            resolver.releasePersistableUriPermission(
+                any(),
+                any()
+            )
+        }
         verify { resolver.persistedUriPermissions }
         confirmVerified(resolver)
     }

@@ -44,12 +44,20 @@ abstract class FolderCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads
      *                 This happens if the destination is a file.
      */
     @UiThread
-    open fun onParentConflict(destinationFolder: DocumentFile, action: ParentFolderConflictAction, canMerge: Boolean) {
+    open fun onParentConflict(
+        destinationFolder: DocumentFile,
+        action: ParentFolderConflictAction,
+        canMerge: Boolean
+    ) {
         action.confirmResolution(ConflictResolution.CREATE_NEW)
     }
 
     @UiThread
-    open fun onContentConflict(destinationFolder: DocumentFile, conflictedFiles: MutableList<FileConflict>, action: FolderContentConflictAction) {
+    open fun onContentConflict(
+        destinationFolder: DocumentFile,
+        conflictedFiles: MutableList<FileConflict>,
+        action: FolderContentConflictAction
+    ) {
         action.confirmResolution(conflictedFiles)
     }
 
@@ -139,5 +147,10 @@ abstract class FolderCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads
      * @param totalFilesToCopy total files, not folders
      * @param totalCopiedFiles total files, not folders
      */
-    class Result(val folder: DocumentFile, val totalFilesToCopy: Int, val totalCopiedFiles: Int, val success: Boolean)
+    class Result(
+        val folder: DocumentFile,
+        val totalFilesToCopy: Int,
+        val totalCopiedFiles: Int,
+        val success: Boolean
+    )
 }

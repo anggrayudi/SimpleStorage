@@ -22,7 +22,13 @@ interface StorageAccessCallback {
     /**
      * Triggered on Android 10 and lower.
      */
-    fun onRootPathNotSelected(requestCode: Int, rootPath: String, uri: Uri, selectedStorageType: StorageType, expectedStorageType: StorageType)
+    fun onRootPathNotSelected(
+        requestCode: Int,
+        rootPath: String,
+        uri: Uri,
+        selectedStorageType: StorageType,
+        expectedStorageType: StorageType
+    )
 
     /**
      * Triggered on Android 11 and higher.

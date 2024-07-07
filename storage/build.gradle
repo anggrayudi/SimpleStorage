@@ -12,7 +12,6 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 
@@ -34,7 +33,7 @@ dependencies {
     api deps.coroutines.core
     api deps.coroutines.android
     api 'com.afollestad.material-dialogs:files:3.3.0'
-    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.3"
 
     testImplementation deps.junit
     testImplementation deps.mockk

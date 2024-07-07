@@ -57,7 +57,12 @@ abstract class ZipCompressionCallback<T> @OptIn(DelicateCoroutinesApi::class)
      * @param compressionRate size reduction in percent, e.g. 23.5
      */
     @UiThread
-    open fun onCompleted(zipFile: DocumentFile, bytesCompressed: Long, totalFilesCompressed: Int, compressionRate: Float) {
+    open fun onCompleted(
+        zipFile: DocumentFile,
+        bytesCompressed: Long,
+        totalFilesCompressed: Int,
+        compressionRate: Float
+    ) {
         // default implementation
     }
 
@@ -69,7 +74,12 @@ abstract class ZipCompressionCallback<T> @OptIn(DelicateCoroutinesApi::class)
     /**
      * @param progress always `0` when compressing [MediaFile]
      */
-    class Report(val progress: Float, val bytesCompressed: Long, val writeSpeed: Int, val fileCount: Int)
+    class Report(
+        val progress: Float,
+        val bytesCompressed: Long,
+        val writeSpeed: Int,
+        val fileCount: Int
+    )
 
     enum class ErrorCode {
         STORAGE_PERMISSION_DENIED,

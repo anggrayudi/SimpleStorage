@@ -1,20 +1,22 @@
 # SimpleStorage
+
 ![Maven Central](https://img.shields.io/maven-central/v/com.anggrayudi/storage.svg)
 [![Build Status](https://github.com/anggrayudi/SimpleStorage/workflows/Android%20CI/badge.svg)](https://github.com/anggrayudi/SimpleStorage/actions?query=workflow%3A%22Android+CI%22)
 
 ### Table of Contents
+
 * [Overview](#overview)
-  + [Java Compatibility](#java-compatibility)
+    + [Java Compatibility](#java-compatibility)
 * [Terminology](#terminology)
 * [Check Accessible Paths](#check-accessible-paths)
 * [Read Files](#read-files)
-  + [`DocumentFileCompat`](#documentfilecompat)
-    - [Example](#example)
-  + [`MediaStoreCompat`](#mediastorecompat)
-    - [Example](#example-1)
+    + [`DocumentFileCompat`](#documentfilecompat)
+        - [Example](#example)
+    + [`MediaStoreCompat`](#mediastorecompat)
+        - [Example](#example-1)
 * [Manage Files](#manage-files)
-  + [`DocumentFile`](#documentfile)
-  + [`MediaFile`](#mediafile)
+    + [`DocumentFile`](#documentfile)
+    + [`MediaFile`](#mediafile)
 * [Request Storage Access, Pick Folder & Files, Request Create File, etc.](#request-storage-access-pick-folder--files-request-create-file-etc)
 * [Move & Copy: Files & Folders](#move--copy-files--folders)
 * [FAQ](#faq)
@@ -38,9 +40,11 @@ Adding Simple Storage into your project is pretty simple:
 implementation "com.anggrayudi:storage:X.Y.Z"
 ```
 
-Where `X.Y.Z` is the library version: ![Maven Central](https://img.shields.io/maven-central/v/com.anggrayudi/storage.svg)
+Where `X.Y.Z` is the library
+version: ![Maven Central](https://img.shields.io/maven-central/v/com.anggrayudi/storage.svg)
 
-All versions can be found [here](https://oss.sonatype.org/#nexus-search;gav~com.anggrayudi~storage~~~~kw,versionexpand).
+All versions can be
+found [here](https://oss.sonatype.org/#nexus-search;gav~com.anggrayudi~storage~~~~kw,versionexpand).
 To use `SNAPSHOT` version, you need to add this URL to the root Gradle:
 
 ```groovy
@@ -56,27 +60,38 @@ allprojects {
 
 ### Java Compatibility
 
-Simple Storage is built in Kotlin. Follow this [documentation](JAVA_COMPATIBILITY.md) to use it in your Java project.
+Simple Storage is built in Kotlin. Follow this [documentation](JAVA_COMPATIBILITY.md) to use it in
+your Java project.
 
 ## Terminology
 
 ![Alt text](art/terminology.png?raw=true "Simple Storage Terms")
 
 ### Other Terminology
-* Storage Permission – related to [runtime permissions](https://developer.android.com/training/permissions/requesting)
-* Storage Access – related to [URI permissions](https://developer.android.com/reference/android/content/ContentResolver#takePersistableUriPermission(android.net.Uri,%20int))
+
+* Storage Permission – related
+  to [runtime permissions](https://developer.android.com/training/permissions/requesting)
+* Storage Access – related
+  to [URI permissions](https://developer.android.com/reference/android/content/ContentResolver#takePersistableUriPermission(android.net.Uri,%20int))
 
 ## Check Accessible Paths
 
-To check whether you have access to particular paths, call `DocumentFileCompat.getAccessibleAbsolutePaths()`. The results will look like this in breakpoint:
+To check whether you have access to particular paths,
+call `DocumentFileCompat.getAccessibleAbsolutePaths()`. The results will look like this in
+breakpoint:
 
 ![Alt text](art/getAccessibleAbsolutePaths.png?raw=true "DocumentFileCompat.getAccessibleAbsolutePaths()")
 
-All paths in those locations are accessible via functions `DocumentFileCompat.from*()`, otherwise your action will be denied by the system if you want to
-access paths other than those. Functions `DocumentFileCompat.from*()` (next section) will return null as well. On API 28-, you can obtain it by requesting
-the runtime permission. For API 29+, it is obtained automatically by calling `SimpleStorageHelper#requestStorageAccess()` or
-`SimpleStorageHelper#openFolderPicker()`. The granted paths are persisted by this library via `ContentResolver#takePersistableUriPermission()`,
+All paths in those locations are accessible via functions `DocumentFileCompat.from*()`, otherwise
+your action will be denied by the system if you want to
+access paths other than those. Functions `DocumentFileCompat.from*()` (next section) will return
+null as well. On API 28-, you can obtain it by requesting
+the runtime permission. For API 29+, it is obtained automatically by
+calling `SimpleStorageHelper#requestStorageAccess()` or
+`SimpleStorageHelper#openFolderPicker()`. The granted paths are persisted by this library
+via `ContentResolver#takePersistableUriPermission()`,
 so you don't need to remember them in preferences:
+
 ```kotlin
 buttonSelectFolder.setOnClickListener {
     storageHelper.openFolderPicker()
@@ -87,7 +102,9 @@ storageHelper.onFolderSelected = { requestCode, folder ->
 }
 ```
 
-In the future, if you want to write files into the granted path, use `DocumentFileCompat.fromFullPath()`:
+In the future, if you want to write files into the granted path,
+use `DocumentFileCompat.fromFullPath()`:
+
 ```kotlin
 val grantedPaths = DocumentFileCompat.getAccessibleAbsolutePaths(this)
 val path = grantedPaths.values.firstOrNull()?.firstOrNull() ?: return
@@ -97,8 +114,10 @@ val file = folder?.makeFile(this, "notes", "text/plain")
 
 ## Read Files
 
-In Simple Storage, `DocumentFile` is used to access files when your app has been granted full storage access,
-included URI permissions for read and write. Whereas `MediaFile` is used to access media files from `MediaStore`
+In Simple Storage, `DocumentFile` is used to access files when your app has been granted full
+storage access,
+included URI permissions for read and write. Whereas `MediaFile` is used to access media files
+from `MediaStore`
 without URI permissions to the storage.
 
 You can read file with helper functions in `DocumentFileCompat` and `MediaStoreCompat`:
@@ -111,6 +130,7 @@ You can read file with helper functions in `DocumentFileCompat` and `MediaStoreC
 * `DocumentFileCompat.fromPublicFolder()`
 
 #### Example
+
 ```kotlin
 val fileFromExternalStorage = DocumentFileCompat.fromSimplePath(context, basePath = "Download/MyMovie.mp4")
 
@@ -127,6 +147,7 @@ val fileFromSdCard = DocumentFileCompat.fromSimplePath(context, storageId = "901
 * `MediaStoreCompat.fromMediaType()`
 
 #### Example
+
 ```kotlin
 val myVideo = MediaStoreCompat.fromFileName(context, MediaType.DOWNLOADS, "MyMovie.mp4")
 
@@ -137,9 +158,11 @@ val imageList = MediaStoreCompat.fromMediaType(context, MediaType.IMAGE)
 
 ### `DocumentFile`
 
-Since `java.io.File` has been deprecated in Android 10, thus you have to use `DocumentFile` for file management.
+Since `java.io.File` has been deprecated in Android 10, thus you have to use `DocumentFile` for file
+management.
 
 Simple Storage adds Kotlin extension functions to `DocumentFile`, so you can manage files like this:
+
 * `DocumentFile.getStorageId()`
 * `DocumentFile.getStorageType()`
 * `DocumentFile.getBasePath()`
@@ -153,6 +176,7 @@ Simple Storage adds Kotlin extension functions to `DocumentFile`, so you can man
 ### `MediaFile`
 
 For media files, you can have similar capabilities to `DocumentFile`, i.e.:
+
 * `MediaFile.absolutePath`
 * `MediaFile.isPending`
 * `MediaFile.delete()`
@@ -164,11 +188,14 @@ For media files, you can have similar capabilities to `DocumentFile`, i.e.:
 
 ## Request Storage Access, Pick Folder & Files, Request Create File, etc.
 
-Although user has granted read and write permissions during runtime, your app may still does not have full access to the storage,
-thus you cannot search, move and copy files. You can check whether you have the storage access via `SimpleStorage.hasStorageAccess()` or
+Although user has granted read and write permissions during runtime, your app may still does not
+have full access to the storage,
+thus you cannot search, move and copy files. You can check whether you have the storage access
+via `SimpleStorage.hasStorageAccess()` or
 `DocumentFileCompat.getAccessibleAbsolutePaths()`.
 
-To enable full storage access, you need to open SAF and let user grant URI permissions for read and write access.
+To enable full storage access, you need to open SAF and let user grant URI permissions for read and
+write access.
 This library provides you an helper class named `SimpleStorageHelper` to ease the request process:
 
 ```kotlin
@@ -235,6 +262,7 @@ If you want to use custom dialogs for `SimpleStorageHelper`, just copy the logic
 ## Move & Copy: Files & Folders
 
 Simple Storage helps you in copying/moving files & folders via:
+
 * `DocumentFile.copyFileTo()`
 * `DocumentFile.moveFileTo()`
 * `DocumentFile.copyFolderTo()`
@@ -286,8 +314,10 @@ folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, ca
 })
 ```
 
-The coolest thing of this library is you can ask users to choose Merge, Replace, Create New, or Skip Duplicate folders & files
-whenever a conflict is found via `onConflict()`. Here're screenshots of the sample code when dealing with conflicts:
+The coolest thing of this library is you can ask users to choose Merge, Replace, Create New, or Skip
+Duplicate folders & files
+whenever a conflict is found via `onConflict()`. Here're screenshots of the sample code when dealing
+with conflicts:
 
 ![Alt text](art/parent-folder-conflict.png?raw=true "Parent Folder Conflict")
 ![Alt text](art/folder-content-conflict.png?raw=true "Folder Content Conflict")
@@ -303,6 +333,7 @@ Having trouble? Read the [Frequently Asked Questions](FAQ.md).
 
 SimpleStorage is used in these open source projects.
 Check how these repositories use it:
+
 * [Snapdrop](https://github.com/anggrayudi/snapdrop-android)
 * [MaterialPreference](https://github.com/anggrayudi/MaterialPreference)
 * [Super Productivity](https://github.com/johannesjo/super-productivity-android)

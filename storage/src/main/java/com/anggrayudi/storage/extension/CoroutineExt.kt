@@ -2,7 +2,14 @@
 
 package com.anggrayudi.storage.extension
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * @author Anggrayudi Hardiannico A. (anggrayudi.hardiannico@dana.id)
@@ -36,9 +43,13 @@ fun startCoroutineTimer(
 }
 
 @Suppress("OPT_IN_USAGE")
-fun launchOnUiThread(action: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(Dispatchers.Main, block = action)
+fun launchOnUiThread(action: suspend CoroutineScope.() -> Unit) =
+    GlobalScope.launch(Dispatchers.Main, block = action)
 
-inline fun <R> awaitUiResultWithPending(uiScope: CoroutineScope, crossinline action: (CancellableContinuation<R>) -> Unit): R {
+inline fun <R> awaitUiResultWithPending(
+    uiScope: CoroutineScope,
+    crossinline action: (CancellableContinuation<R>) -> Unit
+): R {
     return runBlocking {
         suspendCancellableCoroutine {
             uiScope.launch(Dispatchers.Main) { action(it) }

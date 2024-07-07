@@ -55,6 +55,7 @@ class FileFullPath {
                     simplePath = "$storageId:$basePath"
                     absolutePath = "$rootPath/$basePath".trimEnd('/')
                 }
+
                 fullPath.startsWith(context.dataDirectory.path) -> {
                     storageId = StorageId.DATA
                     val rootPath = context.dataDirectory.path
@@ -62,15 +63,18 @@ class FileFullPath {
                     simplePath = "$storageId:$basePath"
                     absolutePath = "$rootPath/$basePath".trimEnd('/')
                 }
+
                 fullPath.startsWith(KITKAT_SD_CARD_PATH) -> {
                     storageId = KITKAT_SDCARD
                     basePath = fullPath.substringAfter(KITKAT_SD_CARD_PATH, "").trimFileSeparator()
                     simplePath = "$storageId:$basePath"
                     absolutePath = "$KITKAT_SD_CARD_PATH/$basePath".trimEnd('/')
                 }
+
                 else -> if (fullPath.matches(DocumentFileCompat.SD_CARD_STORAGE_PATH_REGEX)) {
                     storageId = fullPath.substringAfter("/storage/", "").substringBefore('/')
-                    basePath = fullPath.substringAfter("/storage/$storageId", "").trimFileSeparator()
+                    basePath =
+                        fullPath.substringAfter("/storage/$storageId", "").trimFileSeparator()
                     simplePath = "$storageId:$basePath"
                     absolutePath = "/storage/$storageId/$basePath".trimEnd('/')
                 } else {
@@ -109,11 +113,12 @@ class FileFullPath {
 
     constructor(context: Context, file: File) : this(context, file.path.orEmpty())
 
-    private fun buildAbsolutePath(context: Context, storageId: String, basePath: String) = if (storageId.isEmpty()) "" else when (storageId) {
-        StorageId.PRIMARY -> "${SimpleStorage.externalStoragePath}/$basePath".trimEnd('/')
-        StorageId.DATA -> "${context.dataDirectory.path}/$basePath".trimEnd('/')
-        else -> "/storage/$storageId/$basePath".trimEnd('/')
-    }
+    private fun buildAbsolutePath(context: Context, storageId: String, basePath: String) =
+        if (storageId.isEmpty()) "" else when (storageId) {
+            StorageId.PRIMARY -> "${SimpleStorage.externalStoragePath}/$basePath".trimEnd('/')
+            StorageId.DATA -> "${context.dataDirectory.path}/$basePath".trimEnd('/')
+            else -> "/storage/$storageId/$basePath".trimEnd('/')
+        }
 
     private fun buildBaseAndAbsolutePaths(context: Context) {
         absolutePath = buildAbsolutePath(context, storageId, basePath)
@@ -121,7 +126,10 @@ class FileFullPath {
     }
 
     val uri: Uri?
-        get() = if (storageId.isEmpty()) null else DocumentFileCompat.createDocumentUri(storageId, basePath)
+        get() = if (storageId.isEmpty()) null else DocumentFileCompat.createDocumentUri(
+            storageId,
+            basePath
+        )
 
     fun toDocumentUri(context: Context): Uri? {
         return context.fromTreeUri(uri ?: return null)?.uri

@@ -4,18 +4,25 @@ Kotlin is compatible with Java, meaning that Kotlin code is readable in Java.
 
 ## How to use?
 
-Simple Storage contains utility functions stored in `object` class, e.g. `DocumentFileCompat` and `MediaStoreCompat`.
+Simple Storage contains utility functions stored in `object` class, e.g. `DocumentFileCompat`
+and `MediaStoreCompat`.
 These classes contain only static functions.
 
 Additionally, this library also has extension functions, e.g. `DocumentFileExtKt` and `FileExtKt`.
-You can learn it [here](https://www.raywenderlich.com/10986797-extension-functions-and-properties-in-kotlin).
+You can learn
+it [here](https://www.raywenderlich.com/10986797-extension-functions-and-properties-in-kotlin).
 
 ### Extension Functions
 
-Common extension functions are stored in package `com.anggrayudi.storage.extension`. The others are in `com.anggrayudi.storage.file`.
-You'll find that the most useful extension functions come from `DocumentFileExtKt` and `FileExtKt`. They are:
-* `DocumentFile.getStorageId()` and `File.getStorageId()` → Get storage ID. Returns `primary` for external storage and something like `AAAA-BBBB` for SD card.
-* `DocumentFile.getAbsolutePath()` → Get file's absolute path. Returns something like `/storage/AAAA-BBBB/Music/My Love.mp3`.
+Common extension functions are stored in package `com.anggrayudi.storage.extension`. The others are
+in `com.anggrayudi.storage.file`.
+You'll find that the most useful extension functions come from `DocumentFileExtKt` and `FileExtKt`.
+They are:
+
+* `DocumentFile.getStorageId()` and `File.getStorageId()` → Get storage ID. Returns `primary` for
+  external storage and something like `AAAA-BBBB` for SD card.
+* `DocumentFile.getAbsolutePath()` → Get file's absolute path. Returns something
+  like `/storage/AAAA-BBBB/Music/My Love.mp3`.
 * `DocumentFile.copyFileTo()` and `File.copyFileTo()`
 * `DocumentFile.search()` and `File.search()`, etc.
 
@@ -43,7 +50,8 @@ their class names are renamed from using suffix `ExtKt` to `Utils`.
 I will refer to utility functions stored in Kotlin `object` class so you can understand it easily.
 You can find the most useful utility functions in `DocumentFileCompat` and `MediaStoreCompat`.
 
-Suppose that I want to get file from SD card with the following simple path: `AAAA-BBBB:Music/My Love.mp3`.
+Suppose that I want to get file from SD card with the following simple
+path: `AAAA-BBBB:Music/My Love.mp3`.
 BTW, `AAAA-BBBB` is the SD card's storage ID for this example.
 
 #### In Kotlin
@@ -65,5 +73,5 @@ Just go to the source code to check whether it has the annotation.
 ## Sample Code
 
 * More sample code in Java can be found in
-[`JavaActivity`](https://github.com/anggrayudi/SimpleStorage/blob/master/sample/src/main/java/com/anggrayudi/storage/sample/activity/JavaActivity.java)
+  [`JavaActivity`](https://github.com/anggrayudi/SimpleStorage/blob/master/sample/src/main/java/com/anggrayudi/storage/sample/activity/JavaActivity.java)
 * Learn Kotlin on [Udacity](https://classroom.udacity.com/courses/ud9011). It's easy and free!

@@ -38,7 +38,11 @@ object MimeType {
                 return cleanName
             }
         }
-        return getExtensionFromMimeType(mimeType).let { if (it.isEmpty() || cleanName.endsWith(".$it")) cleanName else "$cleanName.$it".trimEnd('.') }
+        return getExtensionFromMimeType(mimeType).let {
+            if (it.isEmpty() || cleanName.endsWith(".$it")) cleanName else "$cleanName.$it".trimEnd(
+                '.'
+            )
+        }
     }
 
     /**
@@ -48,12 +52,16 @@ object MimeType {
      */
     @JvmStatic
     fun getExtensionFromMimeType(mimeType: String?): String {
-        return mimeType?.let { if (it == BINARY_FILE) "bin" else MimeTypeMap.getSingleton().getExtensionFromMimeType(it) }.orEmpty()
+        return mimeType?.let {
+            if (it == BINARY_FILE) "bin" else MimeTypeMap.getSingleton()
+                .getExtensionFromMimeType(it)
+        }.orEmpty()
     }
 
     @JvmStatic
     fun getBaseFileName(filename: String?): String {
-        return if (hasExtension(filename)) filename.orEmpty().substringBeforeLast('.') else filename.orEmpty()
+        return if (hasExtension(filename)) filename.orEmpty()
+            .substringBeforeLast('.') else filename.orEmpty()
     }
 
     @JvmStatic
@@ -74,7 +82,9 @@ object MimeType {
      */
     @JvmStatic
     fun getExtensionFromMimeTypeOrFileName(mimeType: String?, filename: String): String {
-        return if (mimeType == null || mimeType == UNKNOWN) getExtensionFromFileName(filename) else getExtensionFromMimeType(mimeType)
+        return if (mimeType == null || mimeType == UNKNOWN) getExtensionFromFileName(filename) else getExtensionFromMimeType(
+            mimeType
+        )
     }
 
     /**
@@ -82,7 +92,11 @@ object MimeType {
      */
     @JvmStatic
     fun getMimeTypeFromExtension(fileExtension: String): String {
-        return if (fileExtension.equals("bin", ignoreCase = true)) BINARY_FILE else MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileExtension)
+        return if (fileExtension.equals(
+                "bin",
+                ignoreCase = true
+            )
+        ) BINARY_FILE else MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileExtension)
             ?: UNKNOWN
     }
 

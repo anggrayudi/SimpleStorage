@@ -56,7 +56,11 @@ abstract class ZipDecompressionCallback<T> @OptIn(DelicateCoroutinesApi::class) 
      * But for decompressing [MediaFile], it is always `0` because we can't get the actual zip file size from SAF database.
      */
     @UiThread
-    open fun onCompleted(zipFile: T, targetFolder: DocumentFile, decompressionInfo: DecompressionInfo) {
+    open fun onCompleted(
+        zipFile: T,
+        targetFolder: DocumentFile,
+        decompressionInfo: DecompressionInfo
+    ) {
         // default implementation
     }
 
@@ -78,7 +82,12 @@ abstract class ZipDecompressionCallback<T> @OptIn(DelicateCoroutinesApi::class) 
      * @param skippedDecompressedBytes total skipped bytes because the file already exists and the user has selected [FileCallback.ConflictResolution.SKIP]
      * @param bytesDecompressed total decompressed bytes, excluded skipped files
      */
-    class DecompressionInfo(val bytesDecompressed: Long, val skippedDecompressedBytes: Long, val totalFilesDecompressed: Int, val decompressionRate: Float)
+    class DecompressionInfo(
+        val bytesDecompressed: Long,
+        val skippedDecompressedBytes: Long,
+        val totalFilesDecompressed: Int,
+        val decompressionRate: Float
+    )
 
     enum class ErrorCode {
         STORAGE_PERMISSION_DENIED,

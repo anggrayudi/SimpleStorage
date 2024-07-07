@@ -92,8 +92,12 @@ class FileExtKtTest {
             val ext = MimeType.getExtensionFromFileName(filename)
             val prefix = "$baseName ("
             var lastFileCount = list().orEmpty().filter {
-                it.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(it)
-                        || DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION.matches(it))
+                it.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(
+                    it
+                )
+                        || DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION.matches(
+                    it
+                ))
             }.maxOfOrNull {
                 it.substringAfterLast('(', "")
                     .substringBefore(')', "")

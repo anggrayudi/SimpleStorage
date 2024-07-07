@@ -6,7 +6,7 @@ import androidx.annotation.UiThread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
-import java.util.*
+import java.util.Date
 
 /**
  * Created on 03/06/21

@@ -48,7 +48,9 @@ fun String.replaceCompletely(match: String, replaceWith: String) = let {
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 fun String.isKitkatSdCardStorageId() =
-    Build.VERSION.SDK_INT < 21 && (this == StorageId.KITKAT_SDCARD || this.matches(DocumentFileCompat.SD_CARD_STORAGE_ID_REGEX))
+    Build.VERSION.SDK_INT < 21 && (this == StorageId.KITKAT_SDCARD || this.matches(
+        DocumentFileCompat.SD_CARD_STORAGE_ID_REGEX
+    ))
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 fun String.hasParent(parentPath: String): Boolean {
