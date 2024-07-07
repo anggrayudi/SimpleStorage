@@ -23,10 +23,27 @@ import androidx.fragment.app.Fragment
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.callbacks.onCancel
 import com.afollestad.materialdialogs.files.folderChooser
-import com.anggrayudi.storage.callback.*
-import com.anggrayudi.storage.extension.*
-import com.anggrayudi.storage.file.*
+import com.anggrayudi.storage.callback.CreateFileCallback
+import com.anggrayudi.storage.callback.FilePickerCallback
+import com.anggrayudi.storage.callback.FileReceiverCallback
+import com.anggrayudi.storage.callback.FolderPickerCallback
+import com.anggrayudi.storage.callback.StorageAccessCallback
+import com.anggrayudi.storage.extension.fromSingleUri
+import com.anggrayudi.storage.extension.fromTreeUri
+import com.anggrayudi.storage.extension.getStorageId
+import com.anggrayudi.storage.extension.isDocumentsDocument
+import com.anggrayudi.storage.extension.isDownloadsDocument
+import com.anggrayudi.storage.extension.isExternalStorageDocument
+import com.anggrayudi.storage.file.DocumentFileCompat
+import com.anggrayudi.storage.file.FileFullPath
+import com.anggrayudi.storage.file.MimeType
+import com.anggrayudi.storage.file.PublicDirectory
 import com.anggrayudi.storage.file.StorageId.PRIMARY
+import com.anggrayudi.storage.file.StorageType
+import com.anggrayudi.storage.file.canModify
+import com.anggrayudi.storage.file.getAbsolutePath
+import com.anggrayudi.storage.file.getBasePath
+import com.anggrayudi.storage.file.getStorageId
 import java.io.File
 import kotlin.concurrent.thread
 
@@ -265,7 +282,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
     }
 
-    @Suppress("DEPRECATION")
     private var lastVisitedFolder: File = Environment.getExternalStorageDirectory()
 
     /**
@@ -668,7 +684,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         const val KITKAT_SD_CARD_PATH = "/storage/$KITKAT_SD_CARD_ID"
 
         @JvmStatic
-        @Suppress("DEPRECATION")
         val externalStoragePath: String
             get() = Environment.getExternalStorageDirectory().absolutePath
 
