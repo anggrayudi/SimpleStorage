@@ -28,7 +28,7 @@ object StorageId {
 
     /**
      * For `/storage/emulated/0/Documents`
-     * It is only exists on API 29-
+     * Only exists on API 29-
      */
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     const val HOME = "home"

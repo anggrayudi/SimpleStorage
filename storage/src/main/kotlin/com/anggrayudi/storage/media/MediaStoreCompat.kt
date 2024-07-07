@@ -59,7 +59,7 @@ object MediaStoreCompat {
     fun createImage(
         context: Context,
         file: FileDescription,
-        relativeParentDirectory: ImageMediaDirectory = ImageMediaDirectory.PICTURES,
+        relativeParentDirectory: MediaDirectory.Image = MediaDirectory.Image.PICTURES,
         mode: CreateMode = CreateMode.CREATE_NEW
     ): MediaFile? {
         return createMedia(context, MediaType.IMAGE, relativeParentDirectory.folderName, file, mode)
@@ -70,7 +70,7 @@ object MediaStoreCompat {
     fun createAudio(
         context: Context,
         file: FileDescription,
-        relativeParentDirectory: AudioMediaDirectory = AudioMediaDirectory.MUSIC,
+        relativeParentDirectory: MediaDirectory.Audio = MediaDirectory.Audio.MUSIC,
         mode: CreateMode = CreateMode.CREATE_NEW
     ): MediaFile? {
         return createMedia(context, MediaType.AUDIO, relativeParentDirectory.folderName, file, mode)
@@ -81,7 +81,7 @@ object MediaStoreCompat {
     fun createVideo(
         context: Context,
         file: FileDescription,
-        relativeParentDirectory: VideoMediaDirectory = VideoMediaDirectory.MOVIES,
+        relativeParentDirectory: MediaDirectory.Video = MediaDirectory.Video.MOVIES,
         mode: CreateMode = CreateMode.CREATE_NEW
     ): MediaFile? {
         return createMedia(context, MediaType.VIDEO, relativeParentDirectory.folderName, file, mode)
@@ -102,9 +102,9 @@ object MediaStoreCompat {
         val mediaFolder = basePath.substringBefore('/')
         val mediaType = when (mediaFolder) {
             Environment.DIRECTORY_DOWNLOADS -> MediaType.DOWNLOADS
-            in ImageMediaDirectory.values().map { it.folderName } -> MediaType.IMAGE
-            in AudioMediaDirectory.values().map { it.folderName } -> MediaType.AUDIO
-            in VideoMediaDirectory.values().map { it.folderName } -> MediaType.VIDEO
+            in MediaDirectory.Image.values().map { it.folderName } -> MediaType.IMAGE
+            in MediaDirectory.Audio.values().map { it.folderName } -> MediaType.AUDIO
+            in MediaDirectory.Video.values().map { it.folderName } -> MediaType.VIDEO
             else -> return null
         }
         val subFolder = basePath.substringAfter('/', "")

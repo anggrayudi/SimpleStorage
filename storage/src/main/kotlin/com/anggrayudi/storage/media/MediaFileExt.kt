@@ -32,7 +32,6 @@ import java.util.zip.ZipOutputStream
  * Created on 21/01/22
  * @author Anggrayudi H
  */
-
 @WorkerThread
 fun List<MediaFile>.compressToZip(
     context: Context,
