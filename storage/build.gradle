@@ -25,14 +25,13 @@ android {
 }
 
 dependencies {
-    api deps.appcompat
-    api deps.activity
-    api deps.core_ktx
-    api deps.fragment
+    implementation deps.appcompat
+    implementation deps.activity
+    implementation deps.core_ktx
+    implementation deps.fragment
     api deps.documentfile
-    api deps.coroutines.core
-    api deps.coroutines.android
-    api 'com.afollestad.material-dialogs:files:3.3.0'
+    implementation deps.coroutines.android
+    implementation 'com.afollestad.material-dialogs:files:3.3.0'
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.3"
 
     testImplementation deps.junit

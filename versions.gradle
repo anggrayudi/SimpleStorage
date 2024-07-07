@@ -49,7 +49,7 @@ deps.timber = "com.jakewharton.timber:timber:$versions.timber"
 // End of dependencies ------------------
 ext.deps = deps
 
-def addRepos(RepositoryHandler handler) {
+static def addRepos(RepositoryHandler handler) {
     handler.google()
     handler.mavenCentral()
     handler.maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }

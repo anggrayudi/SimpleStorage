@@ -9,13 +9,9 @@ import androidx.documentfile.provider.DocumentFile
  */
 interface CreateFileCallback {
 
-    fun onCanceledByUser(requestCode: Int) {
-        // default implementation
-    }
+    fun onCanceledByUser(requestCode: Int)
 
-    fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
-        // default implementation
-    }
+    fun onActivityHandlerNotFound(requestCode: Int, intent: Intent)
 
     fun onFileCreated(requestCode: Int, file: DocumentFile)
 }
