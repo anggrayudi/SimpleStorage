@@ -23,8 +23,12 @@ data class FileProperties(
     fun formattedSize(context: Context): String = Formatter.formatFileSize(context, size)
 }
 
-sealed class FilePropertiesResult {
-    data class Updating(val properties: FileProperties) : FilePropertiesResult()
-    data class Completed(val properties: FileProperties) : FilePropertiesResult()
-    data object Error : FilePropertiesResult()
+sealed interface FilePropertiesResult {
+    @JvmInline
+    value class Updating(val properties: FileProperties) : FilePropertiesResult
+
+    @JvmInline
+    value class Completed(val properties: FileProperties) : FilePropertiesResult
+
+    data object Error : FilePropertiesResult
 }

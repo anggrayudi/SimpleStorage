@@ -7,19 +7,21 @@ import com.anggrayudi.storage.media.MediaFile
  * Created on 7/6/24
  * @author Anggrayudi Hardiannico A.
  */
-sealed class SingleFileResult {
-    data object Validating : SingleFileResult()
-    data object Preparing : SingleFileResult()
-    data object CountingFiles : SingleFileResult()
-    data object DeletingConflictedFile : SingleFileResult()
-    data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) : SingleFileResult()
-    data class InProgress(val progress: Float, val bytesMoved: Long, val writeSpeed: Int) : SingleFileResult()
+sealed interface SingleFileResult {
+    data object Validating : SingleFileResult
+    data object Preparing : SingleFileResult
+    data object CountingFiles : SingleFileResult
+    data object DeletingConflictedFile : SingleFileResult
+    data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) : SingleFileResult
+    data class InProgress(val progress: Float, val bytesMoved: Long, val writeSpeed: Int) :
+        SingleFileResult
 
     /**
      * @param result can be [DocumentFile] or [MediaFile]
      */
-    data class Completed(val result: Any) : SingleFileResult()
-    data class Error(val errorCode: SingleFileErrorCode, val message: String? = null) : SingleFileResult()
+    data class Completed(val result: Any) : SingleFileResult
+    data class Error(val errorCode: SingleFileErrorCode, val message: String? = null) :
+        SingleFileResult
 }
 
 enum class SingleFileErrorCode {

@@ -7,17 +7,23 @@ import com.anggrayudi.storage.callback.SingleFolderConflictCallback.ConflictReso
  * Created on 7/6/24
  * @author Anggrayudi Hardiannico A.
  */
-sealed class MultipleFilesResult {
-    data object Validating : MultipleFilesResult()
-    data object Preparing : MultipleFilesResult()
-    data object CountingFiles : MultipleFilesResult()
-    data object DeletingConflictedFiles : MultipleFilesResult()
-    data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) : MultipleFilesResult()
+sealed interface MultipleFilesResult {
+    data object Validating : MultipleFilesResult
+    data object Preparing : MultipleFilesResult
+    data object CountingFiles : MultipleFilesResult
+    data object DeletingConflictedFiles : MultipleFilesResult
+    data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) :
+        MultipleFilesResult
 
     /**
      * @param fileCount total files/folders that are successfully copied/moved
      */
-    data class InProgress(val progress: Float, val bytesMoved: Long, val writeSpeed: Int, val fileCount: Int) : MultipleFilesResult()
+    data class InProgress(
+        val progress: Float,
+        val bytesMoved: Long,
+        val writeSpeed: Int,
+        val fileCount: Int
+    ) : MultipleFilesResult
 
     /**
      * If `totalCopiedFiles` are less than `totalFilesToCopy`, then some files cannot be copied/moved or the files are skipped due to [ConflictResolution.MERGE]
@@ -26,8 +32,18 @@ sealed class MultipleFilesResult {
      * @param totalFilesToCopy total files, not folders
      * @param totalCopiedFiles total files, not folders
      */
-    data class Completed(val files: List<DocumentFile>, val totalFilesToCopy: Int, val totalCopiedFiles: Int, val success: Boolean) : MultipleFilesResult()
-    data class Error(val errorCode: MultipleFilesErrorCode, val message: String? = null, val completedData: Completed? = null) : MultipleFilesResult()
+    data class Completed(
+        val files: List<DocumentFile>,
+        val totalFilesToCopy: Int,
+        val totalCopiedFiles: Int,
+        val success: Boolean
+    ) : MultipleFilesResult
+
+    data class Error(
+        val errorCode: MultipleFilesErrorCode,
+        val message: String? = null,
+        val completedData: Completed? = null
+    ) : MultipleFilesResult
 }
 
 enum class MultipleFilesErrorCode {

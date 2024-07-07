@@ -6,15 +6,27 @@ import androidx.documentfile.provider.DocumentFile
  * Created on 7/6/24
  * @author Anggrayudi Hardiannico A.
  */
-sealed class ZipCompressionResult {
-    data object CountingFiles : ZipCompressionResult()
-    data class Compressing(val progress: Float, val bytesCompressed: Long, val writeSpeed: Int, val fileCount: Int) : ZipCompressionResult()
-    data class Completed(val zipFile: DocumentFile, val bytesCompressed: Long, val totalFilesCompressed: Int, val compressionRate: Float) :
-        ZipCompressionResult()
+sealed interface ZipCompressionResult {
+    data object CountingFiles : ZipCompressionResult
+    data class Compressing(
+        val progress: Float,
+        val bytesCompressed: Long,
+        val writeSpeed: Int,
+        val fileCount: Int
+    ) : ZipCompressionResult
 
-    data object DeletingEntryFiles : ZipCompressionResult()
+    data class Completed(
+        val zipFile: DocumentFile,
+        val bytesCompressed: Long,
+        val totalFilesCompressed: Int,
+        val compressionRate: Float
+    ) :
+        ZipCompressionResult
 
-    data class Error(val errorCode: ZipCompressionErrorCode, val message: String? = null) : ZipCompressionResult()
+    data object DeletingEntryFiles : ZipCompressionResult
+
+    data class Error(val errorCode: ZipCompressionErrorCode, val message: String? = null) :
+        ZipCompressionResult
 }
 
 enum class ZipCompressionErrorCode {

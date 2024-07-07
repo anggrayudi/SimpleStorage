@@ -7,9 +7,10 @@ import com.anggrayudi.storage.media.MediaFile
  * Created on 7/6/24
  * @author Anggrayudi Hardiannico A.
  */
-sealed class ZipDecompressionResult {
-    data object Validating : ZipDecompressionResult()
-    data class Decompressing(val bytesDecompressed: Long, val writeSpeed: Int, val fileCount: Int) : ZipDecompressionResult()
+sealed interface ZipDecompressionResult {
+    data object Validating : ZipDecompressionResult
+    data class Decompressing(val bytesDecompressed: Long, val writeSpeed: Int, val fileCount: Int) :
+        ZipDecompressionResult
 
     /**
      * @param zipFile can be [DocumentFile] or [MediaFile]
@@ -21,9 +22,10 @@ sealed class ZipDecompressionResult {
         val skippedDecompressedBytes: Long,
         val totalFilesDecompressed: Int,
         val decompressionRate: Float
-    ) : ZipDecompressionResult()
+    ) : ZipDecompressionResult
 
-    data class Error(val errorCode: ZipDecompressionErrorCode, val message: String? = null) : ZipDecompressionResult()
+    data class Error(val errorCode: ZipDecompressionErrorCode, val message: String? = null) :
+        ZipDecompressionResult
 }
 
 enum class ZipDecompressionErrorCode {
