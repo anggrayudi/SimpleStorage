@@ -73,7 +73,6 @@ class StorageInfoAdapter(
      * A storageId may contains more than one granted URIs
      */
     @SuppressLint("NewApi")
-    @Suppress("DEPRECATION")
     private fun showGrantedUris(context: Context, filterStorageId: String) {
         val grantedPaths = DocumentFileCompat.getAccessibleAbsolutePaths(context)[filterStorageId]
         if (grantedPaths == null) {

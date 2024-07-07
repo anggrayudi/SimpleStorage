@@ -43,6 +43,7 @@ deps.mockk = "io.mockk:mockk:$versions.mockk"
 
 // Others -------------------------------
 deps.material_dialogs = "com.afollestad.material-dialogs:core:$versions.material_dialogs"
+deps.material_dialogs_files = "com.afollestad.material-dialogs:files:$versions.material_dialogs"
 deps.material_progressbar = "me.zhanghai.android.materialprogressbar:library:$versions.material_progressbar"
 deps.timber = "com.jakewharton.timber:timber:$versions.timber"
 

@@ -625,7 +625,7 @@ class MainActivity : AppCompatActivity() {
                     .customView(R.layout.dialog_copy_progress).apply {
                         tvStatus =
                             getCustomView().findViewById<TextView>(R.id.tvProgressStatus).apply {
-                                text = "Copying file: 0%"
+                                text = context.getString(R.string.copying_file, 0)
                             }
 
                         progressBar =
@@ -639,7 +639,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onReport(report: Report) {
-            tvStatus?.text = "Copying file: ${report.progress.toInt()}%"
+            tvStatus?.text = getString(R.string.copying_file, report.progress.toInt())
             progressBar?.isIndeterminate = false
             progressBar?.progress = report.progress.toInt()
         }

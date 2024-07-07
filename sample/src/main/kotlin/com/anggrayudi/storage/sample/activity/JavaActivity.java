@@ -17,7 +17,6 @@ import androidx.documentfile.provider.DocumentFile;
 import com.anggrayudi.storage.SimpleStorageHelper;
 import com.anggrayudi.storage.callback.FileCallback;
 import com.anggrayudi.storage.file.DocumentFileUtils;
-import com.anggrayudi.storage.media.MediaFile;
 import com.anggrayudi.storage.permission.ActivityPermissionRequest;
 import com.anggrayudi.storage.permission.PermissionCallback;
 import com.anggrayudi.storage.permission.PermissionReport;
@@ -107,15 +106,6 @@ public class JavaActivity extends AppCompatActivity {
             @Override
             public void onConflict(@NotNull DocumentFile destinationFile, @NotNull FileCallback.FileConflictAction action) {
                 // do stuff
-            }
-
-            @Override
-            public void onCompleted(@NotNull Object result) {
-                if (result instanceof DocumentFile) {
-                    // do stuff
-                } else if (result instanceof MediaFile) {
-                    // do stuff
-                }
             }
 
             @Override

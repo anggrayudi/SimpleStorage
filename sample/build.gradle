@@ -78,6 +78,8 @@ dependencies {
 
     implementation deps.timber
     implementation deps.material_progressbar
+    implementation deps.material_dialogs
+    implementation deps.material_dialogs_files
     implementation 'androidx.preference:preference-ktx:1.2.0'
 
 }

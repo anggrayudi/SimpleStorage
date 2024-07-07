@@ -21,8 +21,9 @@ import com.anggrayudi.storage.file.DocumentFileType;
 import com.anggrayudi.storage.file.DocumentFileUtils;
 import com.anggrayudi.storage.file.PublicDirectory;
 import com.anggrayudi.storage.media.FileDescription;
-import com.anggrayudi.storage.media.MediaFile;
 import com.anggrayudi.storage.sample.R;
+
+import java.util.Objects;
 
 import timber.log.Timber;
 
@@ -77,7 +78,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             // write any files into folder 'saveLocationFolder'
             DocumentFileUtils.moveFileTo(sourceFile, requireContext(), saveLocationFolder, null, createCallback());
         } else {
-            FileDescription fileDescription = new FileDescription(sourceFile.getName(), "", sourceFile.getType());
+            FileDescription fileDescription = new FileDescription(Objects.requireNonNull(sourceFile.getName()), "", sourceFile.getType());
             DocumentFileUtils.moveFileToDownloadMedia(sourceFile, requireContext(), fileDescription, createCallback());
         }
     }
@@ -95,17 +96,16 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             }
 
             @Override
-            public void onCompleted(@NonNull Object file) {
+            public void onCompleted(FileCallback.Result result) {
                 final Uri uri;
                 final Context context = requireContext();
 
-                if (file instanceof MediaFile) {
-                    final MediaFile mediaFile = (MediaFile) file;
-                    uri = mediaFile.getUri();
-                } else if (file instanceof DocumentFile) {
-                    final DocumentFile documentFile = (DocumentFile) file;
+                if (result instanceof Result.MediaFile) {
+                    uri = ((Result.MediaFile) result).getValue().getUri();
+                } else if (result instanceof FileCallback.Result.DocumentFile) {
+                    final DocumentFile documentFile = ((Result.DocumentFile) result).getValue();
                     uri = DocumentFileUtils.isRawFile(documentFile)
-                            ? FileProvider.getUriForFile(context, context.getPackageName() + ".provider", DocumentFileUtils.toRawFile(documentFile, context))
+                            ? FileProvider.getUriForFile(context, context.getPackageName() + ".provider", Objects.requireNonNull(DocumentFileUtils.toRawFile(documentFile, context)))
                             : documentFile.getUri();
                 } else {
                     return;
