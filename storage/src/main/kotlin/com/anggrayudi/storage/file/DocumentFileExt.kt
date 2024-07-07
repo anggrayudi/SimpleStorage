@@ -100,7 +100,8 @@ val DocumentFile.id: String
 val DocumentFile.rootId: String
     get() = DocumentsContract.getRootId(uri)
 
-fun DocumentFile.isExternalStorageManager(context: Context) = isRawFile && File(uri.path!!).isExternalStorageManager(context)
+fun DocumentFile.isExternalStorageManager(context: Context) =
+    isRawFile && File(uri.path!!).isExternalStorageManager(context)
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 fun DocumentFile.inKitkatSdCard() = Build.VERSION.SDK_INT < 21 && uri.path?.let {
@@ -130,7 +131,13 @@ fun DocumentFile.isEmpty(context: Context): Boolean {
             toRawFile(context)?.list().isNullOrEmpty()
         } else try {
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, id)
-            context.contentResolver.query(childrenUri, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)?.use { it.count == 0 }
+            context.contentResolver.query(
+                childrenUri,
+                arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
+                null,
+                null,
+                null
+            )?.use { it.count == 0 }
                 ?: true
         } catch (e: Exception) {
             true
@@ -158,9 +165,10 @@ fun DocumentFile.getProperties(context: Context, callback: FileProperties.Calcul
             if (isEmpty(context)) {
                 callback.uiScope.postToUi { callback.onComplete(properties) }
             } else {
-                val timer = if (callback.updateInterval < 1) null else startCoroutineTimer(repeatMillis = callback.updateInterval) {
-                    callback.uiScope.postToUi { callback.onUpdate(properties) }
-                }
+                val timer =
+                    if (callback.updateInterval < 1) null else startCoroutineTimer(repeatMillis = callback.updateInterval) {
+                        callback.uiScope.postToUi { callback.onUpdate(properties) }
+                    }
                 val thread = Thread.currentThread()
                 walkFileTreeForInfo(properties, thread)
                 timer?.cancel()
@@ -232,8 +240,9 @@ fun DocumentFile.inInternalStorage(context: Context) = inInternalStorage(getStor
  * `true` if this file located in primary storage, i.e. external storage.
  * All files created by [DocumentFile.fromFile] are always treated from external storage.
  */
-fun DocumentFile.inPrimaryStorage(context: Context) = isTreeDocumentFile && getStorageId(context) == PRIMARY
-        || isRawFile && uri.path.orEmpty().startsWith(SimpleStorage.externalStoragePath)
+fun DocumentFile.inPrimaryStorage(context: Context) =
+    isTreeDocumentFile && getStorageId(context) == PRIMARY
+            || isRawFile && uri.path.orEmpty().startsWith(SimpleStorage.externalStoragePath)
 
 /**
  * `true` if this file located in SD Card
@@ -241,7 +250,8 @@ fun DocumentFile.inPrimaryStorage(context: Context) = isTreeDocumentFile && getS
 fun DocumentFile.inSdCardStorage(context: Context) =
     getStorageId(context).let { it.matches(DocumentFileCompat.SD_CARD_STORAGE_ID_REGEX) || Build.VERSION.SDK_INT < 21 && it == StorageId.KITKAT_SDCARD }
 
-fun DocumentFile.inDataStorage(context: Context) = isRawFile && File(uri.path!!).inDataStorage(context)
+fun DocumentFile.inDataStorage(context: Context) =
+    isRawFile && File(uri.path!!).inDataStorage(context)
 
 /**
  * `true` if this file was created with [File]
@@ -286,7 +296,14 @@ val DocumentFile.mimeTypeByFileName: String?
 fun DocumentFile.toRawFile(context: Context): File? {
     return when {
         isRawFile -> File(uri.path ?: return null)
-        inPrimaryStorage(context) -> File("${SimpleStorage.externalStoragePath}/${getBasePath(context)}")
+        inPrimaryStorage(context) -> File(
+            "${SimpleStorage.externalStoragePath}/${
+                getBasePath(
+                    context
+                )
+            }"
+        )
+
         else -> getStorageId(context).let { storageId ->
             if (storageId.isKitkatSdCardStorageId()) {
                 DocumentFileCompat.getKitkatSdCardRootFile(getBasePath(context))
@@ -305,7 +322,11 @@ fun DocumentFile.toRawDocumentFile(context: Context): DocumentFile? {
 
 fun DocumentFile.toTreeDocumentFile(context: Context): DocumentFile? {
     return if (isRawFile) {
-        DocumentFileCompat.fromFile(context, toRawFile(context) ?: return null, considerRawFile = false)
+        DocumentFileCompat.fromFile(
+            context,
+            toRawFile(context) ?: return null,
+            considerRawFile = false
+        )
     } else if (isTreeDocumentFile) {
         this
     } else {
@@ -316,7 +337,8 @@ fun DocumentFile.toTreeDocumentFile(context: Context): DocumentFile? {
     }
 }
 
-fun DocumentFile.toMediaFile(context: Context) = if (isTreeDocumentFile) null else MediaFile(context, uri)
+fun DocumentFile.toMediaFile(context: Context) =
+    if (isTreeDocumentFile) null else MediaFile(context, uri)
 
 /**
  * It will try converting [androidx.documentfile.provider.SingleDocumentFile]
@@ -326,7 +348,11 @@ fun DocumentFile.toMediaFile(context: Context) = if (isTreeDocumentFile) null el
  * @see toTreeDocumentFile
  */
 @JvmOverloads
-fun DocumentFile.changeName(context: Context, newBaseName: String, newExtension: String? = null): DocumentFile? {
+fun DocumentFile.changeName(
+    context: Context,
+    newBaseName: String,
+    newExtension: String? = null
+): DocumentFile? {
     val newFileExtension = newExtension ?: extension
     val newName = "$newBaseName.$newFileExtension".trimEnd('.')
     if (newName.isEmpty()) {
@@ -358,7 +384,11 @@ fun DocumentFile.changeName(context: Context, newBaseName: String, newExtension:
  * @param path single file name or file path. Empty string returns to itself.
  */
 @JvmOverloads
-fun DocumentFile.child(context: Context, path: String, requiresWriteAccess: Boolean = false): DocumentFile? {
+fun DocumentFile.child(
+    context: Context,
+    path: String,
+    requiresWriteAccess: Boolean = false
+): DocumentFile? {
     return when {
         path.isEmpty() -> this
         isDirectory -> {
@@ -368,7 +398,8 @@ fun DocumentFile.child(context: Context, path: String, requiresWriteAccess: Bool
                 var currentDirectory = this
                 val resolver = context.contentResolver
                 DocumentFileCompat.getDirectorySequence(path).forEach {
-                    val directory = currentDirectory.quickFindTreeFile(context, resolver, it) ?: return null
+                    val directory =
+                        currentDirectory.quickFindTreeFile(context, resolver, it) ?: return null
                     if (directory.canRead()) {
                         currentDirectory = directory
                     } else {
@@ -396,15 +427,26 @@ fun DocumentFile.quickFindRawFile(name: String): DocumentFile? {
  */
 @SuppressLint("NewApi")
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun DocumentFile.quickFindTreeFile(context: Context, resolver: ContentResolver, name: String): DocumentFile? {
+fun DocumentFile.quickFindTreeFile(
+    context: Context,
+    resolver: ContentResolver,
+    name: String
+): DocumentFile? {
     try {
         // Optimized algorithm. Do not change unless you really know algorithm complexity.
         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, id)
-        resolver.query(childrenUri, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)?.use {
+        resolver.query(
+            childrenUri,
+            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
+            null,
+            null,
+            null
+        )?.use {
             val columnName = arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
             while (it.moveToNext()) {
                 try {
-                    val documentUri = DocumentsContract.buildDocumentUriUsingTree(uri, it.getString(0))
+                    val documentUri =
+                        DocumentsContract.buildDocumentUriUsingTree(uri, it.getString(0))
                     resolver.query(documentUri, columnName, null, null, null)?.use { childCursor ->
                         if (childCursor.moveToFirst() && name == childCursor.getString(0))
                             return context.fromTreeUri(documentUri)
@@ -421,14 +463,23 @@ fun DocumentFile.quickFindTreeFile(context: Context, resolver: ContentResolver, 
 }
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun DocumentFile.shouldWritable(context: Context, requiresWriteAccess: Boolean) = requiresWriteAccess && isWritable(context) || !requiresWriteAccess
+fun DocumentFile.shouldWritable(context: Context, requiresWriteAccess: Boolean) =
+    requiresWriteAccess && isWritable(context) || !requiresWriteAccess
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun DocumentFile.takeIfWritable(context: Context, requiresWriteAccess: Boolean) = takeIf { it.shouldWritable(context, requiresWriteAccess) }
+fun DocumentFile.takeIfWritable(context: Context, requiresWriteAccess: Boolean) =
+    takeIf { it.shouldWritable(context, requiresWriteAccess) }
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun DocumentFile.checkRequirements(context: Context, requiresWriteAccess: Boolean, considerRawFile: Boolean) = canRead() &&
-        (considerRawFile || isExternalStorageManager(context)) && shouldWritable(context, requiresWriteAccess)
+fun DocumentFile.checkRequirements(
+    context: Context,
+    requiresWriteAccess: Boolean,
+    considerRawFile: Boolean
+) = canRead() &&
+        (considerRawFile || isExternalStorageManager(context)) && shouldWritable(
+    context,
+    requiresWriteAccess
+)
 
 /**
  * @return File path without storage ID. Returns empty `String` if:
@@ -436,7 +487,6 @@ fun DocumentFile.checkRequirements(context: Context, requiresWriteAccess: Boolea
  * * It is not a raw file and the authority is neither [DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY] nor [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY]
  * * The authority is [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY], but [isTreeDocumentFile] returns `false`
  */
-@Suppress("DEPRECATION")
 fun DocumentFile.getBasePath(context: Context): String {
     val path = uri.path.orEmpty()
     val storageID = getStorageId(context)
@@ -444,7 +494,9 @@ fun DocumentFile.getBasePath(context: Context): String {
         isRawFile -> File(path).getBasePath(context)
 
         isDocumentsDocument -> {
-            "${Environment.DIRECTORY_DOCUMENTS}/${path.substringAfterLast("/home:", "")}".trimEnd('/')
+            "${Environment.DIRECTORY_DOCUMENTS}/${path.substringAfterLast("/home:", "")}".trimEnd(
+                '/'
+            )
         }
 
         isExternalStorageDocument && path.contains("/document/$storageID:") -> {
@@ -475,7 +527,8 @@ fun DocumentFile.getBasePath(context: Context): String {
                     }
                 }
 
-                else -> path.substringAfterLast(SimpleStorage.externalStoragePath, "").trimFileSeparator()
+                else -> path.substringAfterLast(SimpleStorage.externalStoragePath, "")
+                    .trimFileSeparator()
             }
         }
 
@@ -532,7 +585,8 @@ fun DocumentFile.getRootPath(context: Context) = when {
     else -> SimpleStorage.externalStoragePath
 }
 
-fun DocumentFile.getRelativePath(context: Context) = getBasePath(context).substringBeforeLast('/', "")
+fun DocumentFile.getRelativePath(context: Context) =
+    getBasePath(context).substringBeforeLast('/', "")
 
 /**
  * * For file in SD Card => `/storage/6881-2249/Music/song.mp3`
@@ -548,7 +602,6 @@ fun DocumentFile.getRelativePath(context: Context) = getBasePath(context).substr
  * @see File.getAbsolutePath
  * @see getSimplePath
  */
-@Suppress("DEPRECATION")
 fun DocumentFile.getAbsolutePath(context: Context): String {
     val path = uri.path.orEmpty()
     val storageID = getStorageId(context)
@@ -569,7 +622,8 @@ fun DocumentFile.getAbsolutePath(context: Context): String {
             }
         }
 
-        uri.toString().let { it == DocumentFileCompat.DOWNLOADS_TREE_URI || it == "${DocumentFileCompat.DOWNLOADS_TREE_URI}/document/downloads" } ->
+        uri.toString()
+            .let { it == DocumentFileCompat.DOWNLOADS_TREE_URI || it == "${DocumentFileCompat.DOWNLOADS_TREE_URI}/document/downloads" } ->
             PublicDirectory.DOWNLOADS.absolutePath
 
         isDownloadsDocument -> {
@@ -587,7 +641,9 @@ fun DocumentFile.getAbsolutePath(context: Context): String {
                         while (parent.parentFile?.also { parent = it } != null) {
                             parentTree.add(parent.name.orEmpty())
                         }
-                        "${SimpleStorage.externalStoragePath}/${parentTree.reversed().joinToString("/")}".trimEnd('/')
+                        "${SimpleStorage.externalStoragePath}/${
+                            parentTree.reversed().joinToString("/")
+                        }".trimEnd('/')
                     } else {
                         // we can't use msf/msd ID as MediaFile ID to fetch relative path, so just return empty String
                         ""
@@ -599,7 +655,10 @@ fun DocumentFile.getAbsolutePath(context: Context): String {
         }
 
         !isTreeDocumentFile -> ""
-        inPrimaryStorage(context) -> "${SimpleStorage.externalStoragePath}/${getBasePath(context)}".trimEnd('/')
+        inPrimaryStorage(context) -> "${SimpleStorage.externalStoragePath}/${getBasePath(context)}".trimEnd(
+            '/'
+        )
+
         else -> "/storage/$storageID/${getBasePath(context)}".trimEnd('/')
     }
 }
@@ -607,7 +666,8 @@ fun DocumentFile.getAbsolutePath(context: Context): String {
 /**
  * @see getAbsolutePath
  */
-fun DocumentFile.getSimplePath(context: Context) = "${getStorageId(context)}:${getBasePath(context)}".removePrefix(":")
+fun DocumentFile.getSimplePath(context: Context) =
+    "${getStorageId(context)}:${getBasePath(context)}".removePrefix(":")
 
 @JvmOverloads
 fun DocumentFile.findParent(context: Context, requiresWriteAccess: Boolean = true): DocumentFile? {
@@ -616,15 +676,21 @@ fun DocumentFile.findParent(context: Context, requiresWriteAccess: Boolean = tru
         if (parentPath.isEmpty()) {
             null
         } else {
-            DocumentFileCompat.fromFullPath(context, parentPath, requiresWriteAccess = requiresWriteAccess)?.also {
+            DocumentFileCompat.fromFullPath(
+                context,
+                parentPath,
+                requiresWriteAccess = requiresWriteAccess
+            )?.also {
                 try {
                     val field = DocumentFile::class.java.getDeclaredField("mParent")
                     field.isAccessible = true
                     field.set(this, it)
                 } catch (e: Exception) {
                     Log.w(
-                        "DocumentFileUtils", "Cannot modify field mParent in androidx.documentfile.provider.DocumentFile. " +
-                                "Please exclude DocumentFile from obfuscation.", e
+                        "DocumentFileUtils",
+                        "Cannot modify field mParent in androidx.documentfile.provider.DocumentFile. " +
+                                "Please exclude DocumentFile from obfuscation.",
+                        e
                     )
                 }
             }
@@ -649,11 +715,21 @@ fun DocumentFile.recreateFile(context: Context): DocumentFile? {
 }
 
 @JvmOverloads
-fun DocumentFile.getRootDocumentFile(context: Context, requiresWriteAccess: Boolean = false) = when {
-    isTreeDocumentFile -> DocumentFileCompat.getRootDocumentFile(context, getStorageId(context), requiresWriteAccess)
-    isRawFile -> uri.path?.run { File(this).getRootRawFile(context, requiresWriteAccess)?.let { DocumentFile.fromFile(it) } }
-    else -> null
-}
+fun DocumentFile.getRootDocumentFile(context: Context, requiresWriteAccess: Boolean = false) =
+    when {
+        isTreeDocumentFile -> DocumentFileCompat.getRootDocumentFile(
+            context,
+            getStorageId(context),
+            requiresWriteAccess
+        )
+
+        isRawFile -> uri.path?.run {
+            File(this).getRootRawFile(context, requiresWriteAccess)
+                ?.let { DocumentFile.fromFile(it) }
+        }
+
+        else -> null
+    }
 
 /**
  * @return `true` if this file exists and writeable. [DocumentFile.canWrite] may return false if you have no URI permission for read & write access.
@@ -664,13 +740,18 @@ fun DocumentFile.canModify(context: Context) = canRead() && isWritable(context)
  * Use it, because [DocumentFile.canWrite] is unreliable on Android 10.
  * Read [this issue](https://github.com/anggrayudi/SimpleStorage/issues/24#issuecomment-830000378)
  */
-fun DocumentFile.isWritable(context: Context) = if (isRawFile) File(uri.path!!).isWritable(context) else canWrite()
+fun DocumentFile.isWritable(context: Context) =
+    if (isRawFile) File(uri.path!!).isWritable(context) else canWrite()
 
 fun DocumentFile.isRootUriPermissionGranted(context: Context): Boolean {
-    return isExternalStorageDocument && DocumentFileCompat.isStorageUriPermissionGranted(context, getStorageId(context))
+    return isExternalStorageDocument && DocumentFileCompat.isStorageUriPermissionGranted(
+        context,
+        getStorageId(context)
+    )
 }
 
-fun DocumentFile.getFormattedSize(context: Context): String = Formatter.formatFileSize(context, length())
+fun DocumentFile.getFormattedSize(context: Context): String =
+    Formatter.formatFileSize(context, length())
 
 /**
  * Avoid duplicate file name.
@@ -688,7 +769,9 @@ fun DocumentFile.autoIncrementFileName(context: Context, filename: String): Stri
         val prefix = "$baseName ("
         var lastFileCount = files.filter {
             val name = it.name.orEmpty()
-            name.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(name)
+            name.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(
+                name
+            )
                     || DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION.matches(name))
         }.maxOfOrNull {
             it.name.orEmpty().substringAfterLast('(', "")
@@ -706,7 +789,11 @@ fun DocumentFile.autoIncrementFileName(context: Context, filename: String): Stri
  */
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.createBinaryFile(context: Context, name: String, mode: CreateMode = CreateMode.CREATE_NEW) =
+fun DocumentFile.createBinaryFile(
+    context: Context,
+    name: String,
+    mode: CreateMode = CreateMode.CREATE_NEW
+) =
     makeFile(context, name, MimeType.BINARY_FILE, mode)
 
 /**
@@ -739,11 +826,12 @@ fun DocumentFile.makeFile(
 
     val filename = cleanName.substringAfterLast('/')
     val extensionByName = MimeType.getExtensionFromFileName(cleanName)
-    val extension = if (extensionByName.isNotEmpty() && (mimeType == null || mimeType == MimeType.UNKNOWN || mimeType == MimeType.BINARY_FILE)) {
-        extensionByName
-    } else {
-        MimeType.getExtensionFromMimeTypeOrFileName(mimeType, cleanName)
-    }
+    val extension =
+        if (extensionByName.isNotEmpty() && (mimeType == null || mimeType == MimeType.UNKNOWN || mimeType == MimeType.BINARY_FILE)) {
+            extensionByName
+        } else {
+            MimeType.getExtensionFromMimeTypeOrFileName(mimeType, cleanName)
+        }
     val baseFileName = filename.removeSuffix(".$extension")
     val fullFileName = "$baseFileName.$extension".trimEnd('.')
 
@@ -770,7 +858,14 @@ fun DocumentFile.makeFile(
 
     if (isRawFile) {
         // RawDocumentFile does not avoid duplicate file name, but TreeDocumentFile does.
-        return DocumentFile.fromFile(toRawFile(context)?.makeFile(context, cleanName, mimeType, createMode) ?: return null)
+        return DocumentFile.fromFile(
+            toRawFile(context)?.makeFile(
+                context,
+                cleanName,
+                mimeType,
+                createMode
+            ) ?: return null
+        )
     }
 
     val correctMimeType = MimeType.getMimeTypeFromExtension(extension).let {
@@ -802,20 +897,28 @@ fun DocumentFile.makeFolder(
     }
 
     if (isRawFile) {
-        return DocumentFile.fromFile(toRawFile(context)?.makeFolder(context, name, mode) ?: return null)
+        return DocumentFile.fromFile(
+            toRawFile(context)?.makeFolder(context, name, mode) ?: return null
+        )
     }
 
     // if name is "Aduhhh/Now/Dee", system will convert it to Aduhhh_Now_Dee, so create a sequence
-    val directorySequence = DocumentFileCompat.getDirectorySequence(name.removeForbiddenCharsFromFilename()).toMutableList()
+    val directorySequence =
+        DocumentFileCompat.getDirectorySequence(name.removeForbiddenCharsFromFilename())
+            .toMutableList()
     val folderNameLevel1 = directorySequence.removeFirstOrNull() ?: return null
-    var currentDirectory = if (isDownloadsDocument && isTreeDocumentFile) (toWritableDownloadsDocumentFile(context) ?: return null) else this
+    var currentDirectory =
+        if (isDownloadsDocument && isTreeDocumentFile) (toWritableDownloadsDocumentFile(context)
+            ?: return null) else this
     val folderLevel1 = currentDirectory.child(context, folderNameLevel1)
 
     currentDirectory = if (folderLevel1 == null || mode == CreateMode.CREATE_NEW) {
         currentDirectory.createDirectory(folderNameLevel1) ?: return null
     } else if (mode == CreateMode.REPLACE) {
         folderLevel1.forceDelete(context, true)
-        if (folderLevel1.isDirectory) folderLevel1 else currentDirectory.createDirectory(folderNameLevel1) ?: return null
+        if (folderLevel1.isDirectory) folderLevel1 else currentDirectory.createDirectory(
+            folderNameLevel1
+        ) ?: return null
     } else if (mode != CreateMode.SKIP_IF_EXISTS && folderLevel1.isDirectory && folderLevel1.canRead()) {
         folderLevel1
     } else {
@@ -848,13 +951,23 @@ fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile
     return if (isDownloadsDocument) {
         val path = uri.path.orEmpty()
         when {
-            uri.toString() == "${DocumentFileCompat.DOWNLOADS_TREE_URI}/document/downloads" -> takeIf { it.isWritable(context) }
+            uri.toString() == "${DocumentFileCompat.DOWNLOADS_TREE_URI}/document/downloads" -> takeIf {
+                it.isWritable(
+                    context
+                )
+            }
 
             // content://com.android.providers.downloads.documents/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2Fscreenshot.jpeg
             // content://com.android.providers.downloads.documents/tree/downloads/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2FIKO5
             // raw:/storage/emulated/0/Download/IKO5
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && (path.startsWith("/tree/downloads/document/raw:") || path.startsWith("/document/raw:")) -> {
-                val downloads = DocumentFileCompat.fromPublicFolder(context, PublicDirectory.DOWNLOADS, considerRawFile = false) ?: return null
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && (path.startsWith("/tree/downloads/document/raw:") || path.startsWith(
+                "/document/raw:"
+            )) -> {
+                val downloads = DocumentFileCompat.fromPublicFolder(
+                    context,
+                    PublicDirectory.DOWNLOADS,
+                    considerRawFile = false
+                ) ?: return null
                 val fullPath = path.substringAfterLast("/document/raw:")
                 val subFile = fullPath.substringAfter("/${Environment.DIRECTORY_DOWNLOADS}", "")
                 downloads.child(context, subFile, true)
@@ -892,7 +1005,10 @@ fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile
 /**
  * @param names full file names, with their extension
  */
-fun DocumentFile.findFiles(names: Array<String>, documentType: DocumentFileType = DocumentFileType.ANY): List<DocumentFile> {
+fun DocumentFile.findFiles(
+    names: Array<String>,
+    documentType: DocumentFileType = DocumentFileType.ANY
+): List<DocumentFile> {
     val files = listFiles().filter { it.name in names }
     return when (documentType) {
         DocumentFileType.FILE -> files.filter { it.isFile }
@@ -901,12 +1017,14 @@ fun DocumentFile.findFiles(names: Array<String>, documentType: DocumentFileType 
     }
 }
 
-fun DocumentFile.findFolder(name: String): DocumentFile? = listFiles().find { it.name == name && it.isDirectory }
+fun DocumentFile.findFolder(name: String): DocumentFile? =
+    listFiles().find { it.name == name && it.isDirectory }
 
 /**
  * Expect the file is a file literally, not a folder.
  */
-fun DocumentFile.findFileLiterally(name: String): DocumentFile? = listFiles().find { it.name == name && it.isFile }
+fun DocumentFile.findFileLiterally(name: String): DocumentFile? =
+    listFiles().find { it.name == name && it.isFile }
 
 /**
  * @param recursive walk into sub folders
@@ -938,22 +1056,28 @@ fun DocumentFile.search(
             if (regex != null) {
                 sequence = sequence.filter { regex.matches(it.name.orEmpty()) }
             }
-            val hasMimeTypeFilter = !mimeTypes.isNullOrEmpty() && !mimeTypes.any { it == MimeType.UNKNOWN }
+            val hasMimeTypeFilter =
+                !mimeTypes.isNullOrEmpty() && !mimeTypes.any { it == MimeType.UNKNOWN }
             when {
-                hasMimeTypeFilter || documentType == DocumentFileType.FILE -> sequence = sequence.filter { it.isFile }
-                documentType == DocumentFileType.FOLDER -> sequence = sequence.filter { it.isDirectory }
+                hasMimeTypeFilter || documentType == DocumentFileType.FILE -> sequence =
+                    sequence.filter { it.isFile }
+
+                documentType == DocumentFileType.FOLDER -> sequence =
+                    sequence.filter { it.isDirectory }
             }
             if (hasMimeTypeFilter) {
                 sequence = sequence.filter { it.matchesMimeTypes(mimeTypes!!) }
             }
             val result = sequence.toList()
-            if (name.isEmpty()) result else result.firstOrNull { it.name == name }?.let { listOf(it) } ?: emptyList()
+            if (name.isEmpty()) result else result.firstOrNull { it.name == name }
+                ?.let { listOf(it) } ?: emptyList()
         }
     }
 }
 
 private fun DocumentFile.matchesMimeTypes(filterMimeTypes: Array<String>): Boolean {
-    return filterMimeTypes.isEmpty() || !MimeTypeFilter.matches(mimeTypeByFileName, filterMimeTypes).isNullOrEmpty()
+    return filterMimeTypes.isEmpty() || !MimeTypeFilter.matches(mimeTypeByFileName, filterMimeTypes)
+        .isNullOrEmpty()
 }
 
 private fun DocumentFile.walkFileTreeForSearch(
@@ -982,11 +1106,22 @@ private fun DocumentFile.walkFileTreeForSearch(
         } else {
             if (documentType != DocumentFileType.FILE) {
                 val folderName = file.name.orEmpty()
-                if ((nameFilter.isEmpty() || folderName == nameFilter) && (regex == null || regex.matches(folderName))) {
+                if ((nameFilter.isEmpty() || folderName == nameFilter) && (regex == null || regex.matches(
+                        folderName
+                    ))
+                ) {
                     fileTree.add(file)
                 }
             }
-            fileTree.addAll(file.walkFileTreeForSearch(documentType, mimeTypes, nameFilter, regex, thread))
+            fileTree.addAll(
+                file.walkFileTreeForSearch(
+                    documentType,
+                    mimeTypes,
+                    nameFilter,
+                    regex,
+                    thread
+                )
+            )
         }
     }
     return fileTree
@@ -1070,20 +1205,29 @@ private fun DocumentFile.walkFileTreeAndDeleteEmptyFolders(): List<DocumentFile>
  */
 @JvmOverloads
 @WorkerThread
-fun DocumentFile.openOutputStream(context: Context, append: Boolean = true) = uri.openOutputStream(context, append)
+fun DocumentFile.openOutputStream(context: Context, append: Boolean = true) =
+    uri.openOutputStream(context, append)
 
 @WorkerThread
 fun DocumentFile.openInputStream(context: Context) = uri.openInputStream(context)
 
 @UiThread
 fun DocumentFile.openFileIntent(context: Context, authority: String) = Intent(Intent.ACTION_VIEW)
-    .setData(if (isRawFile) FileProvider.getUriForFile(context, authority, File(uri.path!!)) else uri)
+    .setData(
+        if (isRawFile) FileProvider.getUriForFile(
+            context,
+            authority,
+            File(uri.path!!)
+        ) else uri
+    )
     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-fun DocumentFile.hasParent(context: Context, parent: DocumentFile) = getAbsolutePath(context).hasParent(parent.getAbsolutePath(context))
+fun DocumentFile.hasParent(context: Context, parent: DocumentFile) =
+    getAbsolutePath(context).hasParent(parent.getAbsolutePath(context))
 
-fun DocumentFile.childOf(context: Context, parent: DocumentFile) = getAbsolutePath(context).childOf(parent.getAbsolutePath(context))
+fun DocumentFile.childOf(context: Context, parent: DocumentFile) =
+    getAbsolutePath(context).childOf(parent.getAbsolutePath(context))
 
 private fun DocumentFile.walkFileTree(context: Context): List<DocumentFile> {
     val fileTree = mutableListOf<DocumentFile>()
@@ -1145,7 +1289,10 @@ fun List<DocumentFile>.compressToZip(
         if (srcFile.exists()) {
             if (!srcFile.canRead()) {
                 callback.uiScope.postToUi {
-                    callback.onFailed(ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED, "Can't read file: ${srcFile.uri}")
+                    callback.onFailed(
+                        ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED,
+                        "Can't read file: ${srcFile.uri}"
+                    )
                 }
                 return
             } else if (srcFile.isFile) {
@@ -1158,7 +1305,12 @@ fun List<DocumentFile>.compressToZip(
                 directories.add(srcFile)
             }
         } else {
-            callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE, "File not found: ${srcFile.uri}") }
+            callback.uiScope.postToUi {
+                callback.onFailed(
+                    ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE,
+                    "File not found: ${srcFile.uri}"
+                )
+            }
             return
         }
     }
@@ -1171,11 +1323,15 @@ fun List<DocumentFile>.compressToZip(
      */
     class EntryFile(val file: DocumentFile, var path: String) {
 
-        override fun equals(other: Any?) = this === other || other is EntryFile && path == other.path
+        override fun equals(other: Any?) =
+            this === other || other is EntryFile && path == other.path
+
         override fun hashCode() = path.hashCode()
     }
 
-    val srcFolders = directories.map { EntryFile(it, it.getAbsolutePath(context)) }.distinctBy { it.path }.toMutableList()
+    val srcFolders =
+        directories.map { EntryFile(it, it.getAbsolutePath(context)) }.distinctBy { it.path }
+            .toMutableList()
     DocumentFileCompat.findUniqueParents(context, srcFolders.map { it.path }).forEach { parent ->
         srcFolders.removeAll { it.path.childOf(parent) }
     }
@@ -1192,7 +1348,12 @@ fun List<DocumentFile>.compressToZip(
 
     val totalFiles = treeFiles.size + mediaFiles.size
     if (totalFiles == 0) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE, "No entry files found") }
+        callback.uiScope.postToUi {
+            callback.onFailed(
+                ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE,
+                "No entry files found"
+            )
+        }
         return
     }
 
@@ -1200,15 +1361,24 @@ fun List<DocumentFile>.compressToZip(
 
     treeFiles.forEach { actualFilesSize += it.length() }
     mediaFiles.forEach { actualFilesSize += it.length() }
-    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetZipFile.getStorageId(context)), actualFilesSize)) {
+    if (!callback.onCheckFreeSpace(
+            DocumentFileCompat.getFreeSpace(
+                context,
+                targetZipFile.getStorageId(context)
+            ), actualFilesSize
+        )
+    ) {
         callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
         return
     }
 
     val entryFiles = ArrayList<EntryFile>(totalFiles)
     treeFiles.forEach { entryFiles.add(EntryFile(it, it.getBasePath(context))) }
-    val parentPaths = DocumentFileCompat.findUniqueParents(context, entryFiles.map { "/" + it.path.substringBeforeLast('/') }).map { it.trim('/') }
-    foldersBasePath = DocumentFileCompat.findUniqueParents(context, foldersBasePath.map { "/$it" }).map { it.trim('/') }.toMutableList()
+    val parentPaths = DocumentFileCompat.findUniqueParents(
+        context,
+        entryFiles.map { "/" + it.path.substringBeforeLast('/') }).map { it.trim('/') }
+    foldersBasePath = DocumentFileCompat.findUniqueParents(context, foldersBasePath.map { "/$it" })
+        .map { it.trim('/') }.toMutableList()
     entryFiles.forEach { entry ->
         for (parentPath in parentPaths) {
             if (entry.path.startsWith(parentPath)) {
@@ -1226,26 +1396,36 @@ fun List<DocumentFile>.compressToZip(
     val duplicateFiles = entryFiles.groupingBy { it }.eachCount().filterValues { it > 1 }
     if (duplicateFiles.isNotEmpty()) {
         callback.uiScope.postToUi {
-            callback.onFailed(ZipCompressionCallback.ErrorCode.DUPLICATE_ENTRY_FILE, "Found duplicate entry files: ${duplicateFiles.keys.map { it.file.uri }}")
+            callback.onFailed(
+                ZipCompressionCallback.ErrorCode.DUPLICATE_ENTRY_FILE,
+                "Found duplicate entry files: ${duplicateFiles.keys.map { it.file.uri }}"
+            )
         }
         return
     }
 
     var zipFile: DocumentFile? = targetZipFile
     if (!targetZipFile.exists() || targetZipFile.isDirectory) {
-        zipFile = targetZipFile.findParent(context)?.makeFile(context, targetZipFile.fullName, MimeType.ZIP)
+        zipFile = targetZipFile.findParent(context)
+            ?.makeFile(context, targetZipFile.fullName, MimeType.ZIP)
     }
     if (zipFile == null) {
         callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
         return
     }
     if (!zipFile.isWritable(context)) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED, "Destination ZIP file is not writable") }
+        callback.uiScope.postToUi {
+            callback.onFailed(
+                ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED,
+                "Destination ZIP file is not writable"
+            )
+        }
         return
     }
 
     val thread = Thread.currentThread()
-    val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(entryFiles.map { it.file }, thread) }
+    val reportInterval =
+        awaitUiResult(callback.uiScope) { callback.onStart(entryFiles.map { it.file }, thread) }
     if (reportInterval < 0) return
 
     var success = false
@@ -1259,7 +1439,12 @@ fun List<DocumentFile>.compressToZip(
         // using timer on small file is useless. We set minimum 10MB.
         if (reportInterval > 0 && actualFilesSize > 10 * FileSize.MB) {
             timer = startCoroutineTimer(repeatMillis = reportInterval) {
-                val report = ZipCompressionCallback.Report(bytesCompressed * 100f / actualFilesSize, bytesCompressed, writeSpeed, fileCompressedCount)
+                val report = ZipCompressionCallback.Report(
+                    bytesCompressed * 100f / actualFilesSize,
+                    bytesCompressed,
+                    writeSpeed,
+                    fileCompressedCount
+                )
                 callback.uiScope.postToUi { callback.onReport(report) }
                 writeSpeed = 0
             }
@@ -1282,11 +1467,26 @@ fun List<DocumentFile>.compressToZip(
     } catch (e: InterruptedIOException) {
         callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.CANCELED) }
     } catch (e: FileNotFoundException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE, e.message) }
+        callback.uiScope.postToUi {
+            callback.onFailed(
+                ZipCompressionCallback.ErrorCode.MISSING_ENTRY_FILE,
+                e.message
+            )
+        }
     } catch (e: IOException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.UNKNOWN_IO_ERROR, e.message) }
+        callback.uiScope.postToUi {
+            callback.onFailed(
+                ZipCompressionCallback.ErrorCode.UNKNOWN_IO_ERROR,
+                e.message
+            )
+        }
     } catch (e: SecurityException) {
-        callback.uiScope.postToUi { callback.onFailed(ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED, e.message) }
+        callback.uiScope.postToUi {
+            callback.onFailed(
+                ZipCompressionCallback.ErrorCode.STORAGE_PERMISSION_DENIED,
+                e.message
+            )
+        }
     } finally {
         timer?.cancel()
         zos.closeEntryQuietly()
@@ -1298,7 +1498,14 @@ fun List<DocumentFile>.compressToZip(
             forEach { it.forceDelete(context) }
         }
         val sizeReduction = (actualFilesSize - zipFile.length()).toFloat() / actualFilesSize * 100
-        callback.uiScope.postToUi { callback.onCompleted(zipFile, actualFilesSize, totalFiles, sizeReduction) }
+        callback.uiScope.postToUi {
+            callback.onCompleted(
+                zipFile,
+                actualFilesSize,
+                totalFiles,
+                sizeReduction
+            )
+        }
     } else {
         zipFile.delete()
     }
@@ -1343,7 +1550,13 @@ fun DocumentFile.decompressZip(
     }
 
     val zipSize = length()
-    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetFolder.getStorageId(context)), zipSize)) {
+    if (!callback.onCheckFreeSpace(
+            DocumentFileCompat.getFreeSpace(
+                context,
+                targetFolder.getStorageId(context)
+            ), zipSize
+        )
+    ) {
         callback.uiScope.postToUi { callback.onFailed(ZipDecompressionCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
         return
     }
@@ -1365,7 +1578,11 @@ fun DocumentFile.decompressZip(
         // using timer on small file is useless. We set minimum 10MB.
         if (reportInterval > 0 && zipSize > 10 * FileSize.MB) {
             timer = startCoroutineTimer(repeatMillis = reportInterval) {
-                val report = ZipDecompressionCallback.Report(bytesDecompressed, writeSpeed, fileDecompressedCount)
+                val report = ZipDecompressionCallback.Report(
+                    bytesDecompressed,
+                    writeSpeed,
+                    fileDecompressedCount
+                )
                 callback.uiScope.postToUi { callback.onReport(report) }
                 writeSpeed = 0
             }
@@ -1378,7 +1595,11 @@ fun DocumentFile.decompressZip(
                 destFolder.makeFolder(context, entry.name, CreateMode.REUSE)
             } else {
                 val folder = entry.name.substringBeforeLast('/', "").let {
-                    if (it.isEmpty()) destFolder else destFolder.makeFolder(context, it, CreateMode.REUSE)
+                    if (it.isEmpty()) destFolder else destFolder.makeFolder(
+                        context,
+                        it,
+                        CreateMode.REUSE
+                    )
                 } ?: throw IOException()
                 val fileName = entry.name.substringAfterLast('/')
                 targetFile = folder.makeFile(context, fileName, onConflict = callback)
@@ -1427,7 +1648,12 @@ fun DocumentFile.decompressZip(
     if (success) {
         // Sometimes, the decompressed size is smaller than the compressed size, and you may get negative values. You should worry about this.
         val sizeExpansion = (bytesDecompressed - zipSize).toFloat() / zipSize * 100
-        val info = ZipDecompressionCallback.DecompressionInfo(bytesDecompressed, skippedDecompressedBytes, fileDecompressedCount, sizeExpansion)
+        val info = ZipDecompressionCallback.DecompressionInfo(
+            bytesDecompressed,
+            skippedDecompressedBytes,
+            fileDecompressedCount,
+            sizeExpansion
+        )
         callback.uiScope.postToUi { callback.onCompleted(this, destFolder, info) }
     } else {
         targetFile?.delete()
@@ -1467,22 +1693,34 @@ private fun List<DocumentFile>.copyTo(
 
     val validSources = pair.second
     val writableTargetParentFolder = pair.first
-    val conflictResolutions = validSources.handleParentFolderConflict(context, writableTargetParentFolder, callback) ?: return
-    validSources.removeAll(conflictResolutions.filter { it.solution == FolderCallback.ConflictResolution.SKIP }.map { it.source })
+    val conflictResolutions =
+        validSources.handleParentFolderConflict(context, writableTargetParentFolder, callback)
+            ?: return
+    validSources.removeAll(conflictResolutions.filter { it.solution == FolderCallback.ConflictResolution.SKIP }
+        .map { it.source })
     if (validSources.isEmpty()) {
         return
     }
 
     callback.uiScope.postToUi { callback.onCountingFiles() }
 
-    class SourceInfo(val children: List<DocumentFile>?, val size: Long, val totalFiles: Int, val conflictResolution: FolderCallback.ConflictResolution)
+    class SourceInfo(
+        val children: List<DocumentFile>?,
+        val size: Long,
+        val totalFiles: Int,
+        val conflictResolution: FolderCallback.ConflictResolution
+    )
 
     val sourceInfos = validSources.associateWith { src ->
-        val resolution = conflictResolutions.find { it.source == src }?.solution ?: FolderCallback.ConflictResolution.CREATE_NEW
+        val resolution = conflictResolutions.find { it.source == src }?.solution
+            ?: FolderCallback.ConflictResolution.CREATE_NEW
         if (src.isFile) {
             SourceInfo(null, src.length(), 1, resolution)
         } else {
-            val children = if (skipEmptyFiles) src.walkFileTreeAndSkipEmptyFiles() else src.walkFileTree(context)
+            val children =
+                if (skipEmptyFiles) src.walkFileTreeAndSkipEmptyFiles() else src.walkFileTree(
+                    context
+                )
             var totalFilesToCopy = 0
             var totalSizeToCopy = 0L
             children.forEach {
@@ -1494,7 +1732,8 @@ private fun List<DocumentFile>.copyTo(
             SourceInfo(children, totalSizeToCopy, totalFilesToCopy, resolution)
         }
         // allow empty folders, but empty files need check
-    }.filterValues { it.children != null || (skipEmptyFiles && it.size > 0 || !skipEmptyFiles) }.toMutableMap()
+    }.filterValues { it.children != null || (skipEmptyFiles && it.size > 0 || !skipEmptyFiles) }
+        .toMutableMap()
 
     if (sourceInfos.isEmpty()) {
         val result = MultipleFileCallback.Result(emptyList(), 0, 0, true)
@@ -1539,7 +1778,12 @@ private fun List<DocumentFile>.copyTo(
         }
 
         if (sourceInfos.isEmpty()) {
-            val result = MultipleFileCallback.Result(results.map { it.value }, copiedFiles, copiedFiles, true)
+            val result = MultipleFileCallback.Result(
+                results.map { it.value },
+                copiedFiles,
+                copiedFiles,
+                true
+            )
             callback.uiScope.postToUi { callback.onCompleted(result) }
             return
         }
@@ -1547,14 +1791,26 @@ private fun List<DocumentFile>.copyTo(
 
     val totalSizeToCopy = sourceInfos.values.sumOf { it.size }
 
-    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, writableTargetParentFolder.getStorageId(context)), totalSizeToCopy)) {
+    if (!callback.onCheckFreeSpace(
+            DocumentFileCompat.getFreeSpace(
+                context,
+                writableTargetParentFolder.getStorageId(context)
+            ), totalSizeToCopy
+        )
+    ) {
         callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
         return
     }
 
     val thread = Thread.currentThread()
     val totalFilesToCopy = sourceInfos.values.sumOf { it.totalFiles }
-    val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(sourceInfos.map { it.key }, totalFilesToCopy, thread) }
+    val reportInterval = awaitUiResult(callback.uiScope) {
+        callback.onStart(
+            sourceInfos.map { it.key },
+            totalFilesToCopy,
+            thread
+        )
+    }
     if (reportInterval < 0) return
 
     var totalCopiedFiles = 0
@@ -1564,7 +1820,12 @@ private fun List<DocumentFile>.copyTo(
     val startTimer: (Boolean) -> Unit = { start ->
         if (start && reportInterval > 0) {
             timer = startCoroutineTimer(repeatMillis = reportInterval) {
-                val report = MultipleFileCallback.Report(bytesMoved * 100f / totalSizeToCopy, bytesMoved, writeSpeed, totalCopiedFiles)
+                val report = MultipleFileCallback.Report(
+                    bytesMoved * 100f / totalSizeToCopy,
+                    bytesMoved,
+                    writeSpeed,
+                    totalCopiedFiles
+                )
                 callback.uiScope.postToUi { callback.onReport(report) }
                 writeSpeed = 0
             }
@@ -1573,13 +1834,19 @@ private fun List<DocumentFile>.copyTo(
     startTimer(totalSizeToCopy > 10 * FileSize.MB)
 
     var targetFile: DocumentFile? = null
-    var canceled = false // is required to prevent the callback from called again on next FOR iteration after the thread was interrupted
+    var canceled =
+        false // is required to prevent the callback from called again on next FOR iteration after the thread was interrupted
     val notifyCanceled: (MultipleFileCallback.ErrorCode) -> Unit = { errorCode ->
         if (!canceled) {
             canceled = true
             timer?.cancel()
             targetFile?.delete()
-            val result = MultipleFileCallback.Result(results.map { it.value }, totalFilesToCopy, totalCopiedFiles, false)
+            val result = MultipleFileCallback.Result(
+                results.map { it.value },
+                totalFilesToCopy,
+                totalCopiedFiles,
+                false
+            )
             callback.uiScope.postToUi {
                 callback.onFailed(errorCode)
                 callback.onCompleted(result)
@@ -1631,7 +1898,11 @@ private fun List<DocumentFile>.copyTo(
         }
         val mode = info.conflictResolution.toCreateMode()
         val targetRootFile = writableTargetParentFolder.let {
-            if (src.isDirectory) it.makeFolder(context, src.fullName, mode) else it.makeFile(context, src.fullName, src.mimeType, mode)
+            if (src.isDirectory) it.makeFolder(
+                context,
+                src.fullName,
+                mode
+            ) else it.makeFile(context, src.fullName, src.mimeType, mode)
         }
         if (targetRootFile == null) {
             timer?.cancel()
@@ -1657,7 +1928,8 @@ private fun List<DocumentFile>.copyTo(
                     continue
                 }
 
-                val filename = sourceFile.getSubPath(context, srcParentAbsolutePath) ?: sourceFile.fullName
+                val filename =
+                    sourceFile.getSubPath(context, srcParentAbsolutePath) ?: sourceFile.fullName
                 if (filename.isEmpty()) continue
 
                 if (sourceFile.isDirectory) {
@@ -1669,7 +1941,8 @@ private fun List<DocumentFile>.copyTo(
                     continue
                 }
 
-                targetFile = targetRootFile.makeFile(context, filename, sourceFile.type, CreateMode.REUSE)
+                targetFile =
+                    targetRootFile.makeFile(context, filename, sourceFile.type, CreateMode.REUSE)
                 if (targetFile != null && targetFile.length() > 0) {
                     conflictedFiles.add(FolderCallback.FileConflict(sourceFile, targetFile))
                     continue
@@ -1696,7 +1969,12 @@ private fun List<DocumentFile>.copyTo(
             if (deleteSourceWhenComplete && success) {
                 sourceInfos.forEach { (src, _) -> src.forceDelete(context) }
             }
-            val result = MultipleFileCallback.Result(results.map { it.value }, totalFilesToCopy, totalCopiedFiles, success)
+            val result = MultipleFileCallback.Result(
+                results.map { it.value },
+                totalFilesToCopy,
+                totalCopiedFiles,
+                success
+            )
             callback.uiScope.postToUi { callback.onCompleted(result) }
             true
         } else false
@@ -1704,7 +1982,11 @@ private fun List<DocumentFile>.copyTo(
     if (finalize()) return
 
     val solutions = awaitUiResultWithPending<List<FolderCallback.FileConflict>>(callback.uiScope) {
-        callback.onContentConflict(writableTargetParentFolder, conflictedFiles, FolderCallback.FolderContentConflictAction(it))
+        callback.onContentConflict(
+            writableTargetParentFolder,
+            conflictedFiles,
+            FolderCallback.FolderContentConflictAction(it)
+        )
     }.filter {
         // free up space first, by deleting some files
         if (it.solution == FileCallback.ConflictResolution.SKIP) {
@@ -1771,7 +2053,10 @@ private fun List<DocumentFile>.doesMeetCopyRequirements(
             !it.exists() -> Pair(it, FolderCallback.ErrorCode.SOURCE_FILE_NOT_FOUND)
             !it.canRead() -> Pair(it, FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED)
             targetParentFolderPath == it.parentFile?.getAbsolutePath(context) ->
-                Pair(it, FolderCallback.ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER)
+                Pair(
+                    it,
+                    FolderCallback.ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER
+                )
 
             else -> null
         }
@@ -1779,25 +2064,41 @@ private fun List<DocumentFile>.doesMeetCopyRequirements(
 
     if (invalidSourceFiles.isNotEmpty()) {
         val abort = awaitUiResultWithPending<Boolean>(callback.uiScope) {
-            callback.onInvalidSourceFilesFound(invalidSourceFiles, MultipleFileCallback.InvalidSourceFilesAction(it))
+            callback.onInvalidSourceFilesFound(
+                invalidSourceFiles,
+                MultipleFileCallback.InvalidSourceFilesAction(it)
+            )
         }
         if (abort) {
             callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.CANCELED) }
             return null
         }
         if (invalidSourceFiles.size == size) {
-            callback.uiScope.postToUi { callback.onCompleted(MultipleFileCallback.Result(emptyList(), 0, 0, true)) }
+            callback.uiScope.postToUi {
+                callback.onCompleted(
+                    MultipleFileCallback.Result(
+                        emptyList(),
+                        0,
+                        0,
+                        true
+                    )
+                )
+            }
             return null
         }
     }
 
-    val writableFolder = targetParentFolder.let { if (it.isDownloadsDocument) it.toWritableDownloadsDocumentFile(context) else it }
+    val writableFolder = targetParentFolder.let {
+        if (it.isDownloadsDocument) it.toWritableDownloadsDocumentFile(context) else it
+    }
     if (writableFolder == null) {
         callback.uiScope.postToUi { callback.onFailed(MultipleFileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
         return null
     }
 
-    return Pair(writableFolder, sourceFiles.toMutableList().apply { removeAll(invalidSourceFiles.map { it.key }) })
+    return Pair(
+        writableFolder,
+        sourceFiles.toMutableList().apply { removeAll(invalidSourceFiles.map { it.key }) })
 }
 
 private fun DocumentFile.tryMoveFolderByRenamingPath(
@@ -1822,9 +2123,15 @@ private fun DocumentFile.tryMoveFolderByRenamingPath(
         }
 
         if (isExternalStorageManager(context)) {
-            val sourceFile = toRawFile(context) ?: return FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED
+            val sourceFile =
+                toRawFile(context) ?: return FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED
             writableTargetParentFolder.toRawFile(context)?.let { destinationFolder ->
-                sourceFile.moveTo(context, destinationFolder, targetFolderParentName, conflictResolution.toFileConflictResolution())?.let {
+                sourceFile.moveTo(
+                    context,
+                    destinationFolder,
+                    targetFolderParentName,
+                    conflictResolution.toFileConflictResolution()
+                )?.let {
                     if (skipEmptyFiles) it.deleteEmptyFolders(context)
                     return DocumentFile.fromFile(it)
                 }
@@ -1833,11 +2140,20 @@ private fun DocumentFile.tryMoveFolderByRenamingPath(
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !isRawFile && writableTargetParentFolder.isTreeDocumentFile) {
-                val movedFileUri = parentFile?.uri?.let { DocumentsContract.moveDocument(context.contentResolver, uri, it, writableTargetParentFolder.uri) }
+                val movedFileUri = parentFile?.uri?.let {
+                    DocumentsContract.moveDocument(
+                        context.contentResolver,
+                        uri,
+                        it,
+                        writableTargetParentFolder.uri
+                    )
+                }
                 if (movedFileUri != null) {
                     val newFile = context.fromTreeUri(movedFileUri)
                     return if (newFile != null && newFile.isDirectory) {
-                        if (newFolderNameInTargetPath != null) newFile.renameTo(targetFolderParentName)
+                        if (newFolderNameInTargetPath != null) newFile.renameTo(
+                            targetFolderParentName
+                        )
                         if (skipEmptyFiles) newFile.deleteEmptyFolders(context)
                         newFile
                     } else {
@@ -1860,7 +2176,14 @@ fun DocumentFile.moveFolderTo(
     newFolderNameInTargetPath: String? = null,
     callback: FolderCallback
 ) {
-    copyFolderTo(context, targetParentFolder, skipEmptyFiles, newFolderNameInTargetPath, true, callback)
+    copyFolderTo(
+        context,
+        targetParentFolder,
+        skipEmptyFiles,
+        newFolderNameInTargetPath,
+        true,
+        callback
+    )
 }
 
 @WorkerThread
@@ -1871,7 +2194,14 @@ fun DocumentFile.copyFolderTo(
     newFolderNameInTargetPath: String? = null,
     callback: FolderCallback
 ) {
-    copyFolderTo(context, targetParentFolder, skipEmptyFiles, newFolderNameInTargetPath, false, callback)
+    copyFolderTo(
+        context,
+        targetParentFolder,
+        skipEmptyFiles,
+        newFolderNameInTargetPath,
+        false,
+        callback
+    )
 }
 
 /**
@@ -1885,12 +2215,17 @@ private fun DocumentFile.copyFolderTo(
     deleteSourceWhenComplete: Boolean,
     callback: FolderCallback
 ) {
-    val writableTargetParentFolder = doesMeetCopyRequirements(context, targetParentFolder, newFolderNameInTargetPath, callback) ?: return
+    val writableTargetParentFolder =
+        doesMeetCopyRequirements(context, targetParentFolder, newFolderNameInTargetPath, callback)
+            ?: return
 
     callback.uiScope.postToUi { callback.onPrepare() }
 
-    val targetFolderParentName = (newFolderNameInTargetPath ?: name.orEmpty()).removeForbiddenCharsFromFilename().trimFileSeparator()
-    val conflictResolution = handleParentFolderConflict(context, targetParentFolder, targetFolderParentName, callback)
+    val targetFolderParentName =
+        (newFolderNameInTargetPath ?: name.orEmpty()).removeForbiddenCharsFromFilename()
+            .trimFileSeparator()
+    val conflictResolution =
+        handleParentFolderConflict(context, targetParentFolder, targetFolderParentName, callback)
     if (conflictResolution == FolderCallback.ConflictResolution.SKIP) {
         return
     }
@@ -1899,12 +2234,25 @@ private fun DocumentFile.copyFolderTo(
 
     val filesToCopy = if (skipEmptyFiles) walkFileTreeAndSkipEmptyFiles() else walkFileTree(context)
     if (filesToCopy.isEmpty()) {
-        val targetFolder = writableTargetParentFolder.makeFolder(context, targetFolderParentName, conflictResolution.toCreateMode())
+        val targetFolder = writableTargetParentFolder.makeFolder(
+            context,
+            targetFolderParentName,
+            conflictResolution.toCreateMode()
+        )
         if (targetFolder == null) {
             callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
         } else {
             if (deleteSourceWhenComplete) delete()
-            callback.uiScope.postToUi { callback.onCompleted(FolderCallback.Result(targetFolder, 0, 0, true)) }
+            callback.uiScope.postToUi {
+                callback.onCompleted(
+                    FolderCallback.Result(
+                        targetFolder,
+                        0,
+                        0,
+                        true
+                    )
+                )
+            }
         }
         return
     }
@@ -1934,7 +2282,16 @@ private fun DocumentFile.copyFolderTo(
             conflictResolution
         )) {
             is DocumentFile -> {
-                callback.uiScope.postToUi { callback.onCompleted(FolderCallback.Result(result, totalFilesToCopy, totalFilesToCopy, true)) }
+                callback.uiScope.postToUi {
+                    callback.onCompleted(
+                        FolderCallback.Result(
+                            result,
+                            totalFilesToCopy,
+                            totalFilesToCopy,
+                            true
+                        )
+                    )
+                }
                 return
             }
 
@@ -1945,15 +2302,26 @@ private fun DocumentFile.copyFolderTo(
         }
     }
 
-    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, writableTargetParentFolder.getStorageId(context)), totalSizeToCopy)) {
+    if (!callback.onCheckFreeSpace(
+            DocumentFileCompat.getFreeSpace(
+                context,
+                writableTargetParentFolder.getStorageId(context)
+            ), totalSizeToCopy
+        )
+    ) {
         callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
         return
     }
 
-    val reportInterval = awaitUiResult(callback.uiScope) { callback.onStart(this, totalFilesToCopy, thread) }
+    val reportInterval =
+        awaitUiResult(callback.uiScope) { callback.onStart(this, totalFilesToCopy, thread) }
     if (reportInterval < 0) return
 
-    val targetFolder = writableTargetParentFolder.makeFolder(context, targetFolderParentName, conflictResolution.toCreateMode())
+    val targetFolder = writableTargetParentFolder.makeFolder(
+        context,
+        targetFolderParentName,
+        conflictResolution.toCreateMode()
+    )
     if (targetFolder == null) {
         callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
         return
@@ -1966,7 +2334,12 @@ private fun DocumentFile.copyFolderTo(
     val startTimer: (Boolean) -> Unit = { start ->
         if (start && reportInterval > 0) {
             timer = startCoroutineTimer(repeatMillis = reportInterval) {
-                val report = FolderCallback.Report(bytesMoved * 100f / totalSizeToCopy, bytesMoved, writeSpeed, totalCopiedFiles)
+                val report = FolderCallback.Report(
+                    bytesMoved * 100f / totalSizeToCopy,
+                    bytesMoved,
+                    writeSpeed,
+                    totalCopiedFiles
+                )
                 callback.uiScope.postToUi { callback.onReport(report) }
                 writeSpeed = 0
             }
@@ -1975,7 +2348,8 @@ private fun DocumentFile.copyFolderTo(
     startTimer(totalSizeToCopy > 10 * FileSize.MB)
 
     var targetFile: DocumentFile? = null
-    var canceled = false // is required to prevent the callback from called again on next FOR iteration after the thread was interrupted
+    var canceled =
+        false // is required to prevent the callback from called again on next FOR iteration after the thread was interrupted
     val notifyCanceled: (FolderCallback.ErrorCode) -> Unit = { errorCode ->
         if (!canceled) {
             canceled = true
@@ -1983,7 +2357,14 @@ private fun DocumentFile.copyFolderTo(
             targetFile?.delete()
             callback.uiScope.postToUi {
                 callback.onFailed(errorCode)
-                callback.onCompleted(FolderCallback.Result(targetFolder, totalFilesToCopy, totalCopiedFiles, false))
+                callback.onCompleted(
+                    FolderCallback.Result(
+                        targetFolder,
+                        totalFilesToCopy,
+                        totalCopiedFiles,
+                        false
+                    )
+                )
             }
         }
     }
@@ -2069,14 +2450,27 @@ private fun DocumentFile.copyFolderTo(
         timer?.cancel()
         if (!success || conflictedFiles.isEmpty()) {
             if (deleteSourceWhenComplete && success) forceDelete(context)
-            callback.uiScope.postToUi { callback.onCompleted(FolderCallback.Result(targetFolder, totalFilesToCopy, totalCopiedFiles, success)) }
+            callback.uiScope.postToUi {
+                callback.onCompleted(
+                    FolderCallback.Result(
+                        targetFolder,
+                        totalFilesToCopy,
+                        totalCopiedFiles,
+                        success
+                    )
+                )
+            }
             true
         } else false
     }
     if (finalize()) return
 
     val solutions = awaitUiResultWithPending<List<FolderCallback.FileConflict>>(callback.uiScope) {
-        callback.onContentConflict(targetFolder, conflictedFiles, FolderCallback.FolderContentConflictAction(it))
+        callback.onContentConflict(
+            targetFolder,
+            conflictedFiles,
+            FolderCallback.FolderContentConflictAction(it)
+        )
     }.filter {
         // free up space first, by deleting some files
         if (it.solution == FileCallback.ConflictResolution.SKIP) {
@@ -2098,7 +2492,8 @@ private fun DocumentFile.copyFolderTo(
             continue
         }
         val filename = conflict.target.name.orEmpty()
-        targetFile = conflict.target.findParent(context)?.makeFile(context, filename, mode = conflict.solution.toCreateMode())
+        targetFile = conflict.target.findParent(context)
+            ?.makeFile(context, filename, mode = conflict.solution.toCreateMode())
         if (targetFile == null) {
             notifyCanceled(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET)
             return
@@ -2160,7 +2555,9 @@ private fun DocumentFile.doesMeetCopyRequirements(
         return null
     }
 
-    val writableFolder = targetParentFolder.let { if (it.isDownloadsDocument) it.toWritableDownloadsDocumentFile(context) else it }
+    val writableFolder = targetParentFolder.let {
+        if (it.isDownloadsDocument) it.toWritableDownloadsDocumentFile(context) else it
+    }
     if (writableFolder == null) {
         callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
     }
@@ -2210,13 +2607,26 @@ fun DocumentFile.copyFileTo(
     callback: FileCallback
 ) {
     if (fileDescription?.subFolder.isNullOrEmpty()) {
-        copyFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, callback)
+        copyFileTo(
+            context,
+            targetFolder,
+            fileDescription?.name,
+            fileDescription?.mimeType,
+            callback
+        )
     } else {
-        val targetDirectory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
+        val targetDirectory =
+            targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
         if (targetDirectory == null) {
             callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
         } else {
-            copyFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, callback)
+            copyFileTo(
+                context,
+                targetDirectory,
+                fileDescription?.name,
+                fileDescription?.mimeType,
+                callback
+            )
         }
     }
 }
@@ -2228,18 +2638,29 @@ private fun DocumentFile.copyFileTo(
     newMimeTypeInTargetPath: String?,
     callback: FileCallback
 ) {
-    val writableTargetFolder = doesMeetCopyRequirements(context, targetFolder, newFilenameInTargetPath, callback) ?: return
+    val writableTargetFolder =
+        doesMeetCopyRequirements(context, targetFolder, newFilenameInTargetPath, callback) ?: return
 
     callback.uiScope.postToUi { callback.onPrepare() }
 
-    if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, writableTargetFolder.getStorageId(context)), length())) {
+    if (!callback.onCheckFreeSpace(
+            DocumentFileCompat.getFreeSpace(
+                context,
+                writableTargetFolder.getStorageId(context)
+            ), length()
+        )
+    ) {
         callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
         return
     }
 
-    val cleanFileName = MimeType.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), newMimeTypeInTargetPath ?: mimeTypeByFileName)
+    val cleanFileName = MimeType.getFullFileName(
+        newFilenameInTargetPath ?: name.orEmpty(),
+        newMimeTypeInTargetPath ?: mimeTypeByFileName
+    )
         .removeForbiddenCharsFromFilename().trimFileSeparator()
-    val fileConflictResolution = handleFileConflict(context, writableTargetFolder, cleanFileName, callback)
+    val fileConflictResolution =
+        handleFileConflict(context, writableTargetFolder, cleanFileName, callback)
     if (fileConflictResolution == FileCallback.ConflictResolution.SKIP) {
         return
     }
@@ -2251,11 +2672,23 @@ private fun DocumentFile.copyFileTo(
 
     try {
         val targetFile = createTargetFile(
-            context, writableTargetFolder, cleanFileName, newMimeTypeInTargetPath ?: mimeTypeByFileName,
-            fileConflictResolution.toCreateMode(), callback
+            context,
+            writableTargetFolder,
+            cleanFileName,
+            newMimeTypeInTargetPath ?: mimeTypeByFileName,
+            fileConflictResolution.toCreateMode(),
+            callback
         ) ?: return
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
-            copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, false, callback)
+            copyFileStream(
+                inputStream,
+                outputStream,
+                targetFile,
+                watchProgress,
+                reportInterval,
+                false,
+                callback
+            )
         }
     } catch (e: Exception) {
         callback.uiScope.postToUi { callback.onFailed(e.toFileCallbackErrorCode()) }
@@ -2293,7 +2726,8 @@ private fun DocumentFile.doesMeetCopyRequirements(
         return null
     }
 
-    val writableFolder = targetFolder.let { if (it.isDownloadsDocument) it.toWritableDownloadsDocumentFile(context) else it }
+    val writableFolder =
+        targetFolder.let { if (it.isDownloadsDocument) it.toWritableDownloadsDocumentFile(context) else it }
     if (writableFolder == null) {
         callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
     }
@@ -2392,7 +2826,8 @@ private fun DocumentFile.copyFileStream(
         // using timer on small file is useless. We set minimum 10MB.
         if (watchProgress && srcSize > 10 * FileSize.MB) {
             timer = startCoroutineTimer(repeatMillis = reportInterval) {
-                val report = FileCallback.Report(bytesMoved * 100f / srcSize, bytesMoved, writeSpeed)
+                val report =
+                    FileCallback.Report(bytesMoved * 100f / srcSize, bytesMoved, writeSpeed)
                 callback.uiScope.postToUi { callback.onReport(report) }
                 writeSpeed = 0
             }
@@ -2412,7 +2847,7 @@ private fun DocumentFile.copyFileStream(
         if (targetFile is MediaFile) {
             targetFile.length = srcSize
         }
-        callback.uiScope.postToUi { callback.onCompleted(targetFile) }
+        callback.uiScope.postToUi { callback.onCompleted(FileCallback.Result.get(targetFile)) }
     } finally {
         timer?.cancel()
         inputStream.closeStreamQuietly()
@@ -2463,13 +2898,26 @@ fun DocumentFile.moveFileTo(
     callback: FileCallback
 ) {
     if (fileDescription?.subFolder.isNullOrEmpty()) {
-        moveFileTo(context, targetFolder, fileDescription?.name, fileDescription?.mimeType, callback)
+        moveFileTo(
+            context,
+            targetFolder,
+            fileDescription?.name,
+            fileDescription?.mimeType,
+            callback
+        )
     } else {
-        val targetDirectory = targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
+        val targetDirectory =
+            targetFolder.makeFolder(context, fileDescription?.subFolder.orEmpty(), CreateMode.REUSE)
         if (targetDirectory == null) {
             callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
         } else {
-            moveFileTo(context, targetDirectory, fileDescription?.name, fileDescription?.mimeType, callback)
+            moveFileTo(
+                context,
+                targetDirectory,
+                fileDescription?.name,
+                fileDescription?.mimeType,
+                callback
+            )
         }
     }
 }
@@ -2481,20 +2929,36 @@ private fun DocumentFile.moveFileTo(
     newMimeTypeInTargetPath: String?,
     callback: FileCallback
 ) {
-    val writableTargetFolder = doesMeetCopyRequirements(context, targetFolder, newFilenameInTargetPath, callback) ?: return
+    val writableTargetFolder =
+        doesMeetCopyRequirements(context, targetFolder, newFilenameInTargetPath, callback) ?: return
 
     callback.uiScope.postToUi { callback.onPrepare() }
 
-    val cleanFileName = MimeType.getFullFileName(newFilenameInTargetPath ?: name.orEmpty(), newMimeTypeInTargetPath ?: mimeTypeByFileName)
+    val cleanFileName = MimeType.getFullFileName(
+        newFilenameInTargetPath ?: name.orEmpty(),
+        newMimeTypeInTargetPath ?: mimeTypeByFileName
+    )
         .removeForbiddenCharsFromFilename().trimFileSeparator()
-    val fileConflictResolution = handleFileConflict(context, writableTargetFolder, cleanFileName, callback)
+    val fileConflictResolution =
+        handleFileConflict(context, writableTargetFolder, cleanFileName, callback)
     if (fileConflictResolution == FileCallback.ConflictResolution.SKIP) {
         return
     }
 
     if (inInternalStorage(context)) {
-        toRawFile(context)?.moveTo(context, writableTargetFolder.getAbsolutePath(context), cleanFileName, fileConflictResolution)?.let {
-            callback.uiScope.postToUi { callback.onCompleted(DocumentFile.fromFile(it)) }
+        toRawFile(context)?.moveTo(
+            context,
+            writableTargetFolder.getAbsolutePath(context),
+            cleanFileName,
+            fileConflictResolution
+        )?.let {
+            callback.uiScope.postToUi {
+                callback.onCompleted(
+                    FileCallback.Result.DocumentFile(
+                        DocumentFile.fromFile(it)
+                    )
+                )
+            }
             return
         }
     }
@@ -2507,21 +2971,38 @@ private fun DocumentFile.moveFileTo(
             return
         }
         writableTargetFolder.toRawFile(context)?.let { destinationFolder ->
-            sourceFile.moveTo(context, destinationFolder, cleanFileName, fileConflictResolution)?.let {
-                callback.uiScope.postToUi { callback.onCompleted(DocumentFile.fromFile(it)) }
-                return
-            }
+            sourceFile.moveTo(context, destinationFolder, cleanFileName, fileConflictResolution)
+                ?.let {
+                    callback.uiScope.postToUi { callback.onCompleted(FileCallback.Result.DocumentFile(DocumentFile.fromFile(it))) }
+                    return
+                }
         }
     }
 
     try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !isRawFile && writableTargetFolder.isTreeDocumentFile && getStorageId(context) == targetStorageId) {
-            val movedFileUri = parentFile?.uri?.let { DocumentsContract.moveDocument(context.contentResolver, uri, it, writableTargetFolder.uri) }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !isRawFile && writableTargetFolder.isTreeDocumentFile && getStorageId(
+                context
+            ) == targetStorageId
+        ) {
+            val movedFileUri = parentFile?.uri?.let {
+                DocumentsContract.moveDocument(
+                    context.contentResolver,
+                    uri,
+                    it,
+                    writableTargetFolder.uri
+                )
+            }
             if (movedFileUri != null) {
                 val newFile = context.fromTreeUri(movedFileUri)
                 if (newFile != null && newFile.isFile) {
                     if (newFilenameInTargetPath != null) newFile.renameTo(cleanFileName)
-                    callback.uiScope.postToUi { callback.onCompleted(newFile) }
+                    callback.uiScope.postToUi {
+                        callback.onCompleted(
+                            FileCallback.Result.DocumentFile(
+                                newFile
+                            )
+                        )
+                    }
                 } else {
                     callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.TARGET_FILE_NOT_FOUND) }
                 }
@@ -2529,7 +3010,11 @@ private fun DocumentFile.moveFileTo(
             }
         }
 
-        if (!callback.onCheckFreeSpace(DocumentFileCompat.getFreeSpace(context, targetStorageId), length())) {
+        if (!callback.onCheckFreeSpace(
+                DocumentFileCompat.getFreeSpace(context, targetStorageId),
+                length()
+            )
+        ) {
             callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH) }
             return
         }
@@ -2545,11 +3030,23 @@ private fun DocumentFile.moveFileTo(
 
     try {
         val targetFile = createTargetFile(
-            context, writableTargetFolder, cleanFileName, newMimeTypeInTargetPath ?: mimeTypeByFileName,
-            fileConflictResolution.toCreateMode(), callback
+            context,
+            writableTargetFolder,
+            cleanFileName,
+            newMimeTypeInTargetPath ?: mimeTypeByFileName,
+            fileConflictResolution.toCreateMode(),
+            callback
         ) ?: return
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
-            copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, true, callback)
+            copyFileStream(
+                inputStream,
+                outputStream,
+                targetFile,
+                watchProgress,
+                reportInterval,
+                true,
+                callback
+            )
         }
     } catch (e: Exception) {
         callback.uiScope.postToUi { callback.onFailed(e.toFileCallbackErrorCode()) }
@@ -2581,7 +3078,12 @@ private fun DocumentFile.copyFileToMedia(
 ) {
     if (simpleCheckSourceFile(callback)) return
 
-    val publicFolder = DocumentFileCompat.fromPublicFolder(context, publicDirectory, fileDescription.subFolder, true)
+    val publicFolder = DocumentFileCompat.fromPublicFolder(
+        context,
+        publicDirectory,
+        fileDescription.subFolder,
+        true
+    )
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || deleteSourceFileWhenComplete && !isRawFile && publicFolder?.isTreeDocumentFile == true) {
         if (publicFolder == null) {
             callback.uiScope.postToUi { callback.onFailed(FileCallback.ErrorCode.STORAGE_PERMISSION_DENIED) }
@@ -2594,7 +3096,8 @@ private fun DocumentFile.copyFileToMedia(
                     return
                 }
             } else {
-                fileDescription.name = publicFolder.autoIncrementFileName(context, it.name.orEmpty())
+                fileDescription.name =
+                    publicFolder.autoIncrementFileName(context, it.name.orEmpty())
             }
         }
         fileDescription.subFolder = ""
@@ -2620,25 +3123,45 @@ private fun DocumentFile.copyFileToMedia(
 
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.copyFileToDownloadMedia(context: Context, fileDescription: FileDescription, callback: FileCallback, mode: CreateMode = CreateMode.CREATE_NEW) {
+fun DocumentFile.copyFileToDownloadMedia(
+    context: Context,
+    fileDescription: FileDescription,
+    callback: FileCallback,
+    mode: CreateMode = CreateMode.CREATE_NEW
+) {
     copyFileToMedia(context, fileDescription, callback, PublicDirectory.DOWNLOADS, false, mode)
 }
 
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.copyFileToPictureMedia(context: Context, fileDescription: FileDescription, callback: FileCallback, mode: CreateMode = CreateMode.CREATE_NEW) {
+fun DocumentFile.copyFileToPictureMedia(
+    context: Context,
+    fileDescription: FileDescription,
+    callback: FileCallback,
+    mode: CreateMode = CreateMode.CREATE_NEW
+) {
     copyFileToMedia(context, fileDescription, callback, PublicDirectory.PICTURES, false, mode)
 }
 
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.moveFileToDownloadMedia(context: Context, fileDescription: FileDescription, callback: FileCallback, mode: CreateMode = CreateMode.CREATE_NEW) {
+fun DocumentFile.moveFileToDownloadMedia(
+    context: Context,
+    fileDescription: FileDescription,
+    callback: FileCallback,
+    mode: CreateMode = CreateMode.CREATE_NEW
+) {
     copyFileToMedia(context, fileDescription, callback, PublicDirectory.DOWNLOADS, true, mode)
 }
 
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.moveFileToPictureMedia(context: Context, fileDescription: FileDescription, callback: FileCallback, mode: CreateMode = CreateMode.CREATE_NEW) {
+fun DocumentFile.moveFileToPictureMedia(
+    context: Context,
+    fileDescription: FileDescription,
+    callback: FileCallback,
+    mode: CreateMode = CreateMode.CREATE_NEW
+) {
     copyFileToMedia(context, fileDescription, callback, PublicDirectory.PICTURES, true, mode)
 }
 
@@ -2678,7 +3201,15 @@ private fun DocumentFile.copyFileTo(
 
     try {
         createFileStreams(context, this, targetFile, callback) { inputStream, outputStream ->
-            copyFileStream(inputStream, outputStream, targetFile, watchProgress, reportInterval, deleteSourceFileWhenComplete, callback)
+            copyFileStream(
+                inputStream,
+                outputStream,
+                targetFile,
+                watchProgress,
+                reportInterval,
+                deleteSourceFileWhenComplete,
+                callback
+            )
         }
     } catch (e: Exception) {
         callback.uiScope.postToUi { callback.onFailed(e.toFileCallbackErrorCode()) }
@@ -2727,9 +3258,14 @@ private fun handleParentFolderConflict(
             return FolderCallback.ConflictResolution.MERGE
         }
 
-        val resolution = awaitUiResultWithPending<FolderCallback.ConflictResolution>(callback.uiScope) {
-            callback.onParentConflict(targetFolder, FolderCallback.ParentFolderConflictAction(it), canMerge)
-        }
+        val resolution =
+            awaitUiResultWithPending<FolderCallback.ConflictResolution>(callback.uiScope) {
+                callback.onParentConflict(
+                    targetFolder,
+                    FolderCallback.ParentFolderConflictAction(it),
+                    canMerge
+                )
+            }
 
         when (resolution) {
             FolderCallback.ConflictResolution.REPLACE -> {
@@ -2737,7 +3273,8 @@ private fun handleParentFolderConflict(
                 val isFolder = targetFolder.isDirectory
                 if (targetFolder.forceDelete(context, true)) {
                     if (!isFolder) {
-                        val newFolder = targetFolder.parentFile?.createDirectory(targetFolderParentName)
+                        val newFolder =
+                            targetFolder.parentFile?.createDirectory(targetFolderParentName)
                         if (newFolder == null) {
                             callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
                             return FolderCallback.ConflictResolution.SKIP
@@ -2752,7 +3289,8 @@ private fun handleParentFolderConflict(
             FolderCallback.ConflictResolution.MERGE -> {
                 if (targetFolder.isFile) {
                     if (targetFolder.delete()) {
-                        val newFolder = targetFolder.parentFile?.createDirectory(targetFolderParentName)
+                        val newFolder =
+                            targetFolder.parentFile?.createDirectory(targetFolderParentName)
                         if (newFolder == null) {
                             callback.uiScope.postToUi { callback.onFailed(FolderCallback.ErrorCode.CANNOT_CREATE_FILE_IN_TARGET) }
                             return FolderCallback.ConflictResolution.SKIP
@@ -2783,16 +3321,24 @@ private fun List<DocumentFile>.handleParentFolderConflict(
     val conflicts = conflictedFiles.map {
         val sourceFile = first { src -> src.name == it.name }
         val canMerge = sourceFile.isDirectory && it.isDirectory
-        val solution = if (canMerge && it.isEmpty(context)) FolderCallback.ConflictResolution.MERGE else FolderCallback.ConflictResolution.CREATE_NEW
+        val solution =
+            if (canMerge && it.isEmpty(context)) FolderCallback.ConflictResolution.MERGE else FolderCallback.ConflictResolution.CREATE_NEW
         MultipleFileCallback.ParentConflict(sourceFile, it, canMerge, solution)
     }
-    val unresolvedConflicts = conflicts.filter { it.solution != FolderCallback.ConflictResolution.MERGE }.toMutableList()
+    val unresolvedConflicts =
+        conflicts.filter { it.solution != FolderCallback.ConflictResolution.MERGE }.toMutableList()
     if (unresolvedConflicts.isNotEmpty()) {
         val unresolvedFiles = unresolvedConflicts.filter { it.source.isFile }.toMutableList()
         val unresolvedFolders = unresolvedConflicts.filter { it.source.isDirectory }.toMutableList()
-        val resolution = awaitUiResultWithPending<List<MultipleFileCallback.ParentConflict>>(callback.uiScope) {
-            callback.onParentConflict(targetParentFolder, unresolvedFolders, unresolvedFiles, MultipleFileCallback.ParentFolderConflictAction(it))
-        }
+        val resolution =
+            awaitUiResultWithPending<List<MultipleFileCallback.ParentConflict>>(callback.uiScope) {
+                callback.onParentConflict(
+                    targetParentFolder,
+                    unresolvedFolders,
+                    unresolvedFiles,
+                    MultipleFileCallback.ParentFolderConflictAction(it)
+                )
+            }
         if (resolution.any { it.solution == FolderCallback.ConflictResolution.REPLACE }) {
             callback.uiScope.postToUi { callback.onDeleteConflictedFiles() }
         }
@@ -2817,7 +3363,8 @@ private fun List<DocumentFile>.handleParentFolderConflict(
                 }
             }
         }
-        return resolution.toMutableList().apply { addAll(conflicts.filter { it.solution == FolderCallback.ConflictResolution.MERGE }) }
+        return resolution.toMutableList()
+            .apply { addAll(conflicts.filter { it.solution == FolderCallback.ConflictResolution.MERGE }) }
     }
     return emptyList()
 }

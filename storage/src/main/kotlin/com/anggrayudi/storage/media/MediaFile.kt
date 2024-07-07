@@ -643,7 +643,7 @@ class MediaFile(context: Context, val uri: Uri) {
             if (deleteSourceFileWhenComplete) {
                 delete()
             }
-            callback.uiScope.postToUi { callback.onCompleted(targetFile) }
+            callback.uiScope.postToUi { callback.onCompleted(FileCallback.Result.DocumentFile(targetFile)) }
         } finally {
             timer?.cancel()
             inputStream.closeStreamQuietly()

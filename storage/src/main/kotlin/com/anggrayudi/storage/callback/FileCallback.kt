@@ -16,7 +16,7 @@ import kotlinx.coroutines.GlobalScope
  */
 abstract class FileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads constructor(
     uiScope: CoroutineScope = GlobalScope
-) : BaseFileCallback<FileCallback.ErrorCode, FileCallback.Report, Any>(uiScope) {
+) : BaseFileCallback<FileCallback.ErrorCode, FileCallback.Report, FileCallback.Result>(uiScope) {
 
     /**
      * @param file can be [DocumentFile] or [MediaFile]
@@ -39,18 +39,10 @@ abstract class FileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads c
         action.confirmResolution(ConflictResolution.CREATE_NEW)
     }
 
-    /**
-     * @param result can be [DocumentFile] or [MediaFile]
-     */
-    @UiThread
-    override fun onCompleted(result: Any) {
-        // default implementation
-    }
-
     class FileConflictAction(private val continuation: CancellableContinuation<ConflictResolution>) {
 
         fun confirmResolution(resolution: ConflictResolution) {
-            continuation.resumeWith(Result.success(resolution))
+            continuation.resumeWith(kotlin.Result.success(resolution))
         }
     }
 
@@ -96,5 +88,22 @@ abstract class FileCallback @OptIn(DelicateCoroutinesApi::class) @JvmOverloads c
      * @param progress   in percent
      * @param writeSpeed in bytes
      */
-    class Report(val progress: Float, val bytesMoved: Long, val writeSpeed: Int)
+    data class Report(val progress: Float, val bytesMoved: Long, val writeSpeed: Int)
+
+    sealed interface Result {
+        @JvmInline
+        value class MediaFile(val value: com.anggrayudi.storage.media.MediaFile) : Result
+
+        @JvmInline
+        value class DocumentFile(val value: androidx.documentfile.provider.DocumentFile) : Result
+
+        companion object {
+            internal fun get(value: Any): Result =
+                when (value) {
+                    is com.anggrayudi.storage.media.MediaFile -> MediaFile(value)
+                    is androidx.documentfile.provider.DocumentFile -> DocumentFile(value)
+                    else -> throw IllegalArgumentException("Result must be either of type ${com.anggrayudi.storage.media.MediaFile::class.java.name} or ${androidx.documentfile.provider.DocumentFile::class.java.name}")
+                }
+        }
+    }
 }
