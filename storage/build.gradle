@@ -31,7 +31,7 @@ dependencies {
     implementation deps.fragment
     api deps.documentfile
     implementation deps.coroutines.android
-    implementation deps.material_dialogs
+    implementation deps.material_dialogs_files
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.3"
 
     testImplementation deps.junit

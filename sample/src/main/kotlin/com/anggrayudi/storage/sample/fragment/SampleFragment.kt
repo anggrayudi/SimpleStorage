@@ -107,14 +107,14 @@ class SampleFragment : Fragment(R.layout.incl_base_operation) {
 
     private fun setupSimpleStorage(savedInstanceState: Bundle?) {
         storageHelper = SimpleStorageHelper(this, savedInstanceState)
-        storageHelper.onFileSelected = { requestCode, files ->
+        storageHelper.onFileSelected = { _, files ->
             Toast.makeText(
                 requireContext(),
                 "File selected: ${files.first().fullName}",
                 Toast.LENGTH_SHORT
             ).show()
         }
-        storageHelper.onFolderSelected = { requestCode, folder ->
+        storageHelper.onFolderSelected = { _, folder ->
             Toast.makeText(
                 requireContext(),
                 folder.getAbsolutePath(requireContext()),
