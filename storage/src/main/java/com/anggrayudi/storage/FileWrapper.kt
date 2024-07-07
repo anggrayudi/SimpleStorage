@@ -46,7 +46,8 @@ interface FileWrapper {
 
     fun delete(): Boolean
 
-    class Media(val mediaFile: MediaFile) : FileWrapper {
+    @JvmInline
+    value class Media(val mediaFile: MediaFile) : FileWrapper {
 
         override val uri: Uri
             get() = mediaFile.uri
@@ -78,7 +79,8 @@ interface FileWrapper {
         override fun delete(): Boolean = mediaFile.delete()
     }
 
-    class Document(val documentFile: DocumentFile) : FileWrapper {
+    @JvmInline
+    value class Document(val documentFile: DocumentFile) : FileWrapper {
 
         override val uri: Uri
             get() = documentFile.uri
