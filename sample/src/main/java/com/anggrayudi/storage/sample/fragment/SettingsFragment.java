@@ -35,6 +35,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         // Use 'Download' as default save location
         String downloadsFolder = PublicDirectory.DOWNLOADS.getAbsolutePath();
         Preference saveLocationPref = findPreference(PREF_SAVE_LOCATION);
+        assert saveLocationPref != null;
         saveLocationPref.setSummary(preferences.getString(PREF_SAVE_LOCATION, downloadsFolder));
         saveLocationPref.setOnPreferenceClickListener(preference -> {
             storageHelper.openFolderPicker();

@@ -720,7 +720,11 @@ class MainActivity : AppCompatActivity() {
                                             tvStatus =
                                                 getCustomView().findViewById<TextView>(R.id.tvProgressStatus)
                                                     .apply {
-                                                        text = "Copying file: 0%"
+                                                        text =
+                                                            context.getString(
+                                                                R.string.copying_file,
+                                                                0
+                                                            )
                                                     }
 
                                             progressBar =
@@ -731,7 +735,8 @@ class MainActivity : AppCompatActivity() {
                                             show()
                                         }
                                 }
-                                tvStatus?.text = "Copying file: ${result.progress.toInt()}%"
+                                tvStatus?.text =
+                                    getString(R.string.copying_file, result.progress.toInt())
                                 progressBar?.isIndeterminate = false
                                 progressBar?.progress = result.progress.toInt()
                             }
