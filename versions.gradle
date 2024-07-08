@@ -31,9 +31,7 @@ deps.multidex = "androidx.multidex:multidex:$versions.multidex"
 deps.documentfile = "androidx.documentfile:documentfile:$versions.documentfile"
 
 def coroutines = [:]
-coroutines.core = "org.jetbrains.kotlinx:kotlinx-coroutines-core:$versions.coroutines"
 coroutines.android = "org.jetbrains.kotlinx:kotlinx-coroutines-android:$versions.coroutines"
-coroutines.test = "org.jetbrains.kotlinx:kotlinx-coroutines-test:$versions.coroutines"
 deps.coroutines = coroutines
 
 // Testing ------------------------------
@@ -43,13 +41,14 @@ deps.mockk = "io.mockk:mockk:$versions.mockk"
 
 // Others -------------------------------
 deps.material_dialogs = "com.afollestad.material-dialogs:core:$versions.material_dialogs"
+deps.material_dialogs_files = "com.afollestad.material-dialogs:files:$versions.material_dialogs"
 deps.material_progressbar = "me.zhanghai.android.materialprogressbar:library:$versions.material_progressbar"
 deps.timber = "com.jakewharton.timber:timber:$versions.timber"
 
 // End of dependencies ------------------
 ext.deps = deps
 
-def addRepos(RepositoryHandler handler) {
+static def addRepos(RepositoryHandler handler) {
     handler.google()
     handler.mavenCentral()
     handler.maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }

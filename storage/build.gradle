@@ -12,28 +12,22 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 
     lint {
         abortOnError false
     }
-
-    buildFeatures {
-        viewBinding = true
-    }
 }
 
 dependencies {
-    api deps.appcompat
-    api deps.activity
-    api deps.core_ktx
-    api deps.fragment
     api deps.documentfile
-    api deps.coroutines.core
-    api deps.coroutines.android
-    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.2"
+    implementation deps.appcompat
+    implementation deps.activity
+    implementation deps.core_ktx
+    implementation deps.fragment
+    implementation deps.coroutines.android
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.3"
 
     testImplementation deps.junit
     testImplementation deps.mockk

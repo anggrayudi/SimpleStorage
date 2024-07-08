@@ -1,10 +1,5 @@
 package com.anggrayudi.storage.sample.fragment;
 
-import com.anggrayudi.storage.SimpleStorageHelper;
-import com.anggrayudi.storage.file.DocumentFileUtils;
-import com.anggrayudi.storage.file.PublicDirectory;
-import com.anggrayudi.storage.sample.R;
-
 import android.content.SharedPreferences;
 import android.os.Bundle;
 
@@ -12,6 +7,11 @@ import androidx.annotation.NonNull;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
+
+import com.anggrayudi.storage.SimpleStorageHelper;
+import com.anggrayudi.storage.file.DocumentFileUtils;
+import com.anggrayudi.storage.file.PublicDirectory;
+import com.anggrayudi.storage.sample.R;
 
 /**
  * Created on 08/08/21
@@ -35,6 +35,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         // Use 'Download' as default save location
         String downloadsFolder = PublicDirectory.DOWNLOADS.getAbsolutePath();
         Preference saveLocationPref = findPreference(PREF_SAVE_LOCATION);
+        assert saveLocationPref != null;
         saveLocationPref.setSummary(preferences.getString(PREF_SAVE_LOCATION, downloadsFolder));
         saveLocationPref.setOnPreferenceClickListener(preference -> {
             storageHelper.openFolderPicker();

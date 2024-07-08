@@ -1,5 +1,18 @@
 package com.anggrayudi.storage.sample.activity;
 
+import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_CREATE_FILE;
+import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_PICK_FILE;
+import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_PICK_FOLDER;
+
+import android.Manifest;
+import android.os.Build;
+import android.os.Bundle;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.anggrayudi.storage.SimpleStorageHelper;
 import com.anggrayudi.storage.file.DocumentFileUtils;
 import com.anggrayudi.storage.permission.ActivityPermissionRequest;
@@ -10,20 +23,7 @@ import com.anggrayudi.storage.sample.R;
 
 import org.jetbrains.annotations.NotNull;
 
-import android.Manifest;
-import android.os.Build;
-import android.os.Bundle;
-import android.widget.Toast;
-
 import java.util.List;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-
-import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_CREATE_FILE;
-import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_PICK_FILE;
-import static com.anggrayudi.storage.sample.activity.MainActivity.REQUEST_CODE_PICK_FOLDER;
 
 /**
  * Created on 17/07/21
