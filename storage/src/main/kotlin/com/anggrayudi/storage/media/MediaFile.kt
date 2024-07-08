@@ -64,13 +64,33 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 
+typealias OnWriteAccessDenied = (mediaFile: MediaFile, sender: IntentSender) -> Unit
+
 /**
  * Created on 06/09/20
  * @author Anggrayudi H
+ *
+ * @param onWriteAccessDenied For inquiring the user's consent to modify other app's files upon write access having been denied
+ * whilst carrying out a file operation depending on it. Only called starting from Android 10.
+ * @see RecoverableSecurityException
+ * @see [android.app.Activity.startIntentSenderForResult]
  */
-class MediaFile(context: Context, val uri: Uri) {
+class MediaFile @JvmOverloads constructor(
+    context: Context,
+    val uri: Uri,
+    var onWriteAccessDenied: OnWriteAccessDenied? = null
+) {
 
-    constructor(context: Context, rawFile: File) : this(context, Uri.fromFile(rawFile))
+    /**
+     * For construction from a [File].
+     * @see MediaFile
+     */
+    @JvmOverloads
+    constructor(
+        context: Context,
+        rawFile: File,
+        onWriteAccessDenied: OnWriteAccessDenied? = null
+    ) : this(context, Uri.fromFile(rawFile))
 
     private val context = context.applicationContext
 
@@ -338,15 +358,9 @@ class MediaFile(context: Context, val uri: Uri) {
             }
         }
 
-    /**
-     * @param onWriteAccessDenied For inquiring the user's consent to modify other app's files. Only called starting from Android 10.
-     * @see RecoverableSecurityException
-     * @see [android.app.Activity.startIntentSenderForResult]
-     */
     private fun handleSecurityException(
         e: SecurityException,
         scope: ProducerScope<SingleFileResult>? = null,
-        onWriteAccessDenied: ((mediaFile: MediaFile, sender: IntentSender) -> Unit)? = null
     ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && e is RecoverableSecurityException) {
             onWriteAccessDenied?.invoke(this, e.userAction.actionIntent.intentSender)
