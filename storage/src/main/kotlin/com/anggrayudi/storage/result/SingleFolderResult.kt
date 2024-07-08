@@ -1,5 +1,6 @@
 package com.anggrayudi.storage.result
 
+import androidx.annotation.FloatRange
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.callback.SingleFileConflictCallback
 import com.anggrayudi.storage.callback.SingleFolderConflictCallback
@@ -10,22 +11,23 @@ import com.anggrayudi.storage.callback.SingleFolderConflictCallback.ConflictReso
  * @author Anggrayudi Hardiannico A.
  */
 sealed interface SingleFolderResult {
+
     data object Validating : SingleFolderResult
+
     data object Preparing : SingleFolderResult
+
     data object CountingFiles : SingleFolderResult
 
     /**
      * Called after the user chooses [SingleFolderConflictCallback.ConflictResolution.REPLACE] or [SingleFileConflictCallback.ConflictResolution.REPLACE]
      */
     data object DeletingConflictedFiles : SingleFolderResult
-    data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) :
-        SingleFolderResult
 
     /**
      * @param fileCount total files/folders that are successfully copied/moved
      */
     data class InProgress(
-        val progress: Float,
+        @FloatRange(0.0, 100.0) val progress: Float,
         val bytesMoved: Long,
         val writeSpeed: Int,
         val fileCount: Int

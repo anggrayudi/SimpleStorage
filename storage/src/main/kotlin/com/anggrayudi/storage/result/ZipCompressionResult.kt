@@ -1,5 +1,6 @@
 package com.anggrayudi.storage.result
 
+import androidx.annotation.FloatRange
 import androidx.documentfile.provider.DocumentFile
 
 /**
@@ -7,9 +8,11 @@ import androidx.documentfile.provider.DocumentFile
  * @author Anggrayudi Hardiannico A.
  */
 sealed interface ZipCompressionResult {
+
     data object CountingFiles : ZipCompressionResult
+
     data class Compressing(
-        val progress: Float,
+        @FloatRange(0.0, 100.0) val progress: Float,
         val bytesCompressed: Long,
         val writeSpeed: Int,
         val fileCount: Int

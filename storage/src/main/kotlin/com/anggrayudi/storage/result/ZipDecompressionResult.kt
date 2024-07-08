@@ -8,7 +8,9 @@ import com.anggrayudi.storage.media.MediaFile
  * @author Anggrayudi Hardiannico A.
  */
 sealed interface ZipDecompressionResult {
+
     data object Validating : ZipDecompressionResult
+
     data class Decompressing(val bytesDecompressed: Long, val writeSpeed: Int, val fileCount: Int) :
         ZipDecompressionResult
 

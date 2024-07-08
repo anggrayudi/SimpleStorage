@@ -517,7 +517,6 @@ class MainActivity : AppCompatActivity() {
                             is SingleFolderResult.Preparing -> Timber.d("Preparing...")
                             is SingleFolderResult.CountingFiles -> Timber.d("Counting files...")
                             is SingleFolderResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
-                            is SingleFolderResult.Starting -> Timber.d("Starting...")
                             is SingleFolderResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
                             is SingleFolderResult.Completed -> uiScope.launch {
                                 Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")
@@ -578,7 +577,6 @@ class MainActivity : AppCompatActivity() {
                             is SingleFolderResult.Preparing -> Timber.d("Preparing...")
                             is SingleFolderResult.CountingFiles -> Timber.d("Counting files...")
                             is SingleFolderResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
-                            is SingleFolderResult.Starting -> Timber.d("Starting...")
                             is SingleFolderResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
                             is SingleFolderResult.Completed -> uiScope.launch {
                                 Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")

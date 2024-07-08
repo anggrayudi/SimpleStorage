@@ -1,5 +1,6 @@
 package com.anggrayudi.storage.result
 
+import androidx.annotation.FloatRange
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.callback.SingleFolderConflictCallback.ConflictResolution
 
@@ -19,7 +20,7 @@ sealed interface MultipleFilesResult {
      * @param fileCount total files/folders that are successfully copied/moved
      */
     data class InProgress(
-        val progress: Float,
+        @FloatRange(0.0, 100.0) val progress: Float,
         val bytesMoved: Long,
         val writeSpeed: Int,
         val fileCount: Int
