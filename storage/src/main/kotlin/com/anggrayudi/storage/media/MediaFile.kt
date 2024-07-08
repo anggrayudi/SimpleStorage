@@ -74,22 +74,6 @@ class MediaFile(context: Context, val uri: Uri) {
 
     private val context = context.applicationContext
 
-    interface AccessCallback {
-
-        /**
-         * When this function called, you can ask user's consent to modify other app's files.
-         * @see RecoverableSecurityException
-         * @see [android.app.Activity.startIntentSenderForResult]
-         */
-        fun onWriteAccessDenied(mediaFile: MediaFile, sender: IntentSender)
-    }
-
-    /**
-     * Only useful for Android 10 and higher.
-     * @see RecoverableSecurityException
-     */
-    var accessCallback: AccessCallback? = null
-
     /**
      * Some media files do not return file extension. This function helps you to fix this kind of issue.
      */
@@ -354,12 +338,18 @@ class MediaFile(context: Context, val uri: Uri) {
             }
         }
 
+    /**
+     * @param onWriteAccessDenied For inquiring the user's consent to modify other app's files. Only called starting from Android 10.
+     * @see RecoverableSecurityException
+     * @see [android.app.Activity.startIntentSenderForResult]
+     */
     private fun handleSecurityException(
         e: SecurityException,
-        scope: ProducerScope<SingleFileResult>? = null
+        scope: ProducerScope<SingleFileResult>? = null,
+        onWriteAccessDenied: ((mediaFile: MediaFile, sender: IntentSender) -> Unit)? = null
     ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && e is RecoverableSecurityException) {
-            accessCallback?.onWriteAccessDenied(this, e.userAction.actionIntent.intentSender)
+            onWriteAccessDenied?.invoke(this, e.userAction.actionIntent.intentSender)
         } else {
             scope?.trySend(SingleFileResult.Error(SingleFileErrorCode.STORAGE_PERMISSION_DENIED))
         }
