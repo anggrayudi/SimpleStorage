@@ -46,13 +46,18 @@ class SimpleStorageHelper {
 
     // For unknown Activity type
     @JvmOverloads
-    constructor(activity: Activity, requestCodeForPermissionDialog: Int, savedState: Bundle? = null) {
+    constructor(
+        activity: Activity,
+        requestCodeForPermissionDialog: Int,
+        savedState: Bundle? = null
+    ) {
         storage = SimpleStorage(activity)
         init(savedState)
-        permissionRequest = ActivityPermissionRequest.Builder(activity, requestCodeForPermissionDialog)
-            .withPermissions(*rwPermission)
-            .withCallback(permissionCallback)
-            .build()
+        permissionRequest =
+            ActivityPermissionRequest.Builder(activity, requestCodeForPermissionDialog)
+                .withPermissions(*rwPermission)
+                .withCallback(permissionCallback)
+                .build()
     }
 
     @JvmOverloads
@@ -87,7 +92,12 @@ class SimpleStorageHelper {
                 }
 
                 @SuppressLint("NewApi")
-                override fun onStorageAccessDenied(requestCode: Int, folder: DocumentFile?, storageType: StorageType, storageId: String) {
+                override fun onStorageAccessDenied(
+                    requestCode: Int,
+                    folder: DocumentFile?,
+                    storageType: StorageType,
+                    storageId: String
+                ) {
                     if (storageType == StorageType.UNKNOWN) {
                         onStoragePermissionDenied(requestCode)
                         return
@@ -97,7 +107,13 @@ class SimpleStorageHelper {
                         .setMessage(R.string.ss_storage_access_denied_confirm)
                         .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
                         .setPositiveButton(android.R.string.ok) { _, _ ->
-                            storage.requestStorageAccess(initialPath = FileFullPath(storage.context, storageId, ""))
+                            storage.requestStorageAccess(
+                                initialPath = FileFullPath(
+                                    storage.context,
+                                    storageId,
+                                    ""
+                                )
+                            )
                         }.show()
                 }
 
@@ -115,11 +131,15 @@ class SimpleStorageHelper {
             }
         }
 
-    var onFileSelected: ((requestCode: Int, /* non-empty list */ files: List<DocumentFile>) -> Unit)? = null
+    var onFileSelected: ((requestCode: Int, /* non-empty list */ files: List<DocumentFile>) -> Unit)? =
+        null
         set(callback) {
             field = callback
             storage.filePickerCallback = object : FilePickerCallback {
-                override fun onStoragePermissionDenied(requestCode: Int, files: List<DocumentFile>?) {
+                override fun onStoragePermissionDenied(
+                    requestCode: Int,
+                    files: List<DocumentFile>?
+                ) {
                     requestStoragePermission { if (it) storage.openFilePicker() else reset() }
                 }
 
@@ -182,7 +202,8 @@ class SimpleStorageHelper {
                 selectedStorageType: StorageType,
                 expectedStorageType: StorageType
             ) {
-                val storageType = if (expectedStorageType.isExpected(selectedStorageType)) selectedStorageType else expectedStorageType
+                val storageType =
+                    if (expectedStorageType.isExpected(selectedStorageType)) selectedStorageType else expectedStorageType
                 val messageRes = if (rootPath.isEmpty()) {
                     storage.context.getString(if (storageType == StorageType.SD_CARD) R.string.ss_please_select_root_storage_sdcard else R.string.ss_please_select_root_storage_primary)
                 } else {
@@ -196,7 +217,11 @@ class SimpleStorageHelper {
                     .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
                     .setPositiveButton(android.R.string.ok) { _, _ ->
                         storage.requestStorageAccess(
-                            initialPath = FileFullPath(storage.context, uri.getStorageId(storage.context), ""),
+                            initialPath = FileFullPath(
+                                storage.context,
+                                uri.getStorageId(storage.context),
+                                ""
+                            ),
                             expectedStorageType = expectedStorageType
                         )
                     }.show()
@@ -214,24 +239,34 @@ class SimpleStorageHelper {
                 val toastFilePicker: () -> Unit = {
                     Toast.makeText(
                         context,
-                        context.getString(R.string.ss_selecting_root_path_success_with_open_folder_picker, root.getAbsolutePath(context)),
+                        context.getString(
+                            R.string.ss_selecting_root_path_success_with_open_folder_picker,
+                            root.getAbsolutePath(context)
+                        ),
                         Toast.LENGTH_LONG
                     ).show()
                 }
 
                 when (pickerToOpenOnceGranted) {
                     TYPE_FILE_PICKER -> {
-                        storage.openFilePicker(filterMimeTypes = filterMimeTypes.orEmpty().toTypedArray())
+                        storage.openFilePicker(
+                            filterMimeTypes = filterMimeTypes.orEmpty().toTypedArray()
+                        )
                         toastFilePicker()
                     }
+
                     TYPE_FOLDER_PICKER -> {
                         storage.openFolderPicker()
                         toastFilePicker()
                     }
+
                     else -> {
                         Toast.makeText(
                             context,
-                            context.getString(R.string.ss_selecting_root_path_success_without_open_folder_picker, root.getAbsolutePath(context)),
+                            context.getString(
+                                R.string.ss_selecting_root_path_success_without_open_folder_picker,
+                                root.getAbsolutePath(context)
+                            ),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -259,7 +294,11 @@ class SimpleStorageHelper {
                     .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
                     .setPositiveButton(android.R.string.ok) { _, _ ->
                         storage.requestStorageAccess(
-                            initialPath = FileFullPath(storage.context, expectedStorageType, expectedBasePath),
+                            initialPath = FileFullPath(
+                                storage.context,
+                                expectedStorageType,
+                                expectedBasePath
+                            ),
                             expectedStorageType = expectedStorageType,
                             expectedBasePath = expectedBasePath
                         )
@@ -303,7 +342,11 @@ class SimpleStorageHelper {
             override fun onPermissionsChecked(result: PermissionResult, fromSystemDialog: Boolean) {
                 val granted = result.areAllPermissionsGranted
                 if (!granted) {
-                    Toast.makeText(storage.context, R.string.ss_please_grant_storage_permission, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        storage.context,
+                        R.string.ss_please_grant_storage_permission,
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
                 onPermissionsResult?.invoke(granted)
                 onPermissionsResult = null
@@ -317,7 +360,10 @@ class SimpleStorageHelper {
         }
 
     private val rwPermission: Array<String>
-        get() = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
+        get() = arrayOf(
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        )
 
     private fun reset() {
         pickerToOpenOnceGranted = 0
@@ -327,11 +373,18 @@ class SimpleStorageHelper {
 
     private fun handleMissingActivityHandler() {
         reset()
-        Toast.makeText(storage.context, R.string.ss_missing_saf_activity_handler, Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            storage.context,
+            R.string.ss_missing_saf_activity_handler,
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     @JvmOverloads
-    fun openFolderPicker(requestCode: Int = storage.requestCodeFolderPicker, initialPath: FileFullPath? = null) {
+    fun openFolderPicker(
+        requestCode: Int = storage.requestCodeFolderPicker,
+        initialPath: FileFullPath? = null
+    ) {
         pickerToOpenOnceGranted = TYPE_FOLDER_PICKER
         originalRequestCode = requestCode
         storage.openFolderPicker(requestCode, initialPath)
@@ -361,7 +414,12 @@ class SimpleStorageHelper {
     ) {
         pickerToOpenOnceGranted = 0
         originalRequestCode = requestCode
-        storage.requestStorageAccess(requestCode, initialPath, expectedStorageType, expectedBasePath)
+        storage.requestStorageAccess(
+            requestCode,
+            initialPath,
+            expectedStorageType,
+            expectedBasePath
+        )
     }
 
     @JvmOverloads
@@ -401,9 +459,12 @@ class SimpleStorageHelper {
         const val TYPE_FILE_PICKER = 1
         const val TYPE_FOLDER_PICKER = 2
 
-        private const val KEY_OPEN_FOLDER_PICKER_ONCE_GRANTED = BuildConfig.LIBRARY_PACKAGE_NAME + ".pickerToOpenOnceGranted"
-        private const val KEY_ORIGINAL_REQUEST_CODE = BuildConfig.LIBRARY_PACKAGE_NAME + ".originalRequestCode"
-        private const val KEY_FILTER_MIME_TYPES = BuildConfig.LIBRARY_PACKAGE_NAME + ".filterMimeTypes"
+        private const val KEY_OPEN_FOLDER_PICKER_ONCE_GRANTED =
+            BuildConfig.LIBRARY_PACKAGE_NAME + ".pickerToOpenOnceGranted"
+        private const val KEY_ORIGINAL_REQUEST_CODE =
+            BuildConfig.LIBRARY_PACKAGE_NAME + ".originalRequestCode"
+        private const val KEY_FILTER_MIME_TYPES =
+            BuildConfig.LIBRARY_PACKAGE_NAME + ".filterMimeTypes"
 
         @JvmStatic
         fun redirectToSystemSettings(context: Context) {
@@ -411,7 +472,10 @@ class SimpleStorageHelper {
                 .setMessage(R.string.ss_storage_permission_permanently_disabled)
                 .setNegativeButton(android.R.string.cancel) { _, _ -> }
                 .setPositiveButton(android.R.string.ok) { _, _ ->
-                    val intentSetting = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                    val intentSetting = Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:${context.packageName}")
+                    )
                         .addCategory(Intent.CATEGORY_DEFAULT)
                         .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     context.startActivity(intentSetting)

@@ -37,7 +37,10 @@ class DocumentFileCompatTest {
         assertEquals(PRIMARY, DocumentFileCompat.getStorageId(context, "/storage/emulated/0"))
         assertEquals(PRIMARY, DocumentFileCompat.getStorageId(context, "/storage/emulated/0/Music"))
         assertEquals(PRIMARY, DocumentFileCompat.getStorageId(context, "primary:Music"))
-        assertEquals("AAAA-BBBB", DocumentFileCompat.getStorageId(context, "/storage/AAAA-BBBB/Music"))
+        assertEquals(
+            "AAAA-BBBB",
+            DocumentFileCompat.getStorageId(context, "/storage/AAAA-BBBB/Music")
+        )
         assertEquals("AAAA-BBBB", DocumentFileCompat.getStorageId(context, "AAAA-BBBB:Music"))
     }
 
@@ -47,7 +50,10 @@ class DocumentFileCompatTest {
         assertEquals("", DocumentFileCompat.getBasePath(context, "AAAA-BBBB:"))
         assertEquals("Music", DocumentFileCompat.getBasePath(context, "/storage/emulated/0/Music"))
         assertEquals("Music", DocumentFileCompat.getBasePath(context, "primary:Music"))
-        assertEquals("Music/Pop", DocumentFileCompat.getBasePath(context, "/storage/AAAA-BBBB//Music///Pop/"))
+        assertEquals(
+            "Music/Pop",
+            DocumentFileCompat.getBasePath(context, "/storage/AAAA-BBBB//Music///Pop/")
+        )
         assertEquals("Music", DocumentFileCompat.getBasePath(context, "AAAA-BBBB:Music"))
     }
 

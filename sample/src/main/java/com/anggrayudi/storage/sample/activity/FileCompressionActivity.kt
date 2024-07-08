@@ -40,8 +40,13 @@ class FileCompressionActivity : BaseActivity() {
 
         storageHelper.onFileSelected = { requestCode, files ->
             when (requestCode) {
-                REQUEST_CODE_PICK_MEDIA_1 -> binding.layoutCompressFilesSrcMedia1.tvFilePath.updateFileSelectionView(files)
-                REQUEST_CODE_PICK_MEDIA_2 -> binding.layoutCompressFilesSrcMedia2.tvFilePath.updateFileSelectionView(files)
+                REQUEST_CODE_PICK_MEDIA_1 -> binding.layoutCompressFilesSrcMedia1.tvFilePath.updateFileSelectionView(
+                    files
+                )
+
+                REQUEST_CODE_PICK_MEDIA_2 -> binding.layoutCompressFilesSrcMedia2.tvFilePath.updateFileSelectionView(
+                    files
+                )
             }
         }
         binding.layoutCompressFilesSrcMedia1.btnBrowse.setOnClickListener {
@@ -53,8 +58,13 @@ class FileCompressionActivity : BaseActivity() {
 
         storageHelper.onFolderSelected = { requestCode, folder ->
             when (requestCode) {
-                REQUEST_CODE_PICK_FOLDER_1 -> binding.layoutCompressFilesSrcFolder1.tvFilePath.updateFileSelectionView(folder)
-                REQUEST_CODE_PICK_FOLDER_2 -> binding.layoutCompressFilesSrcFolder2.tvFilePath.updateFileSelectionView(folder)
+                REQUEST_CODE_PICK_FOLDER_1 -> binding.layoutCompressFilesSrcFolder1.tvFilePath.updateFileSelectionView(
+                    folder
+                )
+
+                REQUEST_CODE_PICK_FOLDER_2 -> binding.layoutCompressFilesSrcFolder2.tvFilePath.updateFileSelectionView(
+                    folder
+                )
             }
         }
         binding.layoutCompressFilesSrcFolder1.btnBrowse.setOnClickListener {
@@ -84,8 +94,16 @@ class FileCompressionActivity : BaseActivity() {
         }
 
         val files = mutableListOf<DocumentFile>()
-        (binding.layoutCompressFilesSrcMedia1.tvFilePath.tag as? List<DocumentFile>)?.let { files.addAll(it) }
-        (binding.layoutCompressFilesSrcMedia2.tvFilePath.tag as? List<DocumentFile>)?.let { files.addAll(it) }
+        (binding.layoutCompressFilesSrcMedia1.tvFilePath.tag as? List<DocumentFile>)?.let {
+            files.addAll(
+                it
+            )
+        }
+        (binding.layoutCompressFilesSrcMedia2.tvFilePath.tag as? List<DocumentFile>)?.let {
+            files.addAll(
+                it
+            )
+        }
         (binding.layoutCompressFilesSrcFolder1.tvFilePath.tag as? DocumentFile)?.let { files.add(it) }
         (binding.layoutCompressFilesSrcFolder2.tvFilePath.tag as? DocumentFile)?.let { files.add(it) }
 
@@ -102,8 +120,15 @@ class FileCompressionActivity : BaseActivity() {
                         }
 
                         is ZipCompressionResult.Completed -> uiScope.launch {
-                            Timber.d("onCompleted() -> Compressed ${result.totalFilesCompressed} with compression rate %.2f", result.compressionRate)
-                            Toast.makeText(applicationContext, "Successfully compressed ${result.totalFilesCompressed} files", Toast.LENGTH_SHORT).show()
+                            Timber.d(
+                                "onCompleted() -> Compressed ${result.totalFilesCompressed} with compression rate %.2f",
+                                result.compressionRate
+                            )
+                            Toast.makeText(
+                                applicationContext,
+                                "Successfully compressed ${result.totalFilesCompressed} files",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
 
                         is ZipCompressionResult.DeletingEntryFiles -> {
@@ -112,7 +137,11 @@ class FileCompressionActivity : BaseActivity() {
 
                         is ZipCompressionResult.Error -> uiScope.launch {
                             Timber.d("onFailed() -> ${result.errorCode}: ${result.message}")
-                            Toast.makeText(applicationContext, "Error compressing files: ${result.errorCode}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                applicationContext,
+                                "Error compressing files: ${result.errorCode}",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                 }

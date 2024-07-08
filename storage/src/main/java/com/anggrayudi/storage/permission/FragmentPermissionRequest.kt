@@ -18,13 +18,19 @@ class FragmentPermissionRequest private constructor(
     private val callback: PermissionCallback
 ) : PermissionRequest {
 
-    private val launcher = fragment.registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-        onRequestPermissionsResult(it)
-    }
+    private val launcher =
+        fragment.registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            onRequestPermissionsResult(it)
+        }
 
     override fun check() {
         val context = fragment.requireContext()
-        if (permissions.all { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }) {
+        if (permissions.all {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    it
+                ) == PackageManager.PERMISSION_GRANTED
+            }) {
             callback.onPermissionsChecked(
                 PermissionResult(permissions.map {
                     PermissionReport(it, isGranted = true, deniedPermanently = false)
@@ -42,7 +48,11 @@ class FragmentPermissionRequest private constructor(
         }
         val activity = fragment.requireActivity()
         val reports = result.map {
-            PermissionReport(it.key, it.value, !it.value && !ActivityCompat.shouldShowRequestPermissionRationale(activity, it.key))
+            PermissionReport(
+                it.key,
+                it.value,
+                !it.value && !ActivityCompat.shouldShowRequestPermissionRationale(activity, it.key)
+            )
         }
         val blockedPermissions = reports.filter { it.deniedPermanently }
         if (blockedPermissions.isEmpty()) {
@@ -59,7 +69,11 @@ class FragmentPermissionRequest private constructor(
     override fun continueToPermissionRequest() {
         val activity = fragment.requireActivity()
         permissions.forEach {
-            if (ContextCompat.checkSelfPermission(activity, it) != PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(
+                    activity,
+                    it
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
                 launcher.launch(permissions, options)
                 return
             }
@@ -91,7 +105,8 @@ class FragmentPermissionRequest private constructor(
             this.options = options
         }
 
-        fun build() = FragmentPermissionRequest(fragment, permissions.toTypedArray(), options, callback!!)
+        fun build() =
+            FragmentPermissionRequest(fragment, permissions.toTypedArray(), options, callback!!)
 
         fun check() = build().check()
     }

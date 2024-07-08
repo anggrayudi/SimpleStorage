@@ -3,7 +3,9 @@ package com.anggrayudi.storage.extension
 import android.os.Environment
 import io.mockk.every
 import io.mockk.mockkStatic
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
@@ -27,7 +29,10 @@ class TextExtKtTest {
         assertEquals(6, "87jkakkubaakjnaaa".count("a"))
         assertEquals(0, "87jkakku baakjnaaa".count(""))
         assertEquals(0, "87jka kkubaakjnaaa".count("abc"))
-        assertEquals(1, "primary:DCIM/document/primary:DCIM/document/assas/document/as".count("/document/") % 2)
+        assertEquals(
+            1,
+            "primary:DCIM/document/primary:DCIM/document/assas/document/as".count("/document/") % 2
+        )
     }
 
     fun String.splitToPairAt(text: String, occurence: Int): Pair<String, String>? {
@@ -51,14 +56,20 @@ class TextExtKtTest {
 
     @Test
     fun splitAt() {
-        assertEquals(Pair("asosdisf/doc", "safsfsfaf/doc/8hhyjbh"), "asosdisf/doc/safsfsfaf/doc/8hhyjbh".splitToPairAt("/", 2))
+        assertEquals(
+            Pair("asosdisf/doc", "safsfsfaf/doc/8hhyjbh"),
+            "asosdisf/doc/safsfsfaf/doc/8hhyjbh".splitToPairAt("/", 2)
+        )
     }
 
     @Test
     fun replaceCompletely() {
         assertEquals("/storage/ABC//Movie/", "/storage/ABC////Movie/".replace("//", "/"))
         assertEquals("/storage/ABC/Movie/", "/storage/ABC///Movie/".replaceCompletely("//", "/"))
-        assertEquals("/storage/ABC/Movie/", "/storage////ABC///Movie//".replaceCompletely("//", "/"))
+        assertEquals(
+            "/storage/ABC/Movie/",
+            "/storage////ABC///Movie//".replaceCompletely("//", "/")
+        )
         assertEquals("BB", "aaaaaaaaBaaaaaaBa".replaceCompletely("a", ""))
     }
 
@@ -89,7 +100,10 @@ class TextExtKtTest {
         assertEquals("/storage/AAAA-BBBB", "/storage/AAAA-BBBB/abc.txt".parent())
         assertEquals("", "/storage/AAAA-BBBB".parent())
 
-        assertEquals("/storage/emulated/0/Download", "/storage/emulated/0/Download/abc.txt".parent())
+        assertEquals(
+            "/storage/emulated/0/Download",
+            "/storage/emulated/0/Download/abc.txt".parent()
+        )
         assertEquals("/storage/emulated/0", "/storage/emulated/0/abc.txt".parent())
         assertEquals("", "/storage/emulated/0".parent())
     }

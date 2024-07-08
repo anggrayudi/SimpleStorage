@@ -24,7 +24,10 @@ abstract class MultipleFilesConflictCallback @OptIn(DelicateCoroutinesApi::class
      * * [FolderErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER]
      */
     @UiThread
-    open fun onInvalidSourceFilesFound(invalidSourceFiles: Map<DocumentFile, FolderErrorCode>, action: InvalidSourceFilesAction) {
+    open fun onInvalidSourceFilesFound(
+        invalidSourceFiles: Map<DocumentFile, FolderErrorCode>,
+        action: InvalidSourceFilesAction
+    ) {
         action.confirmResolution(false)
     }
 

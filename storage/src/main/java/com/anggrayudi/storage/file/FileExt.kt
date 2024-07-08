@@ -42,7 +42,8 @@ val File.inPrimaryStorage: Boolean
 
 fun File.inDataStorage(context: Context) = path.startsWith(context.dataDirectory.path)
 
-fun File.inSdCardStorage(context: Context) = getStorageId(context).let { it != PRIMARY && it != DATA && path.startsWith("/storage/$it") }
+fun File.inSdCardStorage(context: Context) =
+    getStorageId(context).let { it != PRIMARY && it != DATA && path.startsWith("/storage/$it") }
 
 fun File.inSameMountPointWith(context: Context, file: File): Boolean {
     val storageId1 = getStorageId(context)
@@ -92,7 +93,8 @@ fun File.getRootPath(context: Context): String {
     }
 }
 
-fun File.getSimplePath(context: Context) = "${getStorageId(context)}:${getBasePath(context)}".removePrefix(":")
+fun File.getSimplePath(context: Context) =
+    "${getStorageId(context)}:${getBasePath(context)}".removePrefix(":")
 
 /**
  *  Returns:
@@ -103,11 +105,12 @@ val File.mimeType: String?
     get() = if (isFile) MimeType.getMimeTypeFromExtension(extension) else null
 
 @JvmOverloads
-fun File.getRootRawFile(context: Context, requiresWriteAccess: Boolean = false) = getRootPath(context).let {
-    if (it.isEmpty()) null else File(it).run {
-        takeIfWritable(context, requiresWriteAccess)
+fun File.getRootRawFile(context: Context, requiresWriteAccess: Boolean = false) =
+    getRootPath(context).let {
+        if (it.isEmpty()) null else File(it).run {
+            takeIfWritable(context, requiresWriteAccess)
+        }
     }
-}
 
 fun File.isReadOnly(context: Context) = canRead() && !isWritable(context)
 
@@ -117,13 +120,19 @@ val File.isEmpty: Boolean
     get() = isFile && length() == 0L || isDirectory && list().isNullOrEmpty()
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun File.shouldWritable(context: Context, requiresWriteAccess: Boolean) = requiresWriteAccess && isWritable(context) || !requiresWriteAccess
+fun File.shouldWritable(context: Context, requiresWriteAccess: Boolean) =
+    requiresWriteAccess && isWritable(context) || !requiresWriteAccess
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun File.takeIfWritable(context: Context, requiresWriteAccess: Boolean) = takeIf { it.canRead() && it.shouldWritable(context, requiresWriteAccess) }
+fun File.takeIfWritable(context: Context, requiresWriteAccess: Boolean) =
+    takeIf { it.canRead() && it.shouldWritable(context, requiresWriteAccess) }
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun File.checkRequirements(context: Context, requiresWriteAccess: Boolean, considerRawFile: Boolean) = canRead() && shouldWritable(context, requiresWriteAccess)
+fun File.checkRequirements(
+    context: Context,
+    requiresWriteAccess: Boolean,
+    considerRawFile: Boolean
+) = canRead() && shouldWritable(context, requiresWriteAccess)
         && (considerRawFile || isExternalStorageManager(context))
 
 fun File.createNewFileIfPossible(): Boolean = try {
@@ -142,9 +151,12 @@ fun File.isWritable(context: Context) = canWrite() && (isFile || isExternalStora
  * @return `true` if you have full disk access
  * @see Environment.isExternalStorageManager
  */
-fun File.isExternalStorageManager(context: Context) = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q && Environment.isExternalStorageManager(this)
-        || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && path.startsWith(SimpleStorage.externalStoragePath) && SimpleStorage.hasStoragePermission(context)
-        || context.writableDirs.any { path.startsWith(it.path) }
+fun File.isExternalStorageManager(context: Context) =
+    Build.VERSION.SDK_INT > Build.VERSION_CODES.Q && Environment.isExternalStorageManager(this)
+            || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && path.startsWith(SimpleStorage.externalStoragePath) && SimpleStorage.hasStoragePermission(
+        context
+    )
+            || context.writableDirs.any { path.startsWith(it.path) }
 
 /**
  * These directories do not require storage permissions. They are always writable with full disk access.
@@ -182,11 +194,12 @@ fun File.makeFile(
 
     val filename = cleanName.substringAfterLast('/')
     val extensionByName = MimeType.getExtensionFromFileName(cleanName)
-    val extension = if (extensionByName.isNotEmpty() && (mimeType == null || mimeType == MimeType.UNKNOWN || mimeType == MimeType.BINARY_FILE)) {
-        extensionByName
-    } else {
-        MimeType.getExtensionFromMimeTypeOrFileName(mimeType, cleanName)
-    }
+    val extension =
+        if (extensionByName.isNotEmpty() && (mimeType == null || mimeType == MimeType.UNKNOWN || mimeType == MimeType.BINARY_FILE)) {
+            extensionByName
+        } else {
+            MimeType.getExtensionFromMimeTypeOrFileName(mimeType, cleanName)
+        }
     val baseFileName = filename.removeSuffix(".$extension")
     val fullFileName = "$baseFileName.$extension".trimEnd('.')
 
@@ -207,7 +220,10 @@ fun File.makeFile(
     }
 
     return try {
-        File(parent, autoIncrementFileName(fullFileName)).let { if (it.createNewFile()) it else null }
+        File(
+            parent,
+            autoIncrementFileName(fullFileName)
+        ).let { if (it.createNewFile()) it else null }
     } catch (e: IOException) {
         null
     }
@@ -218,14 +234,21 @@ fun File.makeFile(
  */
 @WorkerThread
 @JvmOverloads
-fun File.makeFolder(context: Context, name: String, mode: CreateMode = CreateMode.CREATE_NEW): File? {
+fun File.makeFolder(
+    context: Context,
+    name: String,
+    mode: CreateMode = CreateMode.CREATE_NEW
+): File? {
     if (!isDirectory || !isWritable(context)) {
         return null
     }
 
-    val directorySequence = DocumentFileCompat.getDirectorySequence(name.removeForbiddenCharsFromFilename()).toMutableList()
+    val directorySequence =
+        DocumentFileCompat.getDirectorySequence(name.removeForbiddenCharsFromFilename())
+            .toMutableList()
     val folderNameLevel1 = directorySequence.removeFirstOrNull() ?: return null
-    val incrementedFolderNameLevel1 = if (mode == CreateMode.CREATE_NEW) autoIncrementFileName(folderNameLevel1) else folderNameLevel1
+    val incrementedFolderNameLevel1 =
+        if (mode == CreateMode.CREATE_NEW) autoIncrementFileName(folderNameLevel1) else folderNameLevel1
     val folderLevel1 = child(incrementedFolderNameLevel1)
 
     if (mode == CreateMode.REPLACE) {
@@ -235,11 +258,16 @@ fun File.makeFolder(context: Context, name: String, mode: CreateMode = CreateMod
     }
     folderLevel1.mkdir()
 
-    val folder = folderLevel1.let { if (directorySequence.isEmpty()) it else it.child(directorySequence.joinToString("/")).apply { mkdirs() } }
+    val folder = folderLevel1.let {
+        if (directorySequence.isEmpty()) it else it.child(
+            directorySequence.joinToString("/")
+        ).apply { mkdirs() }
+    }
     return if (folder.isDirectory) folder else null
 }
 
-fun File.toDocumentFile(context: Context) = if (canRead()) DocumentFileCompat.fromFile(context, this) else null
+fun File.toDocumentFile(context: Context) =
+    if (canRead()) DocumentFileCompat.fromFile(context, this) else null
 
 fun File.deleteEmptyFolders(context: Context): Boolean {
     return if (isDirectory && isWritable(context)) {
@@ -299,7 +327,9 @@ fun File.autoIncrementFileName(filename: String): String {
         val ext = MimeType.getExtensionFromFileName(filename)
         val prefix = "$baseName ("
         var lastFileCount = list().orEmpty().filter {
-            it.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(it)
+            it.startsWith(prefix) && (DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITH_EXTENSION.matches(
+                it
+            )
                     || DocumentFileCompat.FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION.matches(it))
         }.maxOfOrNull {
             it.substringAfterLast('(', "")

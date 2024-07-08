@@ -18,12 +18,19 @@ class ActivityPermissionRequest private constructor(
     private val callback: PermissionCallback
 ) : PermissionRequest {
 
-    private val launcher = if (activity is ComponentActivity) activity.registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+    private val launcher = if (activity is ComponentActivity) activity.registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
         onRequestPermissionsResult(it)
     } else null
 
     override fun check() {
-        if (permissions.all { ContextCompat.checkSelfPermission(activity, it) == PackageManager.PERMISSION_GRANTED }) {
+        if (permissions.all {
+                ContextCompat.checkSelfPermission(
+                    activity,
+                    it
+                ) == PackageManager.PERMISSION_GRANTED
+            }) {
             callback.onPermissionsChecked(
                 PermissionResult(permissions.map {
                     PermissionReport(it, isGranted = true, deniedPermanently = false)
@@ -49,14 +56,25 @@ class ActivityPermissionRequest private constructor(
 
         val reports = permissions.mapIndexed { index, permission ->
             val isGranted = grantResults[index] == PackageManager.PERMISSION_GRANTED
-            PermissionReport(permission, isGranted, !isGranted && !ActivityCompat.shouldShowRequestPermissionRationale(activity, permission))
+            PermissionReport(
+                permission,
+                isGranted,
+                !isGranted && !ActivityCompat.shouldShowRequestPermissionRationale(
+                    activity,
+                    permission
+                )
+            )
         }
         reportResult(reports)
     }
 
     private fun onRequestPermissionsResult(result: Map<String, Boolean>) {
         val reports = result.map {
-            PermissionReport(it.key, it.value, !it.value && !ActivityCompat.shouldShowRequestPermissionRationale(activity, it.key))
+            PermissionReport(
+                it.key,
+                it.value,
+                !it.value && !ActivityCompat.shouldShowRequestPermissionRationale(activity, it.key)
+            )
         }
         reportResult(reports)
     }
@@ -80,11 +98,20 @@ class ActivityPermissionRequest private constructor(
      */
     override fun continueToPermissionRequest() {
         permissions.forEach {
-            if (ContextCompat.checkSelfPermission(activity, it) != PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(
+                    activity,
+                    it
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
                 if (launcher != null) {
                     launcher.launch(permissions)
                 } else {
-                    ActivityCompat.requestPermissions(activity, permissions, requestCode ?: throw IllegalStateException("Request code hasn't been set yet"))
+                    ActivityCompat.requestPermissions(
+                        activity,
+                        permissions,
+                        requestCode
+                            ?: throw IllegalStateException("Request code hasn't been set yet")
+                    )
                 }
                 return
             }
@@ -123,7 +150,8 @@ class ActivityPermissionRequest private constructor(
             this.callback = callback
         }
 
-        fun build() = ActivityPermissionRequest(activity, permissions.toTypedArray(), requestCode, callback!!)
+        fun build() =
+            ActivityPermissionRequest(activity, permissions.toTypedArray(), requestCode, callback!!)
 
         fun check() = build().check()
     }

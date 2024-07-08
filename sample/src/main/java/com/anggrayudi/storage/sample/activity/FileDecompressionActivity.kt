@@ -68,31 +68,43 @@ class FileDecompressionActivity : BaseActivity() {
             return
         }
         ioScope.launch {
-            zipFile.decompressZip(applicationContext, targetFolder, onConflict = object : SingleFileConflictCallback<DocumentFile>(uiScope) {
-                var actionForAllConflicts: ConflictResolution? = null
+            zipFile.decompressZip(
+                applicationContext,
+                targetFolder,
+                onConflict = object : SingleFileConflictCallback<DocumentFile>(uiScope) {
+                    var actionForAllConflicts: ConflictResolution? = null
 
-                override fun onFileConflict(destinationFile: DocumentFile, action: FileConflictAction) {
-                    actionForAllConflicts?.let {
-                        action.confirmResolution(it)
-                        return
-                    }
-
-                    var doForAll = false
-                    MaterialDialog(this@FileDecompressionActivity)
-                        .cancelable(false)
-                        .title(text = "Conflict Found")
-                        .message(text = "File \"${destinationFile.name}\" already exists in destination. What's your action?")
-                        .checkBoxPrompt(text = "Apply to all") { doForAll = it }
-                        .listItems(items = mutableListOf("Replace", "Create New", "Skip Duplicate")) { _, index, _ ->
-                            val resolution = ConflictResolution.entries[index]
-                            if (doForAll) {
-                                actionForAllConflicts = resolution
-                            }
-                            action.confirmResolution(resolution)
+                    override fun onFileConflict(
+                        destinationFile: DocumentFile,
+                        action: FileConflictAction
+                    ) {
+                        actionForAllConflicts?.let {
+                            action.confirmResolution(it)
+                            return
                         }
-                        .show()
-                }
-            }).collect {
+
+                        var doForAll = false
+                        MaterialDialog(this@FileDecompressionActivity)
+                            .cancelable(false)
+                            .title(text = "Conflict Found")
+                            .message(text = "File \"${destinationFile.name}\" already exists in destination. What's your action?")
+                            .checkBoxPrompt(text = "Apply to all") { doForAll = it }
+                            .listItems(
+                                items = mutableListOf(
+                                    "Replace",
+                                    "Create New",
+                                    "Skip Duplicate"
+                                )
+                            ) { _, index, _ ->
+                                val resolution = ConflictResolution.entries[index]
+                                if (doForAll) {
+                                    actionForAllConflicts = resolution
+                                }
+                                action.confirmResolution(resolution)
+                            }
+                            .show()
+                    }
+                }).collect {
                 when (it) {
                     is ZipDecompressionResult.Validating -> Timber.d("Validating")
                     is ZipDecompressionResult.Decompressing -> Timber.d("Decompressing")
@@ -105,7 +117,8 @@ class FileDecompressionActivity : BaseActivity() {
                     }
 
                     is ZipDecompressionResult.Error -> uiScope.launch {
-                        Toast.makeText(applicationContext, "${it.errorCode}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(applicationContext, "${it.errorCode}", Toast.LENGTH_SHORT)
+                            .show()
                     }
                 }
             }

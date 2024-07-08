@@ -30,7 +30,10 @@ class StorageInfoAdapter(
     private val storageIds = DocumentFileCompat.getStorageIds(context)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        return ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.view_item_storage_info, parent, false))
+        return ViewHolder(
+            LayoutInflater.from(parent.context)
+                .inflate(R.layout.view_item_storage_info, parent, false)
+        )
     }
 
     @SuppressLint("SetTextI18n")
@@ -38,9 +41,18 @@ class StorageInfoAdapter(
         ioScope.launch {
             val storageId = storageIds[position]
             val storageName = if (storageId == PRIMARY) "External Storage" else storageId
-            val storageCapacity = Formatter.formatFileSize(context, DocumentFileCompat.getStorageCapacity(context, storageId))
-            val storageUsedSpace = Formatter.formatFileSize(context, DocumentFileCompat.getUsedSpace(context, storageId))
-            val storageFreeSpace = Formatter.formatFileSize(context, DocumentFileCompat.getFreeSpace(context, storageId))
+            val storageCapacity = Formatter.formatFileSize(
+                context,
+                DocumentFileCompat.getStorageCapacity(context, storageId)
+            )
+            val storageUsedSpace = Formatter.formatFileSize(
+                context,
+                DocumentFileCompat.getUsedSpace(context, storageId)
+            )
+            val storageFreeSpace = Formatter.formatFileSize(
+                context,
+                DocumentFileCompat.getFreeSpace(context, storageId)
+            )
             uiScope.launch {
                 holder.run {
                     tvStorageName.text = storageName

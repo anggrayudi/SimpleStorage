@@ -5,7 +5,11 @@ import android.content.Context
 import android.content.UriPermission
 import android.net.Uri
 import android.os.Build
-import io.mockk.*
+import io.mockk.confirmVerified
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -79,7 +83,12 @@ class SimpleStorageTest {
         SimpleStorage.cleanupRedundantUriPermissions(context)
 
         assertEquals(revokedUris, capturedUris)
-        verify(exactly = revokedUris.size) { resolver.releasePersistableUriPermission(any(), any()) }
+        verify(exactly = revokedUris.size) {
+            resolver.releasePersistableUriPermission(
+                any(),
+                any()
+            )
+        }
         verify { resolver.persistedUriPermissions }
         confirmVerified(resolver)
     }

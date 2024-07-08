@@ -56,7 +56,9 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         savedState?.let { onRestoreInstanceState(it) }
     }
 
-    constructor(activity: ComponentActivity, savedState: Bundle? = null) : this(ComponentActivityWrapper(activity)) {
+    constructor(activity: ComponentActivity, savedState: Bundle? = null) : this(
+        ComponentActivityWrapper(activity)
+    ) {
         savedState?.let { onRestoreInstanceState(it) }
         (wrapper as ComponentActivityWrapper).storage = this
     }
@@ -146,7 +148,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      * @return `true` if storage permissions and URI permissions are granted for read and write access.
      * @see [DocumentFileCompat.getStorageIds]
      */
-    fun isStorageAccessGranted(storageId: String) = DocumentFileCompat.isAccessGranted(context, storageId)
+    fun isStorageAccessGranted(storageId: String) =
+        DocumentFileCompat.isAccessGranted(context, storageId)
 
     private var expectedStorageTypeForAccessRequest = StorageType.UNKNOWN
 
@@ -175,7 +178,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             if (hasStoragePermission(context)) {
                 if (expectedStorageType == StorageType.EXTERNAL && !isSdCardPresent) {
-                    val root = DocumentFileCompat.getRootDocumentFile(context, PRIMARY, true) ?: return
+                    val root =
+                        DocumentFileCompat.getRootDocumentFile(context, PRIMARY, true) ?: return
                     saveUriPermission(root.uri)
                     storageAccessCallback?.onRootPathPermissionGranted(requestCode, root)
                     return
@@ -239,7 +243,10 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      */
     @SuppressLint("InlinedApi")
     @JvmOverloads
-    fun openFolderPicker(requestCode: Int = requestCodeFolderPicker, initialPath: FileFullPath? = null) {
+    fun openFolderPicker(
+        requestCode: Int = requestCodeFolderPicker,
+        initialPath: FileFullPath? = null
+    ) {
         initialPath?.checkIfStorageIdIsAccessibleInSafSelector()
         requestCodeFolderPicker = requestCode
 
@@ -287,7 +294,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
     private fun addInitialPathToIntent(intent: Intent, initialPath: FileFullPath?) {
         if (Build.VERSION.SDK_INT >= 26) {
-            initialPath?.toDocumentUri(context)?.let { intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, it) }
+            initialPath?.toDocumentUri(context)
+                ?.let { intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, it) }
         }
     }
 
@@ -299,7 +307,9 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q) {
             val selectedFolder = context.fromTreeUri(uri) ?: return
             if (!expectedStorageTypeForAccessRequest.isExpected(storageType) ||
-                !expectedBasePathForAccessRequest.isNullOrEmpty() && selectedFolder.getBasePath(context) != expectedBasePathForAccessRequest
+                !expectedBasePathForAccessRequest.isNullOrEmpty() && selectedFolder.getBasePath(
+                    context
+                ) != expectedBasePathForAccessRequest
             ) {
                 storageAccessCallback?.onExpectedStorageNotSelected(
                     requestCode,
@@ -312,14 +322,23 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             }
         } else if (!expectedStorageTypeForAccessRequest.isExpected(storageType)) {
             val rootPath = context.fromTreeUri(uri)?.getAbsolutePath(context).orEmpty()
-            storageAccessCallback?.onRootPathNotSelected(requestCode, rootPath, uri, storageType, expectedStorageTypeForAccessRequest)
+            storageAccessCallback?.onRootPathNotSelected(
+                requestCode,
+                rootPath,
+                uri,
+                storageType,
+                expectedStorageTypeForAccessRequest
+            )
             return
         }
 
         if (uri.isDownloadsDocument) {
             if (uri.toString() == DocumentFileCompat.DOWNLOADS_TREE_URI) {
                 saveUriPermission(uri)
-                storageAccessCallback?.onRootPathPermissionGranted(requestCode, context.fromTreeUri(uri) ?: return)
+                storageAccessCallback?.onRootPathPermissionGranted(
+                    requestCode,
+                    context.fromTreeUri(uri) ?: return
+                )
             } else {
                 storageAccessCallback?.onRootPathNotSelected(
                     requestCode,
@@ -335,7 +354,10 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         if (uri.isDocumentsDocument) {
             if (uri.toString() == DocumentFileCompat.DOCUMENTS_TREE_URI) {
                 saveUriPermission(uri)
-                storageAccessCallback?.onRootPathPermissionGranted(requestCode, context.fromTreeUri(uri) ?: return)
+                storageAccessCallback?.onRootPathPermissionGranted(
+                    requestCode,
+                    context.fromTreeUri(uri) ?: return
+                )
             } else {
                 storageAccessCallback?.onRootPathNotSelected(
                     requestCode,
@@ -349,23 +371,41 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         }
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R && !uri.isExternalStorageDocument) {
-            storageAccessCallback?.onRootPathNotSelected(requestCode, externalStoragePath, uri, StorageType.EXTERNAL, expectedStorageTypeForAccessRequest)
+            storageAccessCallback?.onRootPathNotSelected(
+                requestCode,
+                externalStoragePath,
+                uri,
+                StorageType.EXTERNAL,
+                expectedStorageTypeForAccessRequest
+            )
             return
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && storageId == PRIMARY) {
             saveUriPermission(uri)
-            storageAccessCallback?.onRootPathPermissionGranted(requestCode, context.fromTreeUri(uri) ?: return)
+            storageAccessCallback?.onRootPathPermissionGranted(
+                requestCode,
+                context.fromTreeUri(uri) ?: return
+            )
             return
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R || DocumentFileCompat.isRootUri(uri)) {
             if (saveUriPermission(uri)) {
-                storageAccessCallback?.onRootPathPermissionGranted(requestCode, context.fromTreeUri(uri) ?: return)
+                storageAccessCallback?.onRootPathPermissionGranted(
+                    requestCode,
+                    context.fromTreeUri(uri) ?: return
+                )
             } else {
                 storageAccessCallback?.onStoragePermissionDenied(requestCode)
             }
         } else {
             if (storageId == PRIMARY) {
-                storageAccessCallback?.onRootPathNotSelected(requestCode, externalStoragePath, uri, StorageType.EXTERNAL, expectedStorageTypeForAccessRequest)
+                storageAccessCallback?.onRootPathNotSelected(
+                    requestCode,
+                    externalStoragePath,
+                    uri,
+                    StorageType.EXTERNAL,
+                    expectedStorageTypeForAccessRequest
+                )
             } else {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                     val sm = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
@@ -376,7 +416,13 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
                         return
                     }
                 }
-                storageAccessCallback?.onRootPathNotSelected(requestCode, "/storage/$storageId", uri, StorageType.SD_CARD, expectedStorageTypeForAccessRequest)
+                storageAccessCallback?.onRootPathNotSelected(
+                    requestCode,
+                    "/storage/$storageId",
+                    uri,
+                    StorageType.SD_CARD,
+                    expectedStorageTypeForAccessRequest
+                )
             }
         }
     }
@@ -390,7 +436,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             folderPickerCallback?.onStorageAccessDenied(requestCode, folder, storageType, storageId)
             return
         }
-        if (uri.toString().let { it == DocumentFileCompat.DOWNLOADS_TREE_URI || it == DocumentFileCompat.DOCUMENTS_TREE_URI }
+        if (uri.toString()
+                .let { it == DocumentFileCompat.DOWNLOADS_TREE_URI || it == DocumentFileCompat.DOCUMENTS_TREE_URI }
             || DocumentFileCompat.isRootUri(uri)
             && (Build.VERSION.SDK_INT < Build.VERSION_CODES.N && storageType == StorageType.SD_CARD || Build.VERSION.SDK_INT == Build.VERSION_CODES.Q)
             && !DocumentFileCompat.isStorageUriPermissionGranted(context, storageId)
@@ -497,8 +544,14 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
     fun onSaveInstanceState(outState: Bundle) {
         outState.putString(KEY_LAST_VISITED_FOLDER, lastVisitedFolder.path)
-        outState.putString(KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST, expectedBasePathForAccessRequest)
-        outState.putInt(KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST, expectedStorageTypeForAccessRequest.ordinal)
+        outState.putString(
+            KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST,
+            expectedBasePathForAccessRequest
+        )
+        outState.putInt(
+            KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST,
+            expectedStorageTypeForAccessRequest.ordinal
+        )
         outState.putInt(KEY_REQUEST_CODE_STORAGE_ACCESS, requestCodeStorageAccess)
         outState.putInt(KEY_REQUEST_CODE_FOLDER_PICKER, requestCodeFolderPicker)
         outState.putInt(KEY_REQUEST_CODE_FILE_PICKER, requestCodeFilePicker)
@@ -510,13 +563,32 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
     fun onRestoreInstanceState(savedInstanceState: Bundle) {
         savedInstanceState.getString(KEY_LAST_VISITED_FOLDER)?.let { lastVisitedFolder = File(it) }
-        expectedBasePathForAccessRequest = savedInstanceState.getString(KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST)
-        expectedStorageTypeForAccessRequest = StorageType.entries.toTypedArray()[savedInstanceState.getInt(KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST)]
-        requestCodeStorageAccess = savedInstanceState.getInt(KEY_REQUEST_CODE_STORAGE_ACCESS, DEFAULT_REQUEST_CODE_STORAGE_ACCESS)
-        requestCodeFolderPicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FOLDER_PICKER, DEFAULT_REQUEST_CODE_FOLDER_PICKER)
-        requestCodeFilePicker = savedInstanceState.getInt(KEY_REQUEST_CODE_FILE_PICKER, DEFAULT_REQUEST_CODE_FILE_PICKER)
-        requestCodeCreateFile = savedInstanceState.getInt(KEY_REQUEST_CODE_CREATE_FILE, DEFAULT_REQUEST_CODE_CREATE_FILE)
-        if (wrapper is FragmentWrapper && savedInstanceState.containsKey(KEY_REQUEST_CODE_FRAGMENT_PICKER)) {
+        expectedBasePathForAccessRequest =
+            savedInstanceState.getString(KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST)
+        expectedStorageTypeForAccessRequest =
+            StorageType.entries.toTypedArray()[savedInstanceState.getInt(
+                KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST
+            )]
+        requestCodeStorageAccess = savedInstanceState.getInt(
+            KEY_REQUEST_CODE_STORAGE_ACCESS,
+            DEFAULT_REQUEST_CODE_STORAGE_ACCESS
+        )
+        requestCodeFolderPicker = savedInstanceState.getInt(
+            KEY_REQUEST_CODE_FOLDER_PICKER,
+            DEFAULT_REQUEST_CODE_FOLDER_PICKER
+        )
+        requestCodeFilePicker = savedInstanceState.getInt(
+            KEY_REQUEST_CODE_FILE_PICKER,
+            DEFAULT_REQUEST_CODE_FILE_PICKER
+        )
+        requestCodeCreateFile = savedInstanceState.getInt(
+            KEY_REQUEST_CODE_CREATE_FILE,
+            DEFAULT_REQUEST_CODE_CREATE_FILE
+        )
+        if (wrapper is FragmentWrapper && savedInstanceState.containsKey(
+                KEY_REQUEST_CODE_FRAGMENT_PICKER
+            )
+        ) {
             wrapper.requestCode = savedInstanceState.getInt(KEY_REQUEST_CODE_FRAGMENT_PICKER)
         }
     }
@@ -538,7 +610,13 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             requestCodeCreateFile = DEFAULT_REQUEST_CODE_CREATE_FILE
         }
 
-        if (setOf(requestCodeFilePicker, requestCodeFolderPicker, requestCodeStorageAccess, requestCodeCreateFile).size < 4) {
+        if (setOf(
+                requestCodeFilePicker,
+                requestCodeFolderPicker,
+                requestCodeStorageAccess,
+                requestCodeCreateFile
+            ).size < 4
+        ) {
             throw IllegalArgumentException(
                 "Request codes must be unique. File picker=$requestCodeFilePicker, Folder picker=$requestCodeFolderPicker, " +
                         "Storage access=$requestCodeStorageAccess, Create file=$requestCodeCreateFile"
@@ -547,7 +625,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
 
     private fun saveUriPermission(root: Uri) = try {
-        val writeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        val writeFlags =
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
         context.contentResolver.takePersistableUriPermission(root, writeFlags)
         thread { cleanupRedundantUriPermissions(context.applicationContext) }
         true
@@ -557,14 +636,22 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
     companion object {
 
-        private const val KEY_REQUEST_CODE_STORAGE_ACCESS = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeStorageAccess"
-        private const val KEY_REQUEST_CODE_FOLDER_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFolderPicker"
-        private const val KEY_REQUEST_CODE_FILE_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFilePicker"
-        private const val KEY_REQUEST_CODE_CREATE_FILE = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeCreateFile"
-        private const val KEY_REQUEST_CODE_FRAGMENT_PICKER = BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFragmentPicker"
-        private const val KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST = BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedStorageTypeForAccessRequest"
-        private const val KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST = BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedBasePathForAccessRequest"
-        private const val KEY_LAST_VISITED_FOLDER = BuildConfig.LIBRARY_PACKAGE_NAME + ".lastVisitedFolder"
+        private const val KEY_REQUEST_CODE_STORAGE_ACCESS =
+            BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeStorageAccess"
+        private const val KEY_REQUEST_CODE_FOLDER_PICKER =
+            BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFolderPicker"
+        private const val KEY_REQUEST_CODE_FILE_PICKER =
+            BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFilePicker"
+        private const val KEY_REQUEST_CODE_CREATE_FILE =
+            BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeCreateFile"
+        private const val KEY_REQUEST_CODE_FRAGMENT_PICKER =
+            BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFragmentPicker"
+        private const val KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST =
+            BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedStorageTypeForAccessRequest"
+        private const val KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST =
+            BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedBasePathForAccessRequest"
+        private const val KEY_LAST_VISITED_FOLDER =
+            BuildConfig.LIBRARY_PACKAGE_NAME + ".lastVisitedFolder"
         private const val TAG = "SimpleStorage"
 
         private const val DEFAULT_REQUEST_CODE_STORAGE_ACCESS: Int = 1
@@ -585,7 +672,10 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         fun getDefaultExternalStorageIntent(context: Context): Intent {
             return Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
                 if (Build.VERSION.SDK_INT >= 26) {
-                    putExtra(DocumentsContract.EXTRA_INITIAL_URI, context.fromTreeUri(DocumentFileCompat.createDocumentUri(PRIMARY))?.uri)
+                    putExtra(
+                        DocumentsContract.EXTRA_INITIAL_URI,
+                        context.fromTreeUri(DocumentFileCompat.createDocumentUri(PRIMARY))?.uri
+                    )
                 }
             }
         }
@@ -595,7 +685,10 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
          */
         @JvmStatic
         fun hasStoragePermission(context: Context): Boolean {
-            return checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            return checkSelfPermission(
+                context,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
                     && hasStorageReadPermission(context)
         }
 
@@ -604,12 +697,18 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
          */
         @JvmStatic
         fun hasStorageReadPermission(context: Context): Boolean {
-            return checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            return checkSelfPermission(
+                context,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
         }
 
         @JvmStatic
         fun hasFullDiskAccess(context: Context, storageId: String): Boolean {
-            return hasStorageAccess(context, DocumentFileCompat.buildAbsolutePath(context, storageId, ""))
+            return hasStorageAccess(
+                context,
+                DocumentFileCompat.buildAbsolutePath(context, storageId, "")
+            )
         }
 
         /**
@@ -623,10 +722,20 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
          */
         @JvmStatic
         @JvmOverloads
-        fun hasStorageAccess(context: Context, fullPath: String, requiresWriteAccess: Boolean = true): Boolean {
-            return DocumentFileCompat.getAccessibleRootDocumentFile(context, fullPath, requiresWriteAccess) != null
+        fun hasStorageAccess(
+            context: Context,
+            fullPath: String,
+            requiresWriteAccess: Boolean = true
+        ): Boolean {
+            return DocumentFileCompat.getAccessibleRootDocumentFile(
+                context,
+                fullPath,
+                requiresWriteAccess
+            ) != null
                     && (Build.VERSION.SDK_INT > Build.VERSION_CODES.P
-                    || requiresWriteAccess && hasStoragePermission(context) || !requiresWriteAccess && hasStorageReadPermission(context))
+                    || requiresWriteAccess && hasStoragePermission(context) || !requiresWriteAccess && hasStorageReadPermission(
+                context
+            ))
         }
 
         /**
@@ -646,10 +755,17 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             val persistedUris = resolver.persistedUriPermissions
                 .filter { it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument }
                 .map { it.uri }
-            val writeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            val uniqueUriParents = DocumentFileCompat.findUniqueParents(context, persistedUris.mapNotNull { it.path?.substringAfter("/tree/") })
+            val writeFlags =
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            val uniqueUriParents = DocumentFileCompat.findUniqueParents(
+                context,
+                persistedUris.mapNotNull { it.path?.substringAfter("/tree/") })
             persistedUris.forEach {
-                if (DocumentFileCompat.buildAbsolutePath(context, it.path.orEmpty().substringAfter("/tree/")) !in uniqueUriParents) {
+                if (DocumentFileCompat.buildAbsolutePath(
+                        context,
+                        it.path.orEmpty().substringAfter("/tree/")
+                    ) !in uniqueUriParents
+                ) {
                     resolver.releasePersistableUriPermission(it, writeFlags)
                     Log.d(TAG, "Removed redundant URI permission => $it")
                 }
@@ -668,7 +784,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
             val persistedUris = resolver.persistedUriPermissions
                 .filter { it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument }
                 .map { it.uri }
-            val writeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            val writeFlags =
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             persistedUris.forEach {
                 if (DocumentFileCompat.fromUri(context, it)?.isWritable(context) != true) {
                     resolver.releasePersistableUriPermission(it, writeFlags)

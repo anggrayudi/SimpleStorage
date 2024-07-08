@@ -4,7 +4,15 @@ import android.content.Context
 import android.net.Uri
 import androidx.annotation.WorkerThread
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.file.*
+import com.anggrayudi.storage.file.baseName
+import com.anggrayudi.storage.file.extension
+import com.anggrayudi.storage.file.getAbsolutePath
+import com.anggrayudi.storage.file.getBasePath
+import com.anggrayudi.storage.file.getRelativePath
+import com.anggrayudi.storage.file.isEmpty
+import com.anggrayudi.storage.file.mimeTypeByFileName
+import com.anggrayudi.storage.file.openInputStream
+import com.anggrayudi.storage.file.openOutputStream
 import com.anggrayudi.storage.media.MediaFile
 import java.io.InputStream
 import java.io.OutputStream
@@ -72,7 +80,8 @@ interface FileWrapper {
 
         override fun getRelativePath(context: Context): String = mediaFile.relativePath
 
-        override fun openOutputStream(context: Context, append: Boolean): OutputStream? = mediaFile.openOutputStream(append)
+        override fun openOutputStream(context: Context, append: Boolean): OutputStream? =
+            mediaFile.openOutputStream(append)
 
         override fun openInputStream(context: Context): InputStream? = mediaFile.openInputStream()
 
@@ -99,15 +108,19 @@ interface FileWrapper {
 
         override fun isEmpty(context: Context): Boolean = documentFile.isEmpty(context)
 
-        override fun getAbsolutePath(context: Context): String = documentFile.getAbsolutePath(context)
+        override fun getAbsolutePath(context: Context): String =
+            documentFile.getAbsolutePath(context)
 
         override fun getBasePath(context: Context): String = documentFile.getBasePath(context)
 
-        override fun getRelativePath(context: Context): String = documentFile.getRelativePath(context)
+        override fun getRelativePath(context: Context): String =
+            documentFile.getRelativePath(context)
 
-        override fun openOutputStream(context: Context, append: Boolean): OutputStream? = documentFile.openOutputStream(context, append)
+        override fun openOutputStream(context: Context, append: Boolean): OutputStream? =
+            documentFile.openOutputStream(context, append)
 
-        override fun openInputStream(context: Context): InputStream? = documentFile.openInputStream(context)
+        override fun openInputStream(context: Context): InputStream? =
+            documentFile.openInputStream(context)
 
         override fun delete(): Boolean = documentFile.delete()
     }

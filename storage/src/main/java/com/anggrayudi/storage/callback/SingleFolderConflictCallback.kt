@@ -31,12 +31,20 @@ abstract class SingleFolderConflictCallback @OptIn(DelicateCoroutinesApi::class)
      *                 This happens if the destination is a file.
      */
     @UiThread
-    open fun onParentConflict(destinationFolder: DocumentFile, action: ParentFolderConflictAction, canMerge: Boolean) {
+    open fun onParentConflict(
+        destinationFolder: DocumentFile,
+        action: ParentFolderConflictAction,
+        canMerge: Boolean
+    ) {
         action.confirmResolution(ConflictResolution.CREATE_NEW)
     }
 
     @UiThread
-    open fun onContentConflict(destinationFolder: DocumentFile, conflictedFiles: MutableList<FileConflict>, action: FolderContentConflictAction) {
+    open fun onContentConflict(
+        destinationFolder: DocumentFile,
+        conflictedFiles: MutableList<FileConflict>,
+        action: FolderContentConflictAction
+    ) {
         action.confirmResolution(conflictedFiles)
     }
 
