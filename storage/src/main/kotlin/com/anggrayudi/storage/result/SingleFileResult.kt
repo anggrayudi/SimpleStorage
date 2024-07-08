@@ -1,7 +1,5 @@
 package com.anggrayudi.storage.result
 
-import androidx.documentfile.provider.DocumentFile
-
 /**
  * Created on 7/6/24
  * @author Anggrayudi Hardiannico A.
@@ -9,9 +7,7 @@ import androidx.documentfile.provider.DocumentFile
 sealed interface SingleFileResult {
     data object Validating : SingleFileResult
     data object Preparing : SingleFileResult
-    data object CountingFiles : SingleFileResult
     data object DeletingConflictedFile : SingleFileResult
-    data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) : SingleFileResult
     data class InProgress(val progress: Float, val bytesMoved: Long, val writeSpeed: Int) :
         SingleFileResult
 

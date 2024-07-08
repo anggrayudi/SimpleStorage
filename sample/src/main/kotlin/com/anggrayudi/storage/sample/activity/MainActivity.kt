@@ -650,9 +650,7 @@ class MainActivity : AppCompatActivity() {
                         when (it) {
                             is SingleFileResult.Validating -> Timber.d("Validating...")
                             is SingleFileResult.Preparing -> Timber.d("Preparing...")
-                            is SingleFileResult.CountingFiles -> Timber.d("Counting files...")
                             is SingleFileResult.DeletingConflictedFile -> Timber.d("Deleting conflicted file...")
-                            is SingleFileResult.Starting -> Timber.d("Starting...")
                             is SingleFileResult.InProgress -> Timber.d("Progress: ${it.progress.toInt()}%")
                             is SingleFileResult.Completed -> uiScope.launch {
                                 Timber.d("Completed")
@@ -713,9 +711,7 @@ class MainActivity : AppCompatActivity() {
                         when (result) {
                             is SingleFileResult.Validating -> Timber.d("Validating...")
                             is SingleFileResult.Preparing -> Timber.d("Preparing...")
-                            is SingleFileResult.CountingFiles -> Timber.d("Counting files...")
                             is SingleFileResult.DeletingConflictedFile -> Timber.d("Deleting conflicted file...")
-                            is SingleFileResult.Starting -> Timber.d("Starting...")
                             is SingleFileResult.InProgress -> uiScope.launch {
                                 Timber.d("Progress: ${result.progress.toInt()}%")
                                 if (dialog == null) {
