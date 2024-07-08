@@ -17,6 +17,7 @@ import com.anggrayudi.storage.file.isWritable
 import com.anggrayudi.storage.file.makeFile
 import com.anggrayudi.storage.file.makeFolder
 import com.anggrayudi.storage.file.openOutputStream
+import com.anggrayudi.storage.result.DecompressedZipFile
 import com.anggrayudi.storage.result.ZipCompressionErrorCode
 import com.anggrayudi.storage.result.ZipCompressionResult
 import com.anggrayudi.storage.result.ZipDecompressionErrorCode
@@ -310,7 +311,7 @@ fun MediaFile.decompressZip(
     if (success) {
         send(
             ZipDecompressionResult.Completed(
-                this,
+                DecompressedZipFile.MediaFile(this@decompressZip),
                 destFolder,
                 bytesDecompressed,
                 skippedDecompressedBytes,

@@ -27,7 +27,7 @@ sealed interface SingleFileResult {
     ) :
         SingleFileResult
 
-    interface Completed : SingleFileResult {
+    sealed interface Completed : SingleFileResult {
 
         @JvmInline
         value class MediaFile(val value: com.anggrayudi.storage.media.MediaFile) : Completed

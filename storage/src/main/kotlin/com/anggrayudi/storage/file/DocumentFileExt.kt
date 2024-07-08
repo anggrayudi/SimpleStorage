@@ -48,6 +48,7 @@ import com.anggrayudi.storage.file.StorageId.PRIMARY
 import com.anggrayudi.storage.media.FileDescription
 import com.anggrayudi.storage.media.MediaFile
 import com.anggrayudi.storage.media.MediaStoreCompat
+import com.anggrayudi.storage.result.DecompressedZipFile
 import com.anggrayudi.storage.result.FileProperties
 import com.anggrayudi.storage.result.FilePropertiesResult
 import com.anggrayudi.storage.result.FolderErrorCode
@@ -1727,7 +1728,7 @@ fun DocumentFile.decompressZip(
         val sizeExpansion = (bytesDecompressed - zipSize).toFloat() / zipSize * 100
         send(
             ZipDecompressionResult.Completed(
-                this,
+                DecompressedZipFile.DocumentFile(this@decompressZip),
                 destFolder,
                 bytesDecompressed,
                 skippedDecompressedBytes,

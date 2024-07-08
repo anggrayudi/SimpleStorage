@@ -1,7 +1,6 @@
 package com.anggrayudi.storage.result
 
 import androidx.documentfile.provider.DocumentFile
-import com.anggrayudi.storage.media.MediaFile
 
 /**
  * Created on 7/6/24
@@ -14,11 +13,8 @@ sealed interface ZipDecompressionResult {
     data class Decompressing(val bytesDecompressed: Long, val writeSpeed: Int, val fileCount: Int) :
         ZipDecompressionResult
 
-    /**
-     * @param zipFile can be [DocumentFile] or [MediaFile]
-     */
     data class Completed(
-        val zipFile: Any,
+        val zipFile: DecompressedZipFile,
         val targetFolder: DocumentFile,
         val bytesDecompressed: Long,
         val skippedDecompressedBytes: Long,
@@ -28,6 +24,16 @@ sealed interface ZipDecompressionResult {
 
     data class Error(val errorCode: ZipDecompressionErrorCode, val message: String? = null) :
         ZipDecompressionResult
+}
+
+sealed interface DecompressedZipFile {
+
+    @JvmInline
+    value class MediaFile(val value: com.anggrayudi.storage.media.MediaFile) : DecompressedZipFile
+
+    @JvmInline
+    value class DocumentFile(val value: androidx.documentfile.provider.DocumentFile) :
+        DecompressedZipFile
 }
 
 enum class ZipDecompressionErrorCode {
