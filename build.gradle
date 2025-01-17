@@ -1,16 +1,18 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
     apply from: 'versions.gradle'
 
     addRepos(repositories)
 
-    ext.kotlin_version = '2.0.0'
+    ext.kotlin_version = '2.0.21'
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.4.1'
+        classpath 'com.android.tools.build:gradle:8.8.0'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.vanniktech:gradle-maven-publish-plugin:0.22.0'
-        classpath 'org.jetbrains.dokka:dokka-gradle-plugin:1.7.20'
+        classpath 'org.jetbrains.dokka:dokka-gradle-plugin:1.8.20'
     }
 }
 
@@ -18,7 +20,7 @@ allprojects {
     addRepos(repositories)
 
     //Support @JvmDefault
-    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    tasks.withType(KotlinCompile).configureEach {
         kotlinOptions {
             freeCompilerArgs = ['-Xjvm-default=all', '-opt-in=kotlin.RequiresOptIn']
             jvmTarget = '1.8'
@@ -41,11 +43,11 @@ subprojects {
 
     afterEvaluate {
         android {
-            compileSdkVersion 34
+            compileSdkVersion 35
 
             defaultConfig {
                 minSdkVersion 21
-                targetSdkVersion 34
+                targetSdkVersion 35
                 versionCode 1
                 versionName "$VERSION_NAME"
                 testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -80,5 +82,5 @@ subprojects {
 }
 
 tasks.register('clean', Delete) {
-    delete rootProject.buildDir
+    delete rootProject.layout.buildDirectory
 }

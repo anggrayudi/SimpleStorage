@@ -36,7 +36,6 @@ android {
         release {
             minifyEnabled true
             shrinkResources false
-            zipAlignEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
         }
@@ -50,7 +49,7 @@ android {
         viewBinding = true
     }
 
-    flavorDimensions "libSource"
+    flavorDimensions = ["libSource"]
     productFlavors {
         local {
             dimension "libSource"

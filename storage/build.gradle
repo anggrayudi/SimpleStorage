@@ -33,7 +33,7 @@ dependencies {
     api deps.documentfile
     api deps.coroutines.core
     api deps.coroutines.android
-    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.2"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7"
 
     testImplementation deps.junit
     testImplementation deps.mockk
