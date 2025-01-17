@@ -152,8 +152,8 @@ fun File.isExternalStorageManager(context: Context) = Build.VERSION.SDK_INT > Bu
 val Context.writableDirs: Set<File>
     get() {
         val dirs = mutableSetOf(dataDirectory)
-        dirs.addAll(ContextCompat.getObbDirs(this).filterNotNull())
-        dirs.addAll(ContextCompat.getExternalFilesDirs(this, null).mapNotNull { it?.parentFile })
+        dirs.addAll(obbDirs.filterNotNull())
+        dirs.addAll(getExternalFilesDirs(null).mapNotNull { it?.parentFile })
         return dirs
     }
 

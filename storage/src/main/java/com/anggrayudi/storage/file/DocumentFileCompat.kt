@@ -467,7 +467,7 @@ object DocumentFileCompat {
     @JvmStatic
     fun getStorageIds(context: Context): List<String> {
         val externalStoragePath = SimpleStorage.externalStoragePath
-        val storageIds = ContextCompat.getExternalFilesDirs(context, null).filterNotNull().map {
+        val storageIds = context.getExternalFilesDirs(null).filterNotNull().map {
             val path = it.path
             if (path.startsWith(externalStoragePath)) {
                 // Path -> /storage/emulated/0/Android/data/com.anggrayudi.storage.sample/files
