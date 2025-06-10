@@ -23,6 +23,7 @@ sealed class SingleFolderResult {
    */
   data object DeletingConflictedFiles : SingleFolderResult()
 
+  /** A good state to start showing notification */
   data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) :
     SingleFolderResult()
 

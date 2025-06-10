@@ -2388,6 +2388,8 @@ private fun DocumentFile.copyFolderTo(
     return@callbackFlow
   }
 
+  send(SingleFolderResult.Starting(filesToCopy, totalFilesToCopy))
+
   if (deleteSourceWhenComplete) {
     when (
       val result =
