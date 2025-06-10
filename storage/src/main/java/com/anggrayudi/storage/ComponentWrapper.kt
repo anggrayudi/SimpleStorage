@@ -6,13 +6,14 @@ import android.content.Intent
 
 /**
  * Created on 18/08/20
+ *
  * @author Anggrayudi H
  */
 internal interface ComponentWrapper {
 
-    val context: Context
+  val context: Context
 
-    val activity: Activity
+  val activity: Activity
 
-    fun startActivityForResult(intent: Intent, requestCode: Int): Boolean
+  fun startActivityForResult(intent: Intent, requestCode: Int): Boolean
 }

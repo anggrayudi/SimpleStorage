@@ -8,30 +8,33 @@ import androidx.activity.result.contract.ActivityResultContracts
 
 /**
  * Created on 18/08/20
+ *
  * @author Anggrayudi H
  */
-internal class ComponentActivityWrapper(private val _activity: ComponentActivity) : ComponentWrapper {
+internal class ComponentActivityWrapper(private val _activity: ComponentActivity) :
+  ComponentWrapper {
 
-    lateinit var storage: SimpleStorage
-    var requestCode = 0
+  lateinit var storage: SimpleStorage
+  var requestCode = 0
 
-    private val activityResultLauncher = _activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        storage.onActivityResult(requestCode, it.resultCode, it.data)
+  private val activityResultLauncher =
+    _activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+      storage.onActivityResult(requestCode, it.resultCode, it.data)
     }
 
-    override val context: Context
-        get() = _activity
+  override val context: Context
+    get() = _activity
 
-    override val activity: ComponentActivity
-        get() = _activity
+  override val activity: ComponentActivity
+    get() = _activity
 
-    override fun startActivityForResult(intent: Intent, requestCode: Int): Boolean {
-        return try {
-            activityResultLauncher.launch(intent)
-            this.requestCode = requestCode
-            true
-        } catch (e: ActivityNotFoundException) {
-            false
-        }
+  override fun startActivityForResult(intent: Intent, requestCode: Int): Boolean {
+    return try {
+      activityResultLauncher.launch(intent)
+      this.requestCode = requestCode
+      true
+    } catch (e: ActivityNotFoundException) {
+      false
     }
+  }
 }

@@ -9,30 +9,32 @@ import androidx.fragment.app.FragmentActivity
 
 /**
  * Created on 18/08/20
+ *
  * @author Anggrayudi H
  */
 internal class FragmentWrapper(private val fragment: Fragment) : ComponentWrapper {
 
-    lateinit var storage: SimpleStorage
-    var requestCode = 0
+  lateinit var storage: SimpleStorage
+  var requestCode = 0
 
-    private val activityResultLauncher = fragment.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        storage.onActivityResult(requestCode, it.resultCode, it.data)
+  private val activityResultLauncher =
+    fragment.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+      storage.onActivityResult(requestCode, it.resultCode, it.data)
     }
 
-    override val context: Context
-        get() = fragment.requireContext()
+  override val context: Context
+    get() = fragment.requireContext()
 
-    override val activity: FragmentActivity
-        get() = fragment.requireActivity()
+  override val activity: FragmentActivity
+    get() = fragment.requireActivity()
 
-    override fun startActivityForResult(intent: Intent, requestCode: Int): Boolean {
-        return try {
-            activityResultLauncher.launch(intent)
-            this.requestCode = requestCode
-            true
-        } catch (e: ActivityNotFoundException) {
-            false
-        }
+  override fun startActivityForResult(intent: Intent, requestCode: Int): Boolean {
+    return try {
+      activityResultLauncher.launch(intent)
+      this.requestCode = requestCode
+      true
+    } catch (e: ActivityNotFoundException) {
+      false
     }
+  }
 }
