@@ -12,60 +12,56 @@ import java.util.zip.ZipOutputStream
 
 /**
  * Created on 17/08/20
+ *
  * @author Anggrayudi H
  */
 
-/**
- * Closing stream safely
- */
+/** Closing stream safely */
 fun OutputStream?.closeStreamQuietly() {
-    try {
-        this?.close()
-    } catch (e: IOException) {
-        // ignore
-    }
+  try {
+    this?.close()
+  } catch (e: IOException) {
+    // ignore
+  }
 }
 
-/**
- * Closing stream safely
- */
+/** Closing stream safely */
 fun InputStream?.closeStreamQuietly() {
-    try {
-        this?.close()
-    } catch (e: IOException) {
-        // ignore
-    }
+  try {
+    this?.close()
+  } catch (e: IOException) {
+    // ignore
+  }
 }
 
-/**
- * Closing stream safely
- */
+/** Closing stream safely */
 fun Reader?.closeStreamQuietly() {
-    try {
-        this?.close()
-    } catch (e: IOException) {
-        // ignore
-    }
+  try {
+    this?.close()
+  } catch (e: IOException) {
+    // ignore
+  }
 }
 
 fun ZipInputStream?.closeEntryQuietly() {
-    try {
-        this?.closeEntry()
-    } catch (e: Exception) {
-        // ignore
-    }
+  try {
+    this?.closeEntry()
+  } catch (e: Exception) {
+    // ignore
+  }
 }
 
 fun ZipOutputStream?.closeEntryQuietly() {
-    try {
-        this?.closeEntry()
-    } catch (e: IOException) {
-        // ignore
-    }
+  try {
+    this?.closeEntry()
+  } catch (e: IOException) {
+    // ignore
+  }
 }
 
-fun Cursor.getString(column: String) = try {
+fun Cursor.getString(column: String) =
+  try {
     getString(getColumnIndexOrThrow(column))
-} catch (e: Exception) {
+  } catch (e: Exception) {
     null
-}
+  }

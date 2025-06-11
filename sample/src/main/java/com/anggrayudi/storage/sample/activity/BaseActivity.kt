@@ -9,34 +9,35 @@ import kotlinx.coroutines.Job
 
 /**
  * Created on 04/01/22
+ *
  * @author Anggrayudi H
  */
 open class BaseActivity : AppCompatActivity() {
 
-    private val job = Job()
-    protected val ioScope = CoroutineScope(Dispatchers.IO + job)
-    protected val uiScope = CoroutineScope(Dispatchers.Main + job)
+  private val job = Job()
+  protected val ioScope = CoroutineScope(Dispatchers.IO + job)
+  protected val uiScope = CoroutineScope(Dispatchers.Main + job)
 
-    protected lateinit var storageHelper: SimpleStorageHelper
-        private set
+  protected lateinit var storageHelper: SimpleStorageHelper
+    private set
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        storageHelper = SimpleStorageHelper(this, savedInstanceState)
-    }
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    storageHelper = SimpleStorageHelper(this, savedInstanceState)
+  }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        storageHelper.onSaveInstanceState(outState)
-        super.onSaveInstanceState(outState)
-    }
+  override fun onSaveInstanceState(outState: Bundle) {
+    storageHelper.onSaveInstanceState(outState)
+    super.onSaveInstanceState(outState)
+  }
 
-    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        super.onRestoreInstanceState(savedInstanceState)
-        storageHelper.onRestoreInstanceState(savedInstanceState)
-    }
+  override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+    super.onRestoreInstanceState(savedInstanceState)
+    storageHelper.onRestoreInstanceState(savedInstanceState)
+  }
 
-    override fun onDestroy() {
-        job.cancel()
-        super.onDestroy()
-    }
+  override fun onDestroy() {
+    job.cancel()
+    super.onDestroy()
+  }
 }

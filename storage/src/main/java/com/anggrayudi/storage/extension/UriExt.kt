@@ -15,46 +15,46 @@ import java.io.*
 
 /**
  * Created on 12/15/20
+ *
  * @author Anggrayudi H
  */
 
-/**
- * If given [Uri] with path `/tree/primary:Downloads/MyVideo.mp4`, then return `primary`.
- */
+/** If given [Uri] with path `/tree/primary:Downloads/MyVideo.mp4`, then return `primary`. */
 fun Uri.getStorageId(context: Context): String {
-    val path = path.orEmpty()
-    return if (isRawFile) {
-        File(path).getStorageId(context)
-    } else when {
-        isDownloadsDocument || isDocumentsDocument -> PRIMARY
-        isExternalStorageDocument -> path.substringBefore(':', "").substringAfterLast('/')
-        else -> ""
+  val path = path.orEmpty()
+  return if (isRawFile) {
+    File(path).getStorageId(context)
+  } else
+    when {
+      isDownloadsDocument || isDocumentsDocument -> PRIMARY
+      isExternalStorageDocument -> path.substringBefore(':', "").substringAfterLast('/')
+      else -> ""
     }
 }
 
 val Uri.isTreeDocumentFile: Boolean
-    get() = path?.startsWith("/tree/") == true
+  get() = path?.startsWith("/tree/") == true
 
 val Uri.isExternalStorageDocument: Boolean
-    get() = authority == DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY
+  get() = authority == DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY
 
 val Uri.isDownloadsDocument: Boolean
-    get() = authority == DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY
+  get() = authority == DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY
 
-/**
- * For URI [DocumentFileCompat.DOCUMENTS_TREE_URI]
- */
+/** For URI [DocumentFileCompat.DOCUMENTS_TREE_URI] */
 val Uri.isDocumentsDocument: Boolean
-    get() = isExternalStorageDocument && path?.let { it.startsWith("/tree/home:") || it.startsWith("/document/home:") } == true
+  get() =
+    isExternalStorageDocument &&
+      path?.let { it.startsWith("/tree/home:") || it.startsWith("/document/home:") } == true
 
 val Uri.isMediaDocument: Boolean
-    get() = authority == DocumentFileCompat.MEDIA_FOLDER_AUTHORITY
+  get() = authority == DocumentFileCompat.MEDIA_FOLDER_AUTHORITY
 
 val Uri.isRawFile: Boolean
-    get() = scheme == ContentResolver.SCHEME_FILE
+  get() = scheme == ContentResolver.SCHEME_FILE
 
 val Uri.isMediaFile: Boolean
-    get() = authority == MediaStore.AUTHORITY
+  get() = authority == MediaStore.AUTHORITY
 
 fun Uri.toMediaFile(context: Context) = if (isMediaFile) MediaFile(context, this) else null
 
@@ -63,27 +63,30 @@ fun Uri.toDocumentFile(context: Context) = DocumentFileCompat.fromUri(context, t
 @JvmOverloads
 @WorkerThread
 fun Uri.openOutputStream(context: Context, append: Boolean = true): OutputStream? {
-    return try {
-        if (isRawFile) {
-            FileOutputStream(File(path ?: return null), append)
-        } else {
-            context.contentResolver.openOutputStream(this, if (append && isTreeDocumentFile) "wa" else "w")
-        }
-    } catch (e: IOException) {
-        null
+  return try {
+    if (isRawFile) {
+      FileOutputStream(File(path ?: return null), append)
+    } else {
+      context.contentResolver.openOutputStream(
+        this,
+        if (append && isTreeDocumentFile) "wa" else "w",
+      )
     }
+  } catch (e: IOException) {
+    null
+  }
 }
 
 @WorkerThread
 fun Uri.openInputStream(context: Context): InputStream? {
-    return try {
-        if (isRawFile) {
-            // handle file from external storage
-            FileInputStream(File(path ?: return null))
-        } else {
-            context.contentResolver.openInputStream(this)
-        }
-    } catch (e: IOException) {
-        null
+  return try {
+    if (isRawFile) {
+      // handle file from external storage
+      FileInputStream(File(path ?: return null))
+    } else {
+      context.contentResolver.openInputStream(this)
     }
+  } catch (e: IOException) {
+    null
+  }
 }
