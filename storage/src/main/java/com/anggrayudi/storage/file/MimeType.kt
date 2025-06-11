@@ -47,7 +47,7 @@ object MimeType {
 
   /**
    * Some mime types return no file extension on older API levels. This function adds compatibility
-   * accross API levels. Since API 29, [MimeType.BINARY_FILE] has extension `*.bin`
+   * across API levels. Since API 29, [MimeType.BINARY_FILE] has extension `*.bin`
    *
    * @see getExtensionFromMimeTypeOrFileName
    */

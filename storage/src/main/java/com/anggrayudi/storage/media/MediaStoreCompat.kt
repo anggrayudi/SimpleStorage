@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.BaseColumns
 import android.provider.MediaStore
+import android.webkit.MimeTypeMap
 import androidx.annotation.RequiresApi
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.extension.getString
@@ -30,9 +31,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
 /**
- * Created on 05/09/20
- *
- * @author Anggrayudi H
+ * Using Media Store doesn't require any storage permission for API 29+. Bear in mind that this is a
+ * method to create files with "write and forget" strategy, which means you have no intention to
+ * rename or search the file in the future.
  */
 object MediaStoreCompat {
 
@@ -124,12 +125,16 @@ object MediaStoreCompat {
       val mimeType = file.mimeType
       val baseName = MimeType.getBaseFileName(fullName)
       val ext = MimeType.getExtensionFromFileName(fullName)
+      // Check if the OS recognizes the mime type, otherwise the name will be like "test-8.PNG.png"
+      val displayName =
+        if (MimeTypeMap.getSingleton().getExtensionFromMimeType(file.mimeType) != null) {
+          baseName
+        } else {
+          fullName
+        }
       val contentValues =
         ContentValues().apply {
-          put(
-            MediaStore.MediaColumns.DISPLAY_NAME,
-            if (mimeType == MimeType.BINARY_FILE) fullName else baseName,
-          )
+          put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
           put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
           val dateCreated = System.currentTimeMillis()
           put(MediaStore.MediaColumns.DATE_ADDED, dateCreated)

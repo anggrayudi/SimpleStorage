@@ -48,7 +48,6 @@ dependencies {
   api(libs.androidx.document.file)
   implementation(libs.androidx.lifecycle.runtime)
 
-  implementation(libs.timber)
   implementation(libs.coroutines.android)
 
   testImplementation(libs.junit)

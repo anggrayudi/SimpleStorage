@@ -54,7 +54,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -104,7 +103,7 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun scrollToView(view: View) {
-    view.post(Runnable { binding.scrollView.scrollTo(0, view.top) })
+    view.post { binding.scrollView.scrollTo(0, view.top) }
   }
 
   @SuppressLint("SetTextI18n")

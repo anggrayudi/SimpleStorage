@@ -32,6 +32,7 @@ import com.anggrayudi.storage.media.MediaStoreCompat
 import java.io.File
 import java.io.IOException
 import java.net.URLDecoder
+import androidx.core.net.toUri
 
 /**
  * Created on 16/08/20
@@ -174,7 +175,7 @@ object DocumentFileCompat {
         file == null && storageId == PRIMARY && basePath.hasParent(Environment.DIRECTORY_DOWNLOADS)
       ) {
         val downloads =
-          context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))?.takeIf { it.canRead() } ?: return null
+          context.fromTreeUri(DOWNLOADS_TREE_URI.toUri())?.takeIf { it.canRead() } ?: return null
         downloads.child(context, basePath.substringAfter('/', ""))?.takeIf {
           documentType == DocumentFileType.ANY ||
             documentType == DocumentFileType.FILE && it.isFile ||
@@ -296,7 +297,7 @@ object DocumentFileCompat {
     }
 
     val fileFromUriOrAbsolutePath: (String) -> DocumentFile? = { treeRootUri ->
-      val downloadFolder = context.fromTreeUri(Uri.parse(treeRootUri))
+      val downloadFolder = context.fromTreeUri(treeRootUri.toUri())
       if (downloadFolder?.canRead() == true) {
         downloadFolder.child(context, subFile, requiresWriteAccess)
       } else {
@@ -407,14 +408,14 @@ object DocumentFileCompat {
               it.uri.isDownloadsDocument &&
                 fullPath.hasParent(PublicDirectory.DOWNLOADS.absolutePath)
             ) {
-              return context.fromTreeUri(Uri.parse(DOWNLOADS_TREE_URI))
+              return context.fromTreeUri(DOWNLOADS_TREE_URI.toUri())
             }
 
             if (
               it.uri.isDocumentsDocument &&
                 fullPath.hasParent(PublicDirectory.DOCUMENTS.absolutePath)
             ) {
-              return context.fromTreeUri(Uri.parse(DOCUMENTS_TREE_URI))
+              return context.fromTreeUri(DOCUMENTS_TREE_URI.toUri())
             }
           }
 
@@ -500,7 +501,7 @@ object DocumentFileCompat {
   @JvmOverloads
   @JvmStatic
   fun createDocumentUri(storageId: String, basePath: String = ""): Uri =
-    Uri.parse("content://$EXTERNAL_STORAGE_AUTHORITY/tree/" + Uri.encode("$storageId:$basePath"))
+      ("content://$EXTERNAL_STORAGE_AUTHORITY/tree/" + Uri.encode("$storageId:$basePath")).toUri()
 
   @JvmStatic
   fun isAccessGranted(context: Context, storageId: String): Boolean {
@@ -531,11 +532,11 @@ object DocumentFileCompat {
 
   @JvmStatic
   fun isDownloadsUriPermissionGranted(context: Context) =
-    isUriPermissionGranted(context, Uri.parse(DOWNLOADS_TREE_URI))
+    isUriPermissionGranted(context, DOWNLOADS_TREE_URI.toUri())
 
   @JvmStatic
   fun isDocumentsUriPermissionGranted(context: Context) =
-    isUriPermissionGranted(context, Uri.parse(DOCUMENTS_TREE_URI))
+    isUriPermissionGranted(context, DOCUMENTS_TREE_URI.toUri())
 
   private fun isUriPermissionGranted(context: Context, uri: Uri) =
     context.contentResolver.persistedUriPermissions.any {
@@ -903,7 +904,7 @@ object DocumentFileCompat {
         getRootDocumentFile(context, storageId, requiresWriteAccess, considerRawFile)
           ?.child(context, basePath)
           ?: context
-            .fromTreeUri(Uri.parse(DOCUMENTS_TREE_URI))
+            .fromTreeUri(DOCUMENTS_TREE_URI.toUri())
             ?.child(context, basePath.substringAfter(Environment.DIRECTORY_DOCUMENTS))
           ?: return null
       } else if (Build.VERSION.SDK_INT < 30) {
@@ -917,7 +918,7 @@ object DocumentFileCompat {
         // For example, /storage/emulated/0/Music may not granted, but /storage/emulated/0/Music/Pop
         // is granted by user.
         while (directorySequence.isNotEmpty()) {
-          parentTree.add(directorySequence.removeFirst())
+          parentTree.add(directorySequence.removeAt(0))
           val folderTree = parentTree.joinToString(separator = "/")
           try {
             grantedFile = context.fromTreeUri(createDocumentUri(storageId, folderTree))
@@ -930,7 +931,7 @@ object DocumentFileCompat {
           grantedFile
         } else {
           val fileTree = directorySequence.joinToString(prefix = "/", separator = "/")
-          context.fromTreeUri(Uri.parse(grantedFile.uri.toString() + Uri.encode(fileTree)))
+          context.fromTreeUri((grantedFile.uri.toString() + Uri.encode(fileTree)).toUri())
         }
       }
     return file?.takeIf {
