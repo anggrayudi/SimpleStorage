@@ -402,7 +402,7 @@ Check how these repositories use it:
 
 ## License
 
-    Copyright © 2020-2024 Anggrayudi Hardiannico A.
+    Copyright © 2020-2025 Anggrayudi Hardiannico A.
  
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
