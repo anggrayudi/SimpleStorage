@@ -1,4 +1,5 @@
 [versions]
+agp = "8.9.3"
 kotlin = "2.1.20"
 activityCompose = "1.10.1"
 coroutines = "1.10.2"
@@ -47,7 +48,8 @@ powermock-junit4 = { group = "org.powermock", name = "powermock-module-junit4", 
 powermock-api-mockito = { group = "org.powermock", name = "powermock-api-mockito2", version.ref = "powermock" }
 
 [plugins]
-android-application = { id = "com.android.application", version = "8.9.3" }
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version = "2.1.20-1.0.32" }

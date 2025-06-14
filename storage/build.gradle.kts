@@ -16,7 +16,6 @@ android {
   }
 
   testOptions { targetSdk = 35 }
-
   lint { targetSdk = 35 }
 
   buildTypes {

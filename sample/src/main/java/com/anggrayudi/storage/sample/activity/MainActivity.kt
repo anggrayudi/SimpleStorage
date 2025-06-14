@@ -15,6 +15,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.checkbox.checkBoxPrompt
@@ -23,6 +24,7 @@ import com.afollestad.materialdialogs.customview.getCustomView
 import com.afollestad.materialdialogs.input.input
 import com.afollestad.materialdialogs.list.listItems
 import com.anggrayudi.storage.SimpleStorageHelper
+import com.anggrayudi.storage.callback.FileReceiverCallback
 import com.anggrayudi.storage.callback.MultipleFilesConflictCallback
 import com.anggrayudi.storage.callback.SingleFileConflictCallback
 import com.anggrayudi.storage.callback.SingleFolderConflictCallback
@@ -237,19 +239,8 @@ class MainActivity : AppCompatActivity() {
     storageHelper.onFileCreated = { requestCode, file ->
       writeTestFile(applicationContext, requestCode, file)
     }
-    storageHelper.onFileReceived =
-      object : SimpleStorageHelper.OnFileReceived {
-        override fun onFileReceived(files: List<DocumentFile>) {
-          val names = files.joinToString(", ") { it.fullName }
-          Toast.makeText(baseContext, "File received: $names", Toast.LENGTH_SHORT).show()
-        }
-
-        override fun onNonFileReceived(intent: Intent) {
-          Toast.makeText(baseContext, "Non-file is received", Toast.LENGTH_SHORT).show()
-        }
-      }
     if (savedInstanceState == null) {
-      storageHelper.storage.checkIfFileReceived(intent)
+      storageHelper.storage.checkIfFileReceived(intent, createFileReceiverCallback())
     }
   }
 
@@ -952,8 +943,20 @@ class MainActivity : AppCompatActivity() {
 
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
-    storageHelper.storage.checkIfFileReceived(intent)
+    storageHelper.storage.checkIfFileReceived(intent, createFileReceiverCallback())
   }
+
+  private fun createFileReceiverCallback() =
+    object : SimpleStorageHelper.OnFileReceived, FileReceiverCallback {
+      override fun onNonFileReceived(intent: Intent) {
+        Toast.makeText(baseContext, "Non-file is received", Toast.LENGTH_SHORT).show()
+      }
+
+      override fun onFileReceived(files: List<DocumentFile>) {
+        val names = files.joinToString(", ") { it.fullName }
+        Toast.makeText(baseContext, "File received: $names", Toast.LENGTH_SHORT).show()
+      }
+    }
 
   override fun onSaveInstanceState(outState: Bundle) {
     storageHelper.onSaveInstanceState(outState)
@@ -972,9 +975,9 @@ class MainActivity : AppCompatActivity() {
     menu.findItem(R.id.action_pref_save_location).intent =
       Intent(this, SettingsActivity::class.java)
     menu.findItem(R.id.action_settings).intent =
-      Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+      Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri())
     menu.findItem(R.id.action_about).intent =
-      Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/anggrayudi/SimpleStorage"))
+      Intent(Intent.ACTION_VIEW, "https://github.com/anggrayudi/SimpleStorage".toUri())
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     return super.onCreateOptionsMenu(menu)
   }
