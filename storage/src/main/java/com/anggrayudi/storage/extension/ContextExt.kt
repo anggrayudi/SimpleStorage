@@ -20,7 +20,7 @@ fun Context.getAppDirectory(type: String? = null) = "${getExternalFilesDir(type)
 fun Context.startActivitySafely(intent: Intent) {
   try {
     startActivity(intent)
-  } catch (e: ActivityNotFoundException) {
+  } catch (_: ActivityNotFoundException) {
     // ignore
   }
 }
@@ -28,7 +28,7 @@ fun Context.startActivitySafely(intent: Intent) {
 fun Activity.startActivityForResultSafely(requestCode: Int, intent: Intent) {
   try {
     startActivityForResult(intent, requestCode)
-  } catch (e: ActivityNotFoundException) {
+  } catch (_: ActivityNotFoundException) {
     // ignore
   }
 }
@@ -36,7 +36,7 @@ fun Activity.startActivityForResultSafely(requestCode: Int, intent: Intent) {
 fun Context.unregisterReceiverSafely(receiver: BroadcastReceiver?) {
   try {
     unregisterReceiver(receiver ?: return)
-  } catch (e: IllegalArgumentException) {
+  } catch (_: IllegalArgumentException) {
     // ignore
   }
 }
@@ -44,13 +44,13 @@ fun Context.unregisterReceiverSafely(receiver: BroadcastReceiver?) {
 fun Context.fromTreeUri(fileUri: Uri) =
   try {
     DocumentFile.fromTreeUri(this, fileUri)
-  } catch (e: Exception) {
+  } catch (_: Exception) {
     null
   }
 
 fun Context.fromSingleUri(fileUri: Uri) =
   try {
     DocumentFile.fromSingleUri(this, fileUri)
-  } catch (e: Exception) {
+  } catch (_: Exception) {
     null
   }

@@ -141,7 +141,7 @@ fun File.checkRequirements(
 fun File.createNewFileIfPossible(): Boolean =
   try {
     isFile || createNewFile()
-  } catch (e: IOException) {
+  } catch (_: IOException) {
     false
   }
 
@@ -235,7 +235,7 @@ fun File.makeFile(
 
   return try {
     File(parent, autoIncrementFileName(fullFileName)).let { if (it.createNewFile()) it else null }
-  } catch (e: IOException) {
+  } catch (_: IOException) {
     null
   }
 }
@@ -322,7 +322,7 @@ fun File.recreateFile(): Boolean {
 fun File.tryCreateNewFile() =
   try {
     createNewFile()
-  } catch (e: IOException) {
+  } catch (_: IOException) {
     false
   }
 

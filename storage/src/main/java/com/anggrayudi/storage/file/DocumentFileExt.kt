@@ -158,7 +158,7 @@ fun DocumentFile.isEmpty(context: Context): Boolean {
                 null,
               )
               ?.use { it.count == 0 } ?: true
-          } catch (e: Exception) {
+          } catch (_: Exception) {
             true
           }
       }
@@ -483,12 +483,12 @@ fun DocumentFile.quickFindTreeFile(
               if (childCursor.moveToFirst() && name == childCursor.getString(0))
                 return context.fromTreeUri(documentUri)
             }
-          } catch (e: Exception) {
+          } catch (_: Exception) {
             // ignore
           }
         }
       }
-  } catch (e: Exception) {
+  } catch (_: Exception) {
     // ignore
   }
   return null
@@ -963,7 +963,7 @@ fun DocumentFile.makeFolder(
         } else {
           return null
         }
-    } catch (e: Exception) {
+    } catch (_: Exception) {
       return null
     }
   }
@@ -1505,7 +1505,7 @@ fun List<DocumentFile>.compressToZip(
       fileCompressedCount++
     }
     success = true
-  } catch (e: InterruptedIOException) {
+  } catch (_: InterruptedIOException) {
     send(ZipCompressionResult.Error(ZipCompressionErrorCode.CANCELED))
   } catch (e: FileNotFoundException) {
     send(ZipCompressionResult.Error(ZipCompressionErrorCode.MISSING_ENTRY_FILE, e.message))
@@ -1671,7 +1671,7 @@ fun DocumentFile.decompressZip(
       entry = zis.nextEntry
     }
     success = canSuccess
-  } catch (e: InterruptedIOException) {
+  } catch (_: InterruptedIOException) {
     send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.CANCELED))
   } catch (e: FileNotFoundException) {
     send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.MISSING_ZIP_FILE, e.message))
@@ -2267,7 +2267,7 @@ private fun DocumentFile.tryMoveFolderByRenamingPath(
           }
         }
       }
-    } catch (e: Throwable) {
+    } catch (_: Throwable) {
       return FolderErrorCode.STORAGE_PERMISSION_DENIED
     }
   }
@@ -3141,7 +3141,7 @@ private fun DocumentFile.moveFileTo(
       scope.trySend(SingleFileResult.Error(SingleFileErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
       return
     }
-  } catch (e: Throwable) {
+  } catch (_: Throwable) {
     scope.trySend(SingleFileResult.Error(SingleFileErrorCode.STORAGE_PERMISSION_DENIED))
     return
   }

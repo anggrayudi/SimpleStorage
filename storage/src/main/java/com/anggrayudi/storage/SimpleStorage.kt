@@ -3,6 +3,7 @@ package com.anggrayudi.storage
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -140,11 +141,26 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     expectedStorageType: StorageType = StorageType.UNKNOWN,
     expectedBasePath: String = "",
   ) {
+    val options = RequestStorageAccessContract.Options(initialPath)
+    if (wrapper is ComponentActivityWrapper) {
+      try {
+        wrapper.storageAccessContract.expectedStorageType = expectedStorageType
+        wrapper.storageAccessContract.expectedBasePath = expectedBasePath
+        wrapper.requestStorageAccessLauncher.launch(options)
+        requestCodeStorageAccess = requestCode
+        expectedStorageTypeForAccessRequest = expectedStorageType
+        expectedBasePathForAccessRequest = expectedBasePath
+      } catch (_: ActivityNotFoundException) {
+        storageAccessCallback?.onActivityHandlerNotFound(requestCode, Intent())
+      }
+      return
+    }
+
     val contract =
       RequestStorageAccessContract(wrapper.context, expectedStorageType, expectedBasePath)
     val intent =
       try {
-        contract.createIntent(wrapper.context, RequestStorageAccessContract.Options(initialPath))
+        contract.createIntent(wrapper.context, options)
       } catch (_: StoragePermissionDeniedException) {
         storageAccessCallback?.onStoragePermissionDenied(requestCode)
         return
@@ -188,16 +204,19 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     initialPath: FileFullPath? = null,
     requestCode: Int = requestCodeCreateFile,
   ) {
+    val options = FileCreationContract.Options(mimeType, fileName, initialPath)
+    if (wrapper is ComponentActivityWrapper) {
+      try {
+        wrapper.requestFileCreationLauncher.launch(options)
+        requestCodeCreateFile = requestCode
+      } catch (_: ActivityNotFoundException) {
+        createFileCallback?.onActivityHandlerNotFound(requestCode, Intent())
+      }
+      return
+    }
+
     val contract = FileCreationContract(wrapper.context)
-    val intent =
-      contract.createIntent(
-        wrapper.context,
-        FileCreationContract.Options(
-          mimeType = mimeType,
-          fileName = fileName,
-          initialPath = initialPath,
-        ),
-      )
+    val intent = contract.createIntent(wrapper.context, options)
     requestCodeCreateFile = requestCode
     if (!wrapper.startActivityForResult(intent, requestCode))
       createFileCallback?.onActivityHandlerNotFound(requestCode, intent)
@@ -214,10 +233,21 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     requestCode: Int = requestCodeFolderPicker,
     initialPath: FileFullPath? = null,
   ) {
+    val options = OpenFolderPickerContract.Options(initialPath)
+    if (wrapper is ComponentActivityWrapper) {
+      try {
+        wrapper.requestFolderPickerLauncher.launch(options)
+        requestCodeFolderPicker = requestCode
+      } catch (_: ActivityNotFoundException) {
+        folderPickerCallback?.onActivityHandlerNotFound(requestCode, Intent())
+      }
+      return
+    }
+
     val contract = OpenFolderPickerContract(wrapper.context)
     val intent =
       try {
-        contract.createIntent(wrapper.context, OpenFolderPickerContract.Options(initialPath))
+        contract.createIntent(wrapper.context, options)
       } catch (_: StoragePermissionDeniedException) {
         folderPickerCallback?.onStoragePermissionDenied(requestCode)
         return
@@ -241,16 +271,20 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     initialPath: FileFullPath? = null,
     vararg filterMimeTypes: String,
   ) {
+    val options =
+      OpenFilePickerContract.Options(allowMultiple, initialPath, filterMimeTypes.toSet())
+    if (wrapper is ComponentActivityWrapper) {
+      try {
+        wrapper.requestFilePickerLauncher.launch(options)
+        requestCodeFilePicker = requestCode
+      } catch (_: ActivityNotFoundException) {
+        filePickerCallback?.onActivityHandlerNotFound(requestCode, Intent())
+      }
+      return
+    }
+
     val contract = OpenFilePickerContract(wrapper.context)
-    val intent =
-      contract.createIntent(
-        wrapper.context,
-        OpenFilePickerContract.Options(
-          allowMultiple = allowMultiple,
-          initialPath = initialPath,
-          filterMimeTypes = filterMimeTypes.toSet(),
-        ),
-      )
+    val intent = contract.createIntent(wrapper.context, options)
     requestCodeFilePicker = requestCode
     if (!wrapper.startActivityForResult(intent, requestCode))
       filePickerCallback?.onActivityHandlerNotFound(requestCode, intent)
@@ -282,48 +316,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
               expectedStorageTypeForAccessRequest,
               expectedBasePathForAccessRequest.orEmpty(),
             )
-          when (val result = contract.parseResult(resultCode, data)) {
-            is RequestStorageAccessResult.CanceledByUser -> {
-              storageAccessCallback?.onCanceledByUser(requestCode)
-            }
-
-            is RequestStorageAccessResult.StoragePermissionDenied -> {
-              storageAccessCallback?.onStoragePermissionDenied(requestCode)
-            }
-
-            is RequestStorageAccessResult.RootPathNotSelected -> {
-              if (result.expectedIntent != null) {
-                if (!wrapper.startActivityForResult(result.expectedIntent, requestCode)) {
-                  storageAccessCallback?.onActivityHandlerNotFound(
-                    requestCode,
-                    result.expectedIntent,
-                  )
-                }
-                return
-              }
-              storageAccessCallback?.onRootPathNotSelected(
-                requestCode,
-                result.rootPath,
-                result.uri,
-                result.selectedStorageType,
-                expectedStorageTypeForAccessRequest,
-              )
-            }
-
-            is RequestStorageAccessResult.ExpectedStorageNotSelected -> {
-              storageAccessCallback?.onExpectedStorageNotSelected(
-                requestCode,
-                result.selectedFolder,
-                result.selectedStorageType,
-                result.expectedBasePath,
-                expectedStorageTypeForAccessRequest,
-              )
-            }
-
-            is RequestStorageAccessResult.RootPathPermissionGranted -> {
-              storageAccessCallback?.onRootPathPermissionGranted(requestCode, result.root)
-            }
-          }
+          onRequestStorageAccessResult(contract.parseResult(resultCode, data))
         } else {
           storageAccessCallback?.onCanceledByUser(requestCode)
         }
@@ -332,24 +325,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
       requestCodeFolderPicker -> {
         if (resultCode == Activity.RESULT_OK) {
           val contract = OpenFolderPickerContract(wrapper.context)
-          when (val result = contract.parseResult(resultCode, data)) {
-            is FolderPickerResult.Picked -> {
-              folderPickerCallback?.onFolderSelected(requestCode, result.folder)
-            }
-
-            is FolderPickerResult.AccessDenied -> {
-              folderPickerCallback?.onStorageAccessDenied(
-                requestCode,
-                result.folder,
-                result.storageType,
-                result.storageId,
-              )
-            }
-
-            FolderPickerResult.CanceledByUser -> {
-              folderPickerCallback?.onCanceledByUser(requestCode)
-            }
-          }
+          onFolderPickedResult(contract.parseResult(resultCode, data))
         } else {
           folderPickerCallback?.onCanceledByUser(requestCode)
         }
@@ -358,19 +334,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
       requestCodeFilePicker -> {
         if (resultCode == Activity.RESULT_OK) {
           val contract = OpenFilePickerContract(wrapper.context)
-          when (val result = contract.parseResult(resultCode, data)) {
-            is FilePickerResult.Picked -> {
-              filePickerCallback?.onFileSelected(requestCode, result.files)
-            }
-
-            is FilePickerResult.CanceledByUser -> {
-              filePickerCallback?.onCanceledByUser(requestCode)
-            }
-
-            is FilePickerResult.StoragePermissionDenied -> {
-              filePickerCallback?.onStoragePermissionDenied(requestCode, result.files)
-            }
-          }
+          onFilePickedResult(contract.parseResult(resultCode, data))
         } else {
           filePickerCallback?.onCanceledByUser(requestCode)
         }
@@ -381,23 +345,109 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
         val uri = data?.data
         if (uri != null) {
           val contract = FileCreationContract(wrapper.context)
-          when (val result = contract.parseResult(resultCode, data)) {
-            is FileCreationResult.Created -> {
-              createFileCallback?.onFileCreated(requestCode, result.file)
-            }
-
-            is FileCreationResult.CanceledByUser -> {
-              createFileCallback?.onCanceledByUser(requestCode)
-            }
-
-            is FileCreationResult.StoragePermissionDenied -> {
-              // This should not happen, but just in case
-              Log.e(TAG, "Unexpected result for file creation: $result")
-            }
-          }
+          onFileCreationResult(contract.parseResult(resultCode, data))
         } else {
           createFileCallback?.onCanceledByUser(requestCode)
         }
+      }
+    }
+  }
+
+  internal fun onRequestStorageAccessResult(result: RequestStorageAccessResult) {
+    when (result) {
+      is RequestStorageAccessResult.CanceledByUser -> {
+        storageAccessCallback?.onCanceledByUser(requestCodeStorageAccess)
+      }
+
+      is RequestStorageAccessResult.StoragePermissionDenied -> {
+        storageAccessCallback?.onStoragePermissionDenied(requestCodeStorageAccess)
+      }
+
+      is RequestStorageAccessResult.RootPathNotSelected -> {
+        if (result.expectedIntent != null) {
+          if (!wrapper.startActivityForResult(result.expectedIntent, requestCodeStorageAccess)) {
+            storageAccessCallback?.onActivityHandlerNotFound(
+              requestCodeStorageAccess,
+              result.expectedIntent,
+            )
+          }
+          return
+        }
+        storageAccessCallback?.onRootPathNotSelected(
+          requestCodeStorageAccess,
+          result.rootPath,
+          result.uri,
+          result.selectedStorageType,
+          expectedStorageTypeForAccessRequest,
+        )
+      }
+
+      is RequestStorageAccessResult.ExpectedStorageNotSelected -> {
+        storageAccessCallback?.onExpectedStorageNotSelected(
+          requestCodeStorageAccess,
+          result.selectedFolder,
+          result.selectedStorageType,
+          result.expectedBasePath,
+          expectedStorageTypeForAccessRequest,
+        )
+      }
+
+      is RequestStorageAccessResult.RootPathPermissionGranted -> {
+        storageAccessCallback?.onRootPathPermissionGranted(requestCodeStorageAccess, result.root)
+      }
+    }
+  }
+
+  internal fun onFolderPickedResult(result: FolderPickerResult) {
+    when (result) {
+      is FolderPickerResult.Picked -> {
+        folderPickerCallback?.onFolderSelected(requestCodeFolderPicker, result.folder)
+      }
+
+      is FolderPickerResult.AccessDenied -> {
+        folderPickerCallback?.onStorageAccessDenied(
+          requestCodeFolderPicker,
+          result.folder,
+          result.storageType,
+          result.storageId,
+        )
+      }
+
+      FolderPickerResult.CanceledByUser -> {
+        folderPickerCallback?.onCanceledByUser(requestCodeFolderPicker)
+      }
+    }
+  }
+
+  internal fun onFilePickedResult(result: FilePickerResult) {
+    when (result) {
+      is FilePickerResult.Picked -> {
+        filePickerCallback?.onFileSelected(requestCodeFilePicker, result.files)
+      }
+
+      is FilePickerResult.CanceledByUser -> {
+        filePickerCallback?.onCanceledByUser(requestCodeFilePicker)
+      }
+
+      is FilePickerResult.StoragePermissionDenied -> {
+        filePickerCallback?.onStoragePermissionDenied(requestCodeFilePicker, result.files)
+      }
+    }
+  }
+
+  internal fun onFileCreationResult(result: FileCreationResult) {
+    when (result) {
+      is FileCreationResult.Created -> {
+        createFileCallback?.onFileCreated(requestCodeCreateFile, result.file)
+      }
+
+      is FileCreationResult.CanceledByUser -> {
+        createFileCallback?.onCanceledByUser(requestCodeCreateFile)
+      }
+
+      is FileCreationResult.StoragePermissionDenied -> {
+        // This should not happen, but just in case
+        Log.e(TAG, "Unexpected result for file creation: $result")
       }
     }
   }
@@ -444,6 +494,10 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
   }
 
   private fun checkRequestCode() {
+    if (wrapper is ComponentActivityWrapper) {
+      return
+    }
+
     if (requestCodeFilePicker == 0) {
       requestCodeFilePicker = DEFAULT_REQUEST_CODE_FILE_PICKER
     }

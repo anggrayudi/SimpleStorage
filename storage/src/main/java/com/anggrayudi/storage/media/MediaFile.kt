@@ -211,7 +211,7 @@ class MediaFile(context: Context, val uri: Uri) {
                 } else ""
               }
               .orEmpty()
-          } catch (e: Exception) {
+          } catch (_: Exception) {
             ""
           }
         }
@@ -270,7 +270,7 @@ class MediaFile(context: Context, val uri: Uri) {
                 } else ""
               }
               .orEmpty()
-          } catch (e: Exception) {
+          } catch (_: Exception) {
             ""
           }
         }
@@ -371,7 +371,7 @@ class MediaFile(context: Context, val uri: Uri) {
       } else {
         context.contentResolver.openOutputStream(uri, if (append) "wa" else "w")
       }
-    } catch (e: IOException) {
+    } catch (_: IOException) {
       null
     }
   }
@@ -386,7 +386,7 @@ class MediaFile(context: Context, val uri: Uri) {
       } else {
         context.contentResolver.openInputStream(uri)
       }
-    } catch (e: IOException) {
+    } catch (_: IOException) {
       null
     }
   }

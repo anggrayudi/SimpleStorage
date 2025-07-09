@@ -78,8 +78,8 @@ android {
 }
 
 dependencies {
-  implementation(project(":storage"))
-  //  implementation("com.anggrayudi:storage:${rootProject.extra["VERSION_NAME"]}")
+  implementation(project(":storage-compose"))
+  //  implementation("com.anggrayudi:storage-compose:${rootProject.extra["VERSION_NAME"]}")
 
   implementation(libs.androidx.core)
   implementation(libs.androidx.lifecycle.runtime)

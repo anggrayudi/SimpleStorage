@@ -72,7 +72,7 @@ fun Uri.openOutputStream(context: Context, append: Boolean = true): OutputStream
         if (append && isTreeDocumentFile) "wa" else "w",
       )
     }
-  } catch (e: IOException) {
+  } catch (_: IOException) {
     null
   }
 }
@@ -86,7 +86,7 @@ fun Uri.openInputStream(context: Context): InputStream? {
     } else {
       context.contentResolver.openInputStream(this)
     }
-  } catch (e: IOException) {
+  } catch (_: IOException) {
     null
   }
 }

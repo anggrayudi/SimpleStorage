@@ -33,7 +33,7 @@ internal class FragmentWrapper(private val fragment: Fragment) : ComponentWrappe
       activityResultLauncher.launch(intent)
       this.requestCode = requestCode
       true
-    } catch (e: ActivityNotFoundException) {
+    } catch (_: ActivityNotFoundException) {
       false
     }
   }

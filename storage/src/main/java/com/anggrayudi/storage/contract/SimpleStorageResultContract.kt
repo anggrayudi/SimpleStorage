@@ -49,7 +49,7 @@ internal fun saveUriPermission(context: Context, root: Uri) =
     context.contentResolver.takePersistableUriPermission(root, writeFlags)
     thread { cleanupRedundantUriPermissions(context.applicationContext) }
     true
-  } catch (e: SecurityException) {
+  } catch (_: SecurityException) {
     false
   }
 
@@ -316,9 +316,9 @@ class RequestStorageAccessContract(
    * trigger [StorageAccessCallback.onRootPathNotSelected]. Set to [StorageType.UNKNOWN] to accept
    * any storage type.
    */
-  private val expectedStorageType: StorageType = StorageType.UNKNOWN,
+  var expectedStorageType: StorageType = StorageType.UNKNOWN,
   /** Applicable for API 30+ only, because Android 11 does not allow selecting the root path. */
-  private val expectedBasePath: String = "",
+  var expectedBasePath: String = "",
 ) : ActivityResultContract<RequestStorageAccessContract.Options, RequestStorageAccessResult>() {
 
   class Options
