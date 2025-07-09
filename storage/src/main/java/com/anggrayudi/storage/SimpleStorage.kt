@@ -18,6 +18,7 @@ import androidx.annotation.RequiresPermission
 import androidx.annotation.WorkerThread
 import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.fragment.app.Fragment
+import com.anggrayudi.storage.SimpleStorage.Companion.hasStoragePermission
 import com.anggrayudi.storage.callback.CreateFileCallback
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FileReceiverCallback
@@ -144,7 +145,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     val intent =
       try {
         contract.createIntent(wrapper.context, RequestStorageAccessContract.Options(initialPath))
-      } catch (e: StoragePermissionDeniedException) {
+      } catch (_: StoragePermissionDeniedException) {
         storageAccessCallback?.onStoragePermissionDenied(requestCode)
         return
       }
@@ -217,7 +218,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     val intent =
       try {
         contract.createIntent(wrapper.context, OpenFolderPickerContract.Options(initialPath))
-      } catch (e: StoragePermissionDeniedException) {
+      } catch (_: StoragePermissionDeniedException) {
         folderPickerCallback?.onStoragePermissionDenied(requestCode)
         return
       }

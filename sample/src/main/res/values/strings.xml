@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name" translatable="false">Simple Storage</string>
+    <string name="compose_screen" translatable="false">Compose Screen</string>
 </resources>

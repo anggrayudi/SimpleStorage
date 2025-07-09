@@ -23,4 +23,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "SimpleStorage"
 
-include(":sample", ":storage")
+include(":sample", ":storage", ":storage-compose")

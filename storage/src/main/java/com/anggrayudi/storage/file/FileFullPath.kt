@@ -2,6 +2,8 @@ package com.anggrayudi.storage.file
 
 import android.content.Context
 import android.net.Uri
+import android.os.Parcel
+import android.os.Parcelable
 import android.os.storage.StorageManager
 import androidx.annotation.RequiresApi
 import androidx.annotation.RestrictTo
@@ -31,7 +33,7 @@ import java.io.File
  *
  * @author Anggrayudi H
  */
-class FileFullPath {
+class FileFullPath : Parcelable {
 
   val storageId: String
   val basePath: String
@@ -103,6 +105,18 @@ class FileFullPath {
 
   constructor(context: Context, file: File) : this(context, file.path.orEmpty())
 
+  private constructor(
+    storageId: String,
+    basePath: String,
+    absolutePath: String,
+    simplePath: String,
+  ) {
+    this.storageId = storageId
+    this.basePath = basePath
+    this.absolutePath = absolutePath
+    this.simplePath = simplePath
+  }
+
   private fun buildAbsolutePath(context: Context, storageId: String, basePath: String) =
     if (storageId.isEmpty()) ""
     else
@@ -138,5 +152,26 @@ class FileFullPath {
         "Cannot use StorageType.DATA because it is never available in Storage Access Framework's folder selector."
       )
     }
+  }
+
+  override fun writeToParcel(parcel: Parcel, flags: Int) {
+    parcel.writeString(storageId)
+    parcel.writeString(basePath)
+    parcel.writeString(absolutePath)
+    parcel.writeString(simplePath)
+  }
+
+  override fun describeContents(): Int = 0
+
+  companion object CREATOR : Parcelable.Creator<FileFullPath> {
+    override fun createFromParcel(parcel: Parcel): FileFullPath {
+      val storageId = parcel.readString().orEmpty()
+      val basePath = parcel.readString().orEmpty()
+      val absolutePath = parcel.readString().orEmpty()
+      val simplePath = parcel.readString().orEmpty()
+      return FileFullPath(storageId, basePath, absolutePath, simplePath)
+    }
+
+    override fun newArray(size: Int): Array<FileFullPath?> = arrayOfNulls(size)
   }
 }

@@ -1,15 +1,21 @@
 package com.anggrayudi.storage.contract
 
+import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.storage.StorageManager
 import android.provider.DocumentsContract
 import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions.Companion.ACTION_REQUEST_PERMISSIONS
+import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions.Companion.EXTRA_PERMISSIONS
+import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions.Companion.EXTRA_PERMISSION_GRANT_RESULTS
 import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.EmptyActivity
 import com.anggrayudi.storage.SimpleStorage.Companion.cleanupRedundantUriPermissions
@@ -202,7 +208,7 @@ class OpenFilePickerContract(context: Context) :
   }
 
   override fun parseResult(resultCode: Int, intent: Intent?): FilePickerResult {
-    if (resultCode != Activity.RESULT_OK || intent?.data == null) {
+    if (resultCode != Activity.RESULT_OK) {
       return FilePickerResult.CanceledByUser
     }
     val files = intentToDocumentFiles(appContext, intent)
@@ -253,6 +259,49 @@ class FileCreationContract(context: Context) :
     val fileName: String? = null,
     val initialPath: FileFullPath? = null,
   )
+}
+
+/**
+ * Requests `android.permission.READ_EXTERNAL_STORAGE` and
+ * `android.permission.WRITE_EXTERNAL_STORAGE`. It only takes effect on API 28-, because API 29+ has
+ * scoped storage.
+ */
+class StoragePermissionContract() :
+  ActivityResultContract<Unit, Map<String, @JvmSuppressWildcards Boolean>>() {
+
+  fun getPermissions() =
+    arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
+
+  override fun createIntent(context: Context, input: Unit): Intent {
+    return Intent(ACTION_REQUEST_PERMISSIONS).putExtra(EXTRA_PERMISSIONS, getPermissions())
+  }
+
+  override fun getSynchronousResult(
+    context: Context,
+    input: Unit,
+  ): SynchronousResult<Map<String, @JvmSuppressWildcards Boolean>>? {
+    val permissions = getPermissions()
+    val allGranted =
+      permissions.all { permission ->
+        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+      }
+    return if (allGranted) {
+      SynchronousResult(permissions.associateWith { true })
+    } else null
+  }
+
+  override fun parseResult(resultCode: Int, intent: Intent?): Map<String, Boolean> {
+    if (resultCode != Activity.RESULT_OK || intent == null) {
+      return emptyMap()
+    }
+    val permissions = intent.getStringArrayExtra(EXTRA_PERMISSIONS)
+    val grantResults = intent.getIntArrayExtra(EXTRA_PERMISSION_GRANT_RESULTS)
+    if (grantResults == null || permissions == null) {
+      return emptyMap()
+    }
+    val grantState = grantResults.map { result -> result == PackageManager.PERMISSION_GRANTED }
+    return permissions.filterNotNull().zip(grantState).toMap()
+  }
 }
 
 /**

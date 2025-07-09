@@ -283,7 +283,13 @@ class SimpleStorageHelper {
             .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
             .setPositiveButton(android.R.string.ok) { _, _ ->
               storage.requestStorageAccess(
-                initialPath = FileFullPath(storage.context, expectedStorageType, expectedBasePath),
+                initialPath =
+                  FileFullPath(
+                    storage.context,
+                    if (expectedStorageType == StorageType.UNKNOWN) selectedStorageType
+                    else expectedStorageType,
+                    expectedBasePath,
+                  ),
                 expectedStorageType = expectedStorageType,
                 expectedBasePath = expectedBasePath,
               )
