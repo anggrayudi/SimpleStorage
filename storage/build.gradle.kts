@@ -65,4 +65,5 @@ dependencies {
 
 afterEvaluate {
     tasks.findByName("generateReleaseBuildConfig")?.enabled = false
+    tasks.findByName("generateDebugBuildConfig")?.enabled = false
 }
