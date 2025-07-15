@@ -657,23 +657,23 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
 
   companion object {
-
+    const val LIBRARY_PACKAGE_NAME = "com.anggrayudi.storage"
     private const val KEY_REQUEST_CODE_STORAGE_ACCESS =
-      BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeStorageAccess"
+      LIBRARY_PACKAGE_NAME + ".requestCodeStorageAccess"
     private const val KEY_REQUEST_CODE_FOLDER_PICKER =
-      BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFolderPicker"
+      LIBRARY_PACKAGE_NAME + ".requestCodeFolderPicker"
     private const val KEY_REQUEST_CODE_FILE_PICKER =
-      BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFilePicker"
+      LIBRARY_PACKAGE_NAME + ".requestCodeFilePicker"
     private const val KEY_REQUEST_CODE_CREATE_FILE =
-      BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeCreateFile"
+      LIBRARY_PACKAGE_NAME + ".requestCodeCreateFile"
     private const val KEY_REQUEST_CODE_FRAGMENT_PICKER =
-      BuildConfig.LIBRARY_PACKAGE_NAME + ".requestCodeFragmentPicker"
+      LIBRARY_PACKAGE_NAME + ".requestCodeFragmentPicker"
     private const val KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST =
-      BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedStorageTypeForAccessRequest"
+      LIBRARY_PACKAGE_NAME + ".expectedStorageTypeForAccessRequest"
     private const val KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST =
-      BuildConfig.LIBRARY_PACKAGE_NAME + ".expectedBasePathForAccessRequest"
+      LIBRARY_PACKAGE_NAME + ".expectedBasePathForAccessRequest"
     private const val KEY_LAST_VISITED_FOLDER =
-      BuildConfig.LIBRARY_PACKAGE_NAME + ".lastVisitedFolder"
+      LIBRARY_PACKAGE_NAME + ".lastVisitedFolder"
     private const val TAG = "SimpleStorage"
 
     private const val DEFAULT_REQUEST_CODE_STORAGE_ACCESS: Int = 1

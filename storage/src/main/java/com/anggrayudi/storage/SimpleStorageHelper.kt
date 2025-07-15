@@ -13,6 +13,7 @@ import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
+import com.anggrayudi.storage.SimpleStorage.Companion.LIBRARY_PACKAGE_NAME
 import com.anggrayudi.storage.callback.CreateFileCallback
 import com.anggrayudi.storage.callback.FilePickerCallback
 import com.anggrayudi.storage.callback.FileReceiverCallback
@@ -452,10 +453,10 @@ class SimpleStorageHelper {
     const val TYPE_FOLDER_PICKER = 2
 
     private const val KEY_OPEN_FOLDER_PICKER_ONCE_GRANTED =
-      BuildConfig.LIBRARY_PACKAGE_NAME + ".pickerToOpenOnceGranted"
+      LIBRARY_PACKAGE_NAME + ".pickerToOpenOnceGranted"
     private const val KEY_ORIGINAL_REQUEST_CODE =
-      BuildConfig.LIBRARY_PACKAGE_NAME + ".originalRequestCode"
-    private const val KEY_FILTER_MIME_TYPES = BuildConfig.LIBRARY_PACKAGE_NAME + ".filterMimeTypes"
+      LIBRARY_PACKAGE_NAME + ".originalRequestCode"
+    private const val KEY_FILTER_MIME_TYPES = LIBRARY_PACKAGE_NAME + ".filterMimeTypes"
 
     @JvmStatic
     fun redirectToSystemSettings(context: Context) {
