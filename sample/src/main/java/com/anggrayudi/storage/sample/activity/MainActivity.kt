@@ -49,6 +49,7 @@ import com.anggrayudi.storage.result.SingleFileResult
 import com.anggrayudi.storage.result.SingleFolderResult
 import com.anggrayudi.storage.sample.R
 import com.anggrayudi.storage.sample.StorageInfoAdapter
+import com.anggrayudi.storage.sample.compose.StorageComposeActivity
 import com.anggrayudi.storage.sample.databinding.ActivityMainBinding
 import java.io.IOException
 import kotlin.concurrent.thread
@@ -970,6 +971,8 @@ class MainActivity : AppCompatActivity() {
 
   override fun onCreateOptionsMenu(menu: Menu): Boolean {
     menuInflater.inflate(R.menu.main, menu)
+    menu.findItem(R.id.action_open_compose).intent =
+      Intent(this, StorageComposeActivity::class.java)
     menu.findItem(R.id.action_open_fragment).intent =
       Intent(this, SampleFragmentActivity::class.java)
     menu.findItem(R.id.action_pref_save_location).intent =

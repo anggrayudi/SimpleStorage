@@ -9,7 +9,7 @@ plugins {
 
 android {
   namespace = "com.anggrayudi.storage"
-  compileSdk = 35
+  compileSdk = 36
   resourcePrefix = "ss_"
 
   defaultConfig {
@@ -17,8 +17,8 @@ android {
     consumerProguardFiles("consumer-rules.pro")
   }
 
-  testOptions { targetSdk = 35 }
-  lint { targetSdk = 35 }
+  testOptions { targetSdk = 36 }
+  lint { targetSdk = 36 }
 
   buildTypes {
     release {
