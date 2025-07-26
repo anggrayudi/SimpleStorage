@@ -22,7 +22,7 @@ internal class ActivityWrapper(private val _activity: Activity) : ComponentWrapp
     return try {
       _activity.startActivityForResult(intent, requestCode)
       true
-    } catch (e: ActivityNotFoundException) {
+    } catch (_: ActivityNotFoundException) {
       false
     }
   }

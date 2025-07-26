@@ -17,10 +17,10 @@ dependencyResolutionManagement {
   repositories {
     google()
     mavenCentral()
-    maven { url = uri("https://oss.sonatype.org/content/repositories/snapshots") }
+    maven { url = uri("https://central.sonatype.com/repository/maven-snapshots/") }
   }
 }
 
 rootProject.name = "SimpleStorage"
 
-include(":sample", ":storage")
+include(":sample", ":storage", ":storage-compose")

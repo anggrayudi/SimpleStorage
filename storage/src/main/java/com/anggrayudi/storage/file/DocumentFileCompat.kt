@@ -682,7 +682,7 @@ object DocumentFileCompat {
             directory.isDirectory && directory.canRead() -> directory
             else -> return null
           }
-      } catch (e: Exception) {
+      } catch (_: Exception) {
         return null
       }
     }
@@ -749,7 +749,7 @@ object DocumentFileCompat {
                 }
               }
             }
-          } catch (e: Throwable) {
+          } catch (_: Throwable) {
             return@forEach
           }
         }
@@ -809,7 +809,7 @@ object DocumentFileCompat {
         val directory = mkdirsParentDirectory(context, storageId, basePath, considerRawFile)
         val filename = getFileNameFromPath(basePath).removeForbiddenCharsFromFilename()
         if (filename.isEmpty()) null else directory?.makeFile(context, filename, mimeType)
-      } catch (e: Exception) {
+      } catch (_: Exception) {
         null
       }
   }
@@ -863,7 +863,7 @@ object DocumentFileCompat {
   private fun create(file: File): Boolean {
     return try {
       file.isFile && file.length() == 0L || file.createNewFile()
-    } catch (e: IOException) {
+    } catch (_: IOException) {
       false
     }
   }
@@ -923,7 +923,7 @@ object DocumentFileCompat {
           try {
             grantedFile = context.fromTreeUri(createDocumentUri(storageId, folderTree))
             if (grantedFile?.canRead() == true) break
-          } catch (e: SecurityException) {
+          } catch (_: SecurityException) {
             // ignore
           }
         }
@@ -1036,7 +1036,7 @@ object DocumentFileCompat {
           stats.f_bavail * stats.f_frsize
         } ?: 0
       }
-    } catch (e: Throwable) {
+    } catch (_: Throwable) {
       0
     }
   }
@@ -1053,7 +1053,7 @@ object DocumentFileCompat {
           stats.f_blocks * stats.f_frsize - stats.f_bavail * stats.f_frsize
         } ?: 0
       }
-    } catch (e: Throwable) {
+    } catch (_: Throwable) {
       0
     }
   }
@@ -1070,7 +1070,7 @@ object DocumentFileCompat {
           stats.f_blocks * stats.f_frsize
         } ?: 0
       }
-    } catch (e: Throwable) {
+    } catch (_: Throwable) {
       0
     }
   }
@@ -1103,7 +1103,7 @@ object DocumentFileCompat {
   fun getFileNameFromUrl(url: String): String {
     return try {
       URLDecoder.decode(url, "UTF-8").substringAfterLast('/')
-    } catch (e: Exception) {
+    } catch (_: Exception) {
       url
     }
   }

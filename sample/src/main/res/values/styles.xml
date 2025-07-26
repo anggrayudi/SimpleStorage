@@ -7,4 +7,5 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <style name="ComposeTheme" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>

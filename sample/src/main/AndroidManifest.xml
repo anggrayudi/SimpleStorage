@@ -37,6 +37,11 @@
         </activity>
 
         <activity
+            android:name=".compose.StorageComposeActivity"
+            android:label="@string/compose_screen"
+            android:theme="@style/ComposeTheme" />
+
+        <activity
             android:name=".activity.SampleFragmentActivity"
             android:screenOrientation="portrait" />
 

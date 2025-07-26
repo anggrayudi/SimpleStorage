@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
   id("com.android.library")
   alias(libs.plugins.kotlin.android)
@@ -7,7 +9,7 @@ plugins {
 
 android {
   namespace = "com.anggrayudi.storage"
-  compileSdk = 35
+  compileSdk = 36
   resourcePrefix = "ss_"
 
   defaultConfig {
@@ -15,9 +17,8 @@ android {
     consumerProguardFiles("consumer-rules.pro")
   }
 
-  testOptions { targetSdk = 35 }
-
-  lint { targetSdk = 35 }
+  testOptions { targetSdk = 36 }
+  lint { targetSdk = 36 }
 
   buildTypes {
     release {
@@ -33,10 +34,12 @@ android {
     targetCompatibility = JavaVersion.VERSION_11
   }
 
-  kotlinOptions {
-    jvmTarget = "11"
-    // Support @JvmDefault
-    freeCompilerArgs = listOf("-Xjvm-default=all", "-opt-in=kotlin.RequiresOptIn")
+  kotlin {
+    compilerOptions {
+      jvmTarget = JvmTarget.JVM_11
+      // Support @JvmDefault
+      freeCompilerArgs = listOf("-Xjvm-default=all", "-opt-in=kotlin.RequiresOptIn")
+    }
   }
 }
 

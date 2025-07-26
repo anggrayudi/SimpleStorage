@@ -108,7 +108,7 @@ fun List<MediaFile>.compressToZip(
       fileCompressedCount++
     }
     success = true
-  } catch (e: InterruptedIOException) {
+  } catch (_: InterruptedIOException) {
     send(ZipCompressionResult.Error(ZipCompressionErrorCode.CANCELED, "Compression canceled"))
   } catch (e: FileNotFoundException) {
     send(ZipCompressionResult.Error(ZipCompressionErrorCode.MISSING_ENTRY_FILE, e.message))
@@ -240,7 +240,7 @@ fun MediaFile.decompressZip(
       entry = zis.nextEntry
     }
     success = canSuccess
-  } catch (e: InterruptedIOException) {
+  } catch (_: InterruptedIOException) {
     send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.CANCELED, "Decompression canceled"))
   } catch (e: FileNotFoundException) {
     send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.MISSING_ZIP_FILE, e.message))

@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.android)
@@ -7,7 +9,7 @@ plugins {
 
 android {
   namespace = "com.anggrayudi.storage.sample"
-  compileSdk = 35
+  compileSdk = 36
 
   signingConfigs {
     val debugKeystore =
@@ -31,7 +33,7 @@ android {
   defaultConfig {
     applicationId = "com.anggrayudi.storage.sample"
     minSdk = 21
-    targetSdk = 35
+    targetSdk = 36
     versionCode = 1
     versionName = rootProject.extra["VERSION_NAME"] as String
     multiDexEnabled = true
@@ -56,7 +58,11 @@ android {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
   }
-  kotlinOptions { jvmTarget = "11" }
+  kotlin {
+    compilerOptions {
+      jvmTarget = JvmTarget.JVM_11
+    }
+  }
 
   flavorDimensions += "libSource"
   productFlavors {
@@ -78,8 +84,8 @@ android {
 }
 
 dependencies {
-  implementation(project(":storage"))
-  //  implementation("com.anggrayudi:storage:${rootProject.extra["VERSION_NAME"]}")
+  implementation(project(":storage-compose"))
+  //  implementation("com.anggrayudi:storage-compose:${rootProject.extra["VERSION_NAME"]}")
 
   implementation(libs.androidx.core)
   implementation(libs.androidx.lifecycle.runtime)

@@ -11,11 +11,11 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
+import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import com.anggrayudi.storage.callback.CreateFileCallback
 import com.anggrayudi.storage.callback.FilePickerCallback
-import com.anggrayudi.storage.callback.FileReceiverCallback
 import com.anggrayudi.storage.callback.FolderPickerCallback
 import com.anggrayudi.storage.callback.StorageAccessCallback
 import com.anggrayudi.storage.extension.getStorageId
@@ -173,21 +173,6 @@ class SimpleStorageHelper {
         }
     }
 
-  var onFileReceived: OnFileReceived? = null
-    set(callback) {
-      field = callback
-      storage.fileReceiverCallback =
-        object : FileReceiverCallback {
-          override fun onFileReceived(files: List<DocumentFile>) {
-            callback?.onFileReceived(files)
-          }
-
-          override fun onNonFileReceived(intent: Intent) {
-            callback?.onNonFileReceived(intent)
-          }
-        }
-    }
-
   @SuppressLint("NewApi")
   private fun init(savedState: Bundle?) {
     savedState?.let { onRestoreInstanceState(it) }
@@ -298,7 +283,13 @@ class SimpleStorageHelper {
             .setNegativeButton(android.R.string.cancel) { _, _ -> reset() }
             .setPositiveButton(android.R.string.ok) { _, _ ->
               storage.requestStorageAccess(
-                initialPath = FileFullPath(storage.context, expectedStorageType, expectedBasePath),
+                initialPath =
+                  FileFullPath(
+                    storage.context,
+                    if (expectedStorageType == StorageType.UNKNOWN) selectedStorageType
+                    else expectedStorageType,
+                    expectedBasePath,
+                  ),
                 expectedStorageType = expectedStorageType,
                 expectedBasePath = expectedBasePath,
               )
@@ -466,7 +457,7 @@ class SimpleStorageHelper {
           val intentSetting =
             Intent(
                 Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                Uri.parse("package:${context.packageName}"),
+                "package:${context.packageName}".toUri(),
               )
               .addCategory(Intent.CATEGORY_DEFAULT)
               .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
