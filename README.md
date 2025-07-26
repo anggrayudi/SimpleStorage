@@ -5,6 +5,7 @@
 ### Table of Contents
 * [Overview](#overview)
   + [Java Compatibility](#java-compatibility)
+  + [Jetpack Compose](#jetpack-compose)
 * [Terminology](#terminology)
 * [Check Accessible Paths](#check-accessible-paths)
 * [Read Files](#read-files)
@@ -16,6 +17,7 @@
   + [`DocumentFile`](#documentfile)
   + [`MediaFile`](#mediafile)
 * [Request Storage Access, Pick Folder & Files, Request Create File, etc.](#request-storage-access-pick-folder--files-request-create-file-etc)
+* [Activity Result Contracts](#activity-result-contracts)
 * [Move & Copy: Files & Folders](#move--copy-files--folders)
 * [Search: Files & Folders](#search-files--folders)
 * [Compress & Unzip: Files & Folders](#compress--unzip-files--folders)
@@ -40,6 +42,9 @@ Adding Simple Storage into your project is pretty simple:
 
 ```groovy
 implementation "com.anggrayudi:storage:X.Y.Z"
+
+// For Jetpack Compose
+implementation "com.anggrayudi:storage-compose:X.Y.Z"
 ```
 
 Where `X.Y.Z` is the library version: ![Maven Central](https://img.shields.io/maven-central/v/com.anggrayudi/storage.svg)
@@ -66,6 +71,24 @@ Note that some long-running functions like copy, move, search, compress, and unz
 They are powered by Kotlin Coroutines & Flow, which are easy to use.
 You can still use these Java features in your project, but you will need [v1.5.6](https://github.com/anggrayudi/SimpleStorage/releases/tag/1.5.6) which is the latest version that
 supports Java.
+
+### Jetpack Compose
+
+`SimpleStorageHelper` is a traditional class that helps you to request storage access, pick folders/files, and create files.
+This class has interactive dialogs, so you don't have to handle storage access & permissions manually.
+In Jetpack Compose, you can achieve the same thing with [`SimpleStorageCompose.kt`](storage-compose/src/main/java/com/anggrayudi/storage/compose/SimpleStorageCompose.kt).
+This class contains composable functions:
+- `rememberLauncherForStoragePermission()`
+- `rememberLauncherForStorageAccess()`
+- `rememberLauncherForFolderPicker()`
+- `rememberLauncherForFilePicker()`
+
+If you think these composable functions has too many UI manipulations and don't suit your needs, then
+you can copy the logic from [`SimpleStorageCompose.kt`](storage-compose/src/main/java/com/anggrayudi/storage/compose/SimpleStorageCompose.kt)
+and create your own composable functions. Because you might need custom dialogs, custom strings, etc.
+
+For file creation, you can use `rememberLauncherForActivityResult(FileCreationContract(context))`.
+Check all available contracts in the [`SimpleStorageResultContracts.kt`](storage/src/main/java/com/anggrayudi/storage/contract/SimpleStorageResultContracts.kt)
 
 ## Terminology
 
@@ -240,6 +263,59 @@ Simple, right?
 
 This helper class contains default styles for managing storage access.
 If you want to use custom dialogs for `SimpleStorageHelper`, just copy the logic from this class.
+
+## Activity Result Contracts
+
+If you want to use `ActivityResultContract` instead of `SimpleStorageHelper`, you can use contracts
+provided in [`SimpleStorageResultContracts.kt`](storage/src/main/java/com/anggrayudi/storage/contract/SimpleStorageResultContracts.kt):
+- `RequestStorageAccessContract`
+- `StoragePermissionContract`
+- `FileCreationContract`
+- `OpenFilePickerContract`
+- `OpenFolderPickerContract`
+
+Then use them like this:
+```kotlin
+class MainActivity : AppCompatActivity() {
+  lateinit var requestStorageAccessLauncher: ActivityResultLauncher<RequestStorageAccessContract.Options>
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    // setContentView(R.layout.activity_main)
+    val contract = RequestStorageAccessContract(
+        expectedStorageId = StorageId.PRIMARY,
+        expectedBasePath = "Documents"
+    )
+    requestStorageAccessLauncher = registerForActivityResult(contract) { result -> 
+      when (result) {
+        is RequestStorageAccessResult.RootPathNotSelected -> {
+          // Ask user to select the root path.
+        }
+        is RequestStorageAccessResult.ExpectedStorageNotSelected -> {
+          // Ask the user to select the expected storage.
+          // This can happen if you set expectedBasePath or expectedStorageType to the contract.
+        }
+        is RequestStorageAccessResult.RootPathPermissionGranted -> {
+          // Access granted to the root path
+        }
+      }
+    }
+
+    btnRequestStorageAccess.setOnClickListener {
+      val options = RequestStorageAccessContract.Options(
+        initialPath = FileFullPath(
+          baseContext,
+          storageId = StorageId.PRIMARY,
+          basePath = "Documents"
+        )
+      )
+      requestStorageAccessLauncher.launch(options)
+    }
+  }
+}
+```
+
+This way, you don't need to maintain the instance of `SimpleStorageHelper`, dealing with `onActivityResult()`, `onSaveInstanceState()`, etc.
 
 ## Move & Copy: Files & Folders
 
