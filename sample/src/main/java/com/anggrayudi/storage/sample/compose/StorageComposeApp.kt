@@ -21,7 +21,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -31,16 +30,13 @@ import com.anggrayudi.storage.compose.rememberLauncherForFolderPicker
 import com.anggrayudi.storage.compose.rememberLauncherForStorageAccess
 import com.anggrayudi.storage.compose.rememberLauncherForStoragePermission
 import com.anggrayudi.storage.contract.FileCreationContract
+import com.anggrayudi.storage.contract.FileCreationResult
 import com.anggrayudi.storage.file.fullName
 import com.anggrayudi.storage.file.getAbsolutePath
-import kotlinx.coroutines.CoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StorageComposeApp(
-  modifier: Modifier = Modifier,
-  coroutineScope: CoroutineScope = rememberCoroutineScope(),
-) {
+fun StorageComposeApp(modifier: Modifier = Modifier) {
   val activity = LocalActivity.current ?: return
   Scaffold(
     modifier = modifier,
@@ -73,10 +69,25 @@ fun StorageComposeApp(
         }
       val fileCreationLauncher =
         rememberLauncherForActivityResult(FileCreationContract(activity)) { result ->
-          println(result)
+          when (result) {
+            is FileCreationResult.Created -> {
+              Toast.makeText(activity, "File created: ${result.file.name}", Toast.LENGTH_SHORT)
+                .show()
+            }
+            is FileCreationResult.StoragePermissionDenied -> {
+              Toast.makeText(
+                  activity,
+                  "Storage permission denied. Please grant storage permission to create file.",
+                  Toast.LENGTH_SHORT,
+                )
+                .show()
+            }
+            is FileCreationResult.CanceledByUser -> Unit
+          }
         }
       val storagePermissionLauncher = rememberLauncherForStoragePermission { result ->
-        println(result)
+        val textResult = if (result) "granted" else "denied"
+        Toast.makeText(activity, "Storage permission is $textResult", Toast.LENGTH_SHORT).show()
       }
       val storageAccessLauncher = rememberLauncherForStorageAccess { root ->
         Toast.makeText(
