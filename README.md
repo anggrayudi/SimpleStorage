@@ -49,7 +49,10 @@ implementation "com.anggrayudi:storage-compose:X.Y.Z"
 
 Where `X.Y.Z` is the library version: ![Maven Central](https://img.shields.io/maven-central/v/com.anggrayudi/storage.svg)
 
-All versions can be found [here](https://oss.sonatype.org/#nexus-search;gav~com.anggrayudi~storage~~~~kw,versionexpand).
+All versions can be found here:
+- [Simple Storage Core](https://central.sonatype.com/artifact/com.anggrayudi/storage/versions)
+- [Simple Storage Jetpack Compose](https://central.sonatype.com/artifact/com.anggrayudi/storage-compose/versions)
+
 To use `SNAPSHOT` version, you need to add this URL to the root Gradle:
 
 ```groovy
@@ -58,7 +61,7 @@ allprojects {
         google()
         mavenCentral()
         // add this line
-        maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
+        maven { url "https://central.sonatype.com/repository/maven-snapshots/" }
     }
 }
 ```
