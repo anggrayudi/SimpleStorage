@@ -1,6 +1,6 @@
 [versions]
-agp = "8.9.3"
-kotlin = "2.1.20"
+agp = "8.11.1"
+kotlin = "2.2.0"
 activityCompose = "1.10.1"
 coroutines = "1.10.2"
 mockito = "3.10.0"
@@ -11,11 +11,11 @@ androidx-core = { group = "androidx.core", name = "core-ktx", version = "1.16.0"
 junit = { group = "junit", name = "junit", version = "4.13.2" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version = "1.2.1" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version = "3.6.1" }
-androidx-lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version = "2.9.1" }
+androidx-lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version = "2.9.2" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version = "1.7.1" }
 androidx-activity = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityCompose" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
-androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version = "2025.06.00" }
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version = "2025.07.00" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
@@ -24,7 +24,7 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-multidex = { group = "androidx.multidex", name = "multidex", version = "2.0.1" }
-androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version = "2.9.0" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version = "2.9.2" }
 androidx-datastore = { group = "androidx.datastore", name = "datastore-preferences-android", version = "1.1.7" }
 androidx-preference = { group = "androidx.preference", name = "preference-ktx", version = "1.2.1" }
 androidx-document-file = { group = "androidx.documentfile", name = "documentfile", version = "1.1.0" }
@@ -37,9 +37,9 @@ timber = { group = "com.jakewharton.timber", name = "timber", version = "5.0.1" 
 coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 
-mockk = { group = "io.mockk", name = "mockk", version = "1.13.17" }
+mockk = { group = "io.mockk", name = "mockk", version = "1.14.5" }
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
-robolectric = { group = "org.robolectric", name = "robolectric", version = "4.10.3" }
+robolectric = { group = "org.robolectric", name = "robolectric", version = "4.15.1" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 mockito-inline = { group = "org.mockito", name = "mockito-inline", version.ref = "mockito" }
 mockito-all = { group = "org.mockito", name = "mockito-all", version = "1.10.19" }
