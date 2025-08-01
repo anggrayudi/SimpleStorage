@@ -2,7 +2,7 @@ package com.anggrayudi.storage.file
 
 import android.content.Context
 import android.os.Environment
-import com.anggrayudi.storage.BuildConfig
+import com.anggrayudi.storage.SimpleStorage.Companion.LIBRARY_PACKAGE_NAME
 import com.anggrayudi.storage.file.StorageId.PRIMARY
 import io.mockk.every
 import io.mockk.mockk
@@ -21,7 +21,7 @@ class DocumentFileCompatTest {
 
   private val context =
     mockk<Context> {
-      val dataDirectoryPath = "/data/user/0/${BuildConfig.LIBRARY_PACKAGE_NAME}"
+      val dataDirectoryPath = "/data/user/0/${LIBRARY_PACKAGE_NAME}"
       val fileDir = File("$dataDirectoryPath/files")
       every { filesDir } returns fileDir
       every { dataDir } returns File(dataDirectoryPath)
