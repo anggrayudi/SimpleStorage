@@ -65,3 +65,8 @@ dependencies {
   testImplementation(libs.powermock.junit4)
   testImplementation(libs.powermock.api.mockito)
 }
+
+afterEvaluate {
+    tasks.findByName("generateReleaseBuildConfig")?.enabled = false
+    tasks.findByName("generateDebugBuildConfig")?.enabled = false
+}

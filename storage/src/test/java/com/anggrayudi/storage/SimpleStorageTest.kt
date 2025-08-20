@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.UriPermission
 import android.net.Uri
 import android.os.Build
+import com.anggrayudi.storage.SimpleStorage.Companion.LIBRARY_PACKAGE_NAME
 import io.mockk.*
 import java.io.File
 import kotlin.concurrent.thread
@@ -25,7 +26,7 @@ class SimpleStorageTest {
 
   private val context =
     mockk<Context> {
-      val dataDirectoryPath = "/data/user/0/${BuildConfig.LIBRARY_PACKAGE_NAME}"
+      val dataDirectoryPath = "/data/user/0/${LIBRARY_PACKAGE_NAME}"
       val fileDir = File("$dataDirectoryPath/files")
       every { filesDir } returns fileDir
       every { dataDir } returns File(dataDirectoryPath)
