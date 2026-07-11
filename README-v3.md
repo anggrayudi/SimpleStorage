@@ -1,4 +1,4 @@
-# SimpleStorage 3.0.0-beta01 — Usage Guide
+# SimpleStorage 3.0.0-beta02 — Usage Guide
 
 > **Temporary document.** This guide covers the new v3 API while it is in beta. It will be merged
 > into the main [README](README.md) and deleted when the stable 3.0.0 ships. The 2.x API is still
@@ -6,10 +6,10 @@
 > Migrating from 2.x? Read [MIGRATION.md](MIGRATION.md).
 
 ```groovy
-implementation "com.anggrayudi:storage:3.0.0-beta01"
+implementation "com.anggrayudi:storage:3.0.0-beta02"
 
 // For Jetpack Compose
-implementation "com.anggrayudi:storage-compose:3.0.0-beta01"
+implementation "com.anggrayudi:storage-compose:3.0.0-beta02"
 ```
 
 Requirements: **minSdk 26**, compiled against **API 37 (Android 17)**. Kotlin coroutines required
