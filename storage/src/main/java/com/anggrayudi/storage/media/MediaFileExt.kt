@@ -114,17 +114,23 @@ fun List<MediaFile>.compressToZip(
   } catch (_: InterruptedIOException) {
     send(ZipCompressionResult.Error(ZipCompressionErrorCode.CANCELED, "Compression canceled"))
   } catch (e: FileNotFoundException) {
-    send(ZipCompressionResult.Error(ZipCompressionErrorCode.MISSING_ENTRY_FILE, e.message))
+    send(ZipCompressionResult.Error(ZipCompressionErrorCode.MISSING_ENTRY_FILE, e.message, e))
   } catch (e: IOException) {
     if (e.message?.contains("no space", true) == true) {
       send(
-        ZipCompressionResult.Error(ZipCompressionErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH, e.message)
+        ZipCompressionResult.Error(
+          ZipCompressionErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH,
+          e.message,
+          e,
+        )
       )
     } else {
-      send(ZipCompressionResult.Error(ZipCompressionErrorCode.UNKNOWN_IO_ERROR, e.message))
+      send(ZipCompressionResult.Error(ZipCompressionErrorCode.UNKNOWN_IO_ERROR, e.message, e))
     }
   } catch (e: SecurityException) {
-    send(ZipCompressionResult.Error(ZipCompressionErrorCode.STORAGE_PERMISSION_DENIED, e.message))
+    send(
+      ZipCompressionResult.Error(ZipCompressionErrorCode.STORAGE_PERMISSION_DENIED, e.message, e)
+    )
   } finally {
     timer?.cancel()
     zos.closeEntryQuietly()
@@ -250,21 +256,26 @@ fun MediaFile.decompressZip(
   } catch (_: InterruptedIOException) {
     send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.CANCELED, "Decompression canceled"))
   } catch (e: FileNotFoundException) {
-    send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.MISSING_ZIP_FILE, e.message))
+    send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.MISSING_ZIP_FILE, e.message, e))
   } catch (e: IOException) {
     if (e.message?.contains("no space", true) == true) {
       send(
         ZipDecompressionResult.Error(
           ZipDecompressionErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH,
           e.message,
+          e,
         )
       )
     } else {
-      send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.UNKNOWN_IO_ERROR, e.message))
+      send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.UNKNOWN_IO_ERROR, e.message, e))
     }
   } catch (e: SecurityException) {
     send(
-      ZipDecompressionResult.Error(ZipDecompressionErrorCode.STORAGE_PERMISSION_DENIED, e.message)
+      ZipDecompressionResult.Error(
+        ZipDecompressionErrorCode.STORAGE_PERMISSION_DENIED,
+        e.message,
+        e,
+      )
     )
   } finally {
     timer?.cancel()

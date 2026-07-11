@@ -44,10 +44,12 @@ sealed class MultipleFilesResult {
     val success: Boolean,
   ) : MultipleFilesResult()
 
+  /** @param cause the exception that triggered this error, if any */
   data class Error(
     val errorCode: MultipleFilesErrorCode,
     val message: String? = null,
     val completedData: Completed? = null,
+    val cause: Throwable? = null,
   ) : MultipleFilesResult()
 }
 

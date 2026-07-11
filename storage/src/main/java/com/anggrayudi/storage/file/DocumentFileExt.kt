@@ -1521,11 +1521,13 @@ fun List<DocumentFile>.compressToZip(
   } catch (_: InterruptedIOException) {
     send(ZipCompressionResult.Error(ZipCompressionErrorCode.CANCELED))
   } catch (e: FileNotFoundException) {
-    send(ZipCompressionResult.Error(ZipCompressionErrorCode.MISSING_ENTRY_FILE, e.message))
+    send(ZipCompressionResult.Error(ZipCompressionErrorCode.MISSING_ENTRY_FILE, e.message, e))
   } catch (e: IOException) {
-    send(ZipCompressionResult.Error(ZipCompressionErrorCode.UNKNOWN_IO_ERROR, e.message))
+    send(ZipCompressionResult.Error(ZipCompressionErrorCode.UNKNOWN_IO_ERROR, e.message, e))
   } catch (e: SecurityException) {
-    send(ZipCompressionResult.Error(ZipCompressionErrorCode.STORAGE_PERMISSION_DENIED, e.message))
+    send(
+      ZipCompressionResult.Error(ZipCompressionErrorCode.STORAGE_PERMISSION_DENIED, e.message, e)
+    )
   } finally {
     timer?.cancel()
     zos.closeEntryQuietly()
@@ -1690,16 +1692,25 @@ fun DocumentFile.decompressZip(
   } catch (_: InterruptedIOException) {
     send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.CANCELED))
   } catch (e: FileNotFoundException) {
-    send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.MISSING_ZIP_FILE, e.message))
+    send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.MISSING_ZIP_FILE, e.message, e))
   } catch (e: IOException) {
     if (e.message?.contains("no space", true) == true) {
-      send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH))
+      send(
+        ZipDecompressionResult.Error(
+          ZipDecompressionErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH,
+          cause = e,
+        )
+      )
     } else {
-      send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.UNKNOWN_IO_ERROR, e.message))
+      send(ZipDecompressionResult.Error(ZipDecompressionErrorCode.UNKNOWN_IO_ERROR, e.message, e))
     }
   } catch (e: SecurityException) {
     send(
-      ZipDecompressionResult.Error(ZipDecompressionErrorCode.STORAGE_PERMISSION_DENIED, e.message)
+      ZipDecompressionResult.Error(
+        ZipDecompressionErrorCode.STORAGE_PERMISSION_DENIED,
+        e.message,
+        e,
+      )
     )
   } finally {
     timer?.cancel()
@@ -1937,7 +1948,7 @@ private fun List<DocumentFile>.copyTo(
   // This boolean flag is required to prevent the callback from called again on next FOR iteration
   // after the thread was interrupted
   var canceled = false
-  val notifyCanceled: (MultipleFilesErrorCode) -> Unit = { errorCode ->
+  fun notifyCanceled(errorCode: MultipleFilesErrorCode, cause: Throwable? = null) {
     if (!canceled) {
       canceled = true
       timer?.cancel()
@@ -1952,6 +1963,7 @@ private fun List<DocumentFile>.copyTo(
               totalCopiedFiles,
               false,
             ),
+          cause = cause,
         )
       )
     }
@@ -1994,11 +2006,11 @@ private fun List<DocumentFile>.copyTo(
       errorCode == MultipleFilesErrorCode.CANCELED ||
         errorCode == MultipleFilesErrorCode.UNKNOWN_IO_ERROR
     ) {
-      notifyCanceled(errorCode)
+      notifyCanceled(errorCode, it)
       true
     } else {
       timer?.cancel()
-      trySend(MultipleFilesResult.Error(errorCode))
+      trySend(MultipleFilesResult.Error(errorCode, cause = it))
       false
     }
   }
@@ -2491,7 +2503,7 @@ private fun DocumentFile.copyFolderTo(
   // This boolean flag is required to prevent the callback from called again on next FOR iteration
   // after the thread was interrupted
   var canceled = false
-  val notifyCanceled: (FolderErrorCode) -> Unit = { errorCode ->
+  fun notifyCanceled(errorCode: FolderErrorCode, cause: Throwable? = null) {
     if (!canceled) {
       canceled = true
       timer?.cancel()
@@ -2501,6 +2513,7 @@ private fun DocumentFile.copyFolderTo(
           errorCode,
           completedData =
             SingleFolderResult.Completed(targetFolder, totalFilesToCopy, totalCopiedFiles, false),
+          cause = cause,
         )
       )
     }
@@ -2542,11 +2555,11 @@ private fun DocumentFile.copyFolderTo(
   val handleError: (Exception) -> Boolean = {
     val errorCode = it.toFolderCallbackErrorCode()
     if (errorCode == FolderErrorCode.CANCELED || errorCode == FolderErrorCode.UNKNOWN_IO_ERROR) {
-      notifyCanceled(errorCode)
+      notifyCanceled(errorCode, it)
       true
     } else {
       timer?.cancel()
-      trySend(SingleFolderResult.Error(errorCode))
+      trySend(SingleFolderResult.Error(errorCode, cause = it))
       false
     }
   }
@@ -2896,7 +2909,7 @@ private fun DocumentFile.copyFileTo(
     }
     copyFileStream(inputStream, outputStream, targetFile, updateInterval, false, scope)
   } catch (e: Exception) {
-    scope.trySend(SingleFileResult.Error(e.toFileCallbackErrorCode()))
+    scope.trySend(SingleFileResult.Error(e.toFileCallbackErrorCode(), cause = e))
   }
 }
 
@@ -3224,7 +3237,7 @@ private fun DocumentFile.moveFileTo(
     }
     copyFileStream(inputStream, outputStream, targetFile, updateInterval, true, scope)
   } catch (e: Exception) {
-    scope.trySend(SingleFileResult.Error(e.toFileCallbackErrorCode()))
+    scope.trySend(SingleFileResult.Error(e.toFileCallbackErrorCode(), cause = e))
   }
 }
 
@@ -3499,7 +3512,7 @@ private fun DocumentFile.copyFileTo(
       scope,
     )
   } catch (e: Exception) {
-    scope.trySend(SingleFileResult.Error(e.toFileCallbackErrorCode()))
+    scope.trySend(SingleFileResult.Error(e.toFileCallbackErrorCode(), cause = e))
   }
 }
 

@@ -348,7 +348,9 @@ class MediaFile(context: Context, val uri: Uri) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && e is RecoverableSecurityException) {
       accessCallback?.onWriteAccessDenied(this, e.userAction.actionIntent.intentSender)
     } else {
-      scope?.trySend(SingleFileResult.Error(SingleFileErrorCode.STORAGE_PERMISSION_DENIED))
+      scope?.trySend(
+        SingleFileResult.Error(SingleFileErrorCode.STORAGE_PERMISSION_DENIED, cause = e)
+      )
     }
   }
 
@@ -487,7 +489,7 @@ class MediaFile(context: Context, val uri: Uri) {
     } catch (e: SecurityException) {
       handleSecurityException(e, this)
     } catch (e: Exception) {
-      send(SingleFileResult.Error(e.toFileCallbackErrorCode()))
+      send(SingleFileResult.Error(e.toFileCallbackErrorCode(), cause = e))
     }
     close()
   }
@@ -575,7 +577,7 @@ class MediaFile(context: Context, val uri: Uri) {
     } catch (e: SecurityException) {
       handleSecurityException(e, this)
     } catch (e: Exception) {
-      send(SingleFileResult.Error(e.toFileCallbackErrorCode()))
+      send(SingleFileResult.Error(e.toFileCallbackErrorCode(), cause = e))
     }
     close()
   }
@@ -610,7 +612,7 @@ class MediaFile(context: Context, val uri: Uri) {
     } catch (e: SecurityException) {
       handleSecurityException(e, scope)
     } catch (e: Exception) {
-      scope.trySend(SingleFileResult.Error(e.toFileCallbackErrorCode()))
+      scope.trySend(SingleFileResult.Error(e.toFileCallbackErrorCode(), cause = e))
     }
     return null
   }

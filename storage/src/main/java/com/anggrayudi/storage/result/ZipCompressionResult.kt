@@ -26,8 +26,12 @@ sealed class ZipCompressionResult {
 
   data object DeletingEntryFiles : ZipCompressionResult()
 
-  data class Error(val errorCode: ZipCompressionErrorCode, val message: String? = null) :
-    ZipCompressionResult()
+  /** @param cause the exception that triggered this error, if any */
+  data class Error(
+    val errorCode: ZipCompressionErrorCode,
+    val message: String? = null,
+    val cause: Throwable? = null,
+  ) : ZipCompressionResult()
 }
 
 enum class ZipCompressionErrorCode {

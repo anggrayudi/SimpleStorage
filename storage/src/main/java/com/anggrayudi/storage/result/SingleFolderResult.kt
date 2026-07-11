@@ -51,10 +51,12 @@ sealed class SingleFolderResult {
     val success: Boolean,
   ) : SingleFolderResult()
 
+  /** @param cause the exception that triggered this error, if any */
   data class Error(
     val errorCode: FolderErrorCode,
     val message: String? = null,
     val completedData: Completed? = null,
+    val cause: Throwable? = null,
   ) : SingleFolderResult()
 }
 

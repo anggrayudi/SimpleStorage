@@ -24,8 +24,12 @@ sealed class ZipDecompressionResult {
     val decompressionRate: Float,
   ) : ZipDecompressionResult()
 
-  data class Error(val errorCode: ZipDecompressionErrorCode, val message: String? = null) :
-    ZipDecompressionResult()
+  /** @param cause the exception that triggered this error, if any */
+  data class Error(
+    val errorCode: ZipDecompressionErrorCode,
+    val message: String? = null,
+    val cause: Throwable? = null,
+  ) : ZipDecompressionResult()
 }
 
 enum class ZipDecompressionErrorCode {

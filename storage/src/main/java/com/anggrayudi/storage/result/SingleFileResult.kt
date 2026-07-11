@@ -26,8 +26,12 @@ sealed class SingleFileResult {
   /** @param result can be [DocumentFile] or [MediaFile] */
   data class Completed(val result: Any) : SingleFileResult()
 
-  data class Error(val errorCode: SingleFileErrorCode, val message: String? = null) :
-    SingleFileResult()
+  /** @param cause the exception that triggered this error, if any */
+  data class Error(
+    val errorCode: SingleFileErrorCode,
+    val message: String? = null,
+    val cause: Throwable? = null,
+  ) : SingleFileResult()
 }
 
 enum class SingleFileErrorCode {
