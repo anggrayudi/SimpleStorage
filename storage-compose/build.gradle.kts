@@ -14,7 +14,7 @@ android {
   resourcePrefix = "ss_"
 
   defaultConfig {
-    minSdk = 23
+    minSdk = 26
     consumerProguardFiles("consumer-rules.pro")
   }
 

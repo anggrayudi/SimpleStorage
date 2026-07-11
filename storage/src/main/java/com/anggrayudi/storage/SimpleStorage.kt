@@ -191,7 +191,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
   /**
    * Show interactive UI to create a file.
    *
-   * @param initialPath only takes effect on API 26+
    */
   @Deprecated(
     "This function doesn't follow Google's latest method, because it still uses startActivityForResult() manually.",
@@ -222,7 +221,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
       createFileCallback?.onActivityHandlerNotFound(requestCode, intent)
   }
 
-  /** @param initialPath only works for API 26+ */
   @Deprecated(
     "This function doesn't follow Google's latest method, because it still uses startActivityForResult() manually.",
     ReplaceWith("OpenFolderPickerContract() with ActivityResultLauncher"),
@@ -259,7 +257,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
   private var lastVisitedFolder: File = Environment.getExternalStorageDirectory()
 
-  /** @param initialPath only takes effect on API 26+ */
   @Deprecated(
     "This function doesn't follow Google's latest method, because it still uses startActivityForResult() manually.",
     ReplaceWith("OpenFilePickerContract() with ActivityResultLauncher"),
@@ -564,16 +561,12 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
       get() = Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED
 
     @JvmStatic
-    @SuppressLint("InlinedApi")
     fun getDefaultExternalStorageIntent(context: Context): Intent {
-      return Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-        if (Build.VERSION.SDK_INT >= 26) {
-          putExtra(
-            DocumentsContract.EXTRA_INITIAL_URI,
-            context.fromTreeUri(DocumentFileCompat.createDocumentUri(PRIMARY))?.uri,
-          )
-        }
-      }
+      return Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        .putExtra(
+          DocumentsContract.EXTRA_INITIAL_URI,
+          context.fromTreeUri(DocumentFileCompat.createDocumentUri(PRIMARY))?.uri,
+        )
     }
 
     /** For read and write permissions */
