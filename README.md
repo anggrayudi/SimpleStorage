@@ -66,6 +66,15 @@ allprojects {
 }
 ```
 
+### Version 3 (alpha)
+
+Version `3.0.0-alpha01` introduces a redesigned API: one [`StorageFile`](storage/src/main/java/com/anggrayudi/storage/StorageFile.kt)
+abstraction over `DocumentFile`/`MediaFile`/`java.io.File`, one-shot suspend operations
+(`copyTo`, `moveTo`, `zipTo`, `unzipTo`) with a unified `TransferResult`, suspend-lambda conflict
+resolution, and [`StorageAccessManager`](storage/src/main/java/com/anggrayudi/storage/access/StorageAccessManager.kt)
+replacing `SimpleStorageHelper`. It targets Android 17 (API 37) with minSdk 26. The 2.x API keeps
+working during the 3.x cycle. Read the [migration guide](MIGRATION.md).
+
 ### Java Compatibility
 
 Simple Storage is built in Kotlin. Follow this [documentation](JAVA_COMPATIBILITY.md) to use it in your Java project.

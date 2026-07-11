@@ -36,7 +36,8 @@ android {
     compilerOptions {
       jvmTarget = JvmTarget.JVM_11
       // Support @JvmDefault
-      freeCompilerArgs = listOf("-Xjvm-default=all", "-opt-in=kotlin.RequiresOptIn")
+      freeCompilerArgs =
+        listOf("-Xjvm-default=all", "-opt-in=kotlin.RequiresOptIn", "-Xexplicit-api=warning")
     }
   }
 }
