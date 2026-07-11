@@ -8,6 +8,7 @@ import androidx.documentfile.provider.DocumentFile
  *
  * @author Anggrayudi H
  */
+@Deprecated("Superseded in v3 by StorageAccessManager.pickFiles(), which returns a FilePickerResult instead of using callbacks. See MIGRATION.md.")
 interface FilePickerCallback {
 
   fun onCanceledByUser(requestCode: Int) {

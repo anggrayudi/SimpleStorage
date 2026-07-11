@@ -3,7 +3,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
   id("com.android.library")
   id("org.jetbrains.kotlin.plugin.parcelize")
-  alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.dokka)
   alias(libs.plugins.maven.publish)
@@ -11,16 +10,16 @@ plugins {
 
 android {
   namespace = "com.anggrayudi.storage.compose"
-  compileSdk = 36
+  compileSdk = 37
   resourcePrefix = "ss_"
 
   defaultConfig {
-    minSdk = 23
+    minSdk = 26
     consumerProguardFiles("consumer-rules.pro")
   }
 
-  testOptions { targetSdk = 36 }
-  lint { targetSdk = 36 }
+  testOptions { targetSdk = 37 }
+  lint { targetSdk = 37 }
 
   buildTypes {
     release {
@@ -37,7 +36,8 @@ android {
     compilerOptions {
       jvmTarget = JvmTarget.JVM_11
       // Support @JvmDefault
-      freeCompilerArgs = listOf("-Xjvm-default=all", "-opt-in=kotlin.RequiresOptIn")
+      freeCompilerArgs =
+        listOf("-Xjvm-default=all", "-opt-in=kotlin.RequiresOptIn", "-Xexplicit-api=warning")
     }
   }
 }

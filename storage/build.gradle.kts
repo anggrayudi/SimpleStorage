@@ -2,23 +2,23 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
   id("com.android.library")
-  alias(libs.plugins.kotlin.android)
   alias(libs.plugins.dokka)
   alias(libs.plugins.maven.publish)
 }
 
 android {
   namespace = "com.anggrayudi.storage"
-  compileSdk = 36
+  compileSdk = 37
   resourcePrefix = "ss_"
 
   defaultConfig {
-    minSdk = 23
+    minSdk = 26
     consumerProguardFiles("consumer-rules.pro")
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
-  testOptions { targetSdk = 36 }
-  lint { targetSdk = 36 }
+  testOptions { targetSdk = 37 }
+  lint { targetSdk = 37 }
 
   buildTypes {
     release {
@@ -38,7 +38,8 @@ android {
     compilerOptions {
       jvmTarget = JvmTarget.JVM_11
       // Support @JvmDefault
-      freeCompilerArgs = listOf("-Xjvm-default=all", "-opt-in=kotlin.RequiresOptIn")
+      freeCompilerArgs =
+        listOf("-Xjvm-default=all", "-opt-in=kotlin.RequiresOptIn", "-Xexplicit-api=warning")
     }
   }
 }
@@ -58,6 +59,14 @@ dependencies {
   testImplementation(libs.mockk)
   testImplementation(libs.kotlin.test)
   testImplementation(libs.robolectric)
+
+  androidTestImplementation(libs.junit)
+  androidTestImplementation(libs.androidx.junit)
+  androidTestImplementation(libs.androidx.test.runner)
+  androidTestImplementation(libs.androidx.test.core)
+  androidTestImplementation(libs.androidx.test.rules)
+  androidTestImplementation(libs.coroutines.test)
+  androidTestImplementation(libs.kotlin.test)
 }
 
 afterEvaluate {

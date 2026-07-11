@@ -48,6 +48,10 @@ import java.io.File
  * @author Anggrayudi Hardiannico A. (anggrayudi.hardiannico@dana.id)
  * @version SimpleStorage, v 0.0.1 09/08/20 19.08 by Anggrayudi Hardiannico A.
  */
+@Deprecated(
+  "Superseded in v3 by StorageAccessManager and the contracts in com.anggrayudi.storage.contract. This class still relies on startActivityForResult and request codes. See MIGRATION.md.",
+  ReplaceWith("com.anggrayudi.storage.access.StorageAccessManager"),
+)
 class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
   // For unknown Activity type
@@ -191,7 +195,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
   /**
    * Show interactive UI to create a file.
    *
-   * @param initialPath only takes effect on API 26+
    */
   @Deprecated(
     "This function doesn't follow Google's latest method, because it still uses startActivityForResult() manually.",
@@ -222,7 +225,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
       createFileCallback?.onActivityHandlerNotFound(requestCode, intent)
   }
 
-  /** @param initialPath only works for API 26+ */
   @Deprecated(
     "This function doesn't follow Google's latest method, because it still uses startActivityForResult() manually.",
     ReplaceWith("OpenFolderPickerContract() with ActivityResultLauncher"),
@@ -259,7 +261,6 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
   private var lastVisitedFolder: File = Environment.getExternalStorageDirectory()
 
-  /** @param initialPath only takes effect on API 26+ */
   @Deprecated(
     "This function doesn't follow Google's latest method, because it still uses startActivityForResult() manually.",
     ReplaceWith("OpenFilePickerContract() with ActivityResultLauncher"),
@@ -564,16 +565,12 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
       get() = Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED
 
     @JvmStatic
-    @SuppressLint("InlinedApi")
     fun getDefaultExternalStorageIntent(context: Context): Intent {
-      return Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-        if (Build.VERSION.SDK_INT >= 26) {
-          putExtra(
-            DocumentsContract.EXTRA_INITIAL_URI,
-            context.fromTreeUri(DocumentFileCompat.createDocumentUri(PRIMARY))?.uri,
-          )
-        }
-      }
+      return Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        .putExtra(
+          DocumentsContract.EXTRA_INITIAL_URI,
+          context.fromTreeUri(DocumentFileCompat.createDocumentUri(PRIMARY))?.uri,
+        )
     }
 
     /** For read and write permissions */

@@ -2278,11 +2278,7 @@ private fun DocumentFile.tryMoveFolderByRenamingPath(
     }
 
     try {
-      if (
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
-          !isRawFile &&
-          writableTargetParentFolder.isTreeDocumentFile
-      ) {
+      if (!isRawFile && writableTargetParentFolder.isTreeDocumentFile) {
         val movedFileUri =
           parentFile?.uri?.let {
             DocumentsContract.moveDocument(
@@ -2641,6 +2637,12 @@ private fun DocumentFile.copyFolderTo(
         }
         it.solution != SingleFileConflictCallback.ConflictResolution.SKIP
       }
+  // `finalize()` below is called again after the conflicts above are resolved and copied, and it
+  // uses `conflictedFiles.isEmpty()` as its "are we really done" guard. Without clearing it here,
+  // that second call always sees the original (non-empty) list and skips sending
+  // SingleFolderResult.Completed, so the flow closes with no terminal event even though every
+  // file - including the conflicted ones - was copied successfully.
+  conflictedFiles.clear()
 
   val leftoverSize = totalSizeToCopy - bytesMoved
   startTimer(solutions.isNotEmpty() && leftoverSize > 10 * FileSize.MB)
@@ -3184,8 +3186,7 @@ private fun DocumentFile.moveFileTo(
 
   try {
     if (
-      Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
-        !isRawFile &&
+      !isRawFile &&
         writableTargetFolder.isTreeDocumentFile &&
         getStorageId(context) == targetStorageId
     ) {

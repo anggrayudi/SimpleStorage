@@ -10,6 +10,7 @@ import com.anggrayudi.storage.file.StorageType
  *
  * @author Anggrayudi H
  */
+@Deprecated("Superseded in v3 by StorageAccessManager.pickFolder(), which returns a FolderPickerResult instead of using callbacks. See MIGRATION.md.")
 interface FolderPickerCallback {
 
   fun onCanceledByUser(requestCode: Int) {

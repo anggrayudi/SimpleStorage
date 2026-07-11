@@ -35,6 +35,10 @@ import com.anggrayudi.storage.permission.PermissionResult
  *
  * @author Anggrayudi H.
  */
+@Deprecated(
+  "Superseded in v3 by StorageAccessManager, which is contracts-based, dialog-free, and exposes suspend functions instead of callbacks. See MIGRATION.md.",
+  ReplaceWith("com.anggrayudi.storage.access.StorageAccessManager"),
+)
 class SimpleStorageHelper {
 
   val storage: SimpleStorage
