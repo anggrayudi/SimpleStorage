@@ -77,6 +77,7 @@ Options that used to be positional parameters (`updateInterval`, `skipEmptyFiles
 | `SingleFileResult` / `SingleFolderResult` / `MultipleFilesResult` / `ZipCompressionResult` / `ZipDecompressionResult` | `TransferEvent` (`PhaseChanged`, `Progress`, `Completed`) |
 | `...Result.Completed(result: Any)` + casting | `TransferResult.Success<StorageFile>` — typed |
 | `...Result.Error(errorCode, message, cause)` | `TransferResult.Failure(errorCode, message, cause, partialStats)` |
+| — (skipping silently closed the flow) | `TransferResult.Skipped(existingTarget)` for top-level skips; `TransferStats.filesSkipped` for per-file skips in merges (since 3.0.0-beta02) |
 | `writeSpeed: Int` (bytes per update interval) | `Progress.bytesPerSecond: Long` |
 
 ### Conflict handling

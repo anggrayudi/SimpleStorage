@@ -33,6 +33,7 @@ import com.anggrayudi.storage.transfer.TransferPhase
 import com.anggrayudi.storage.transfer.TransferResult
 import com.anggrayudi.storage.transfer.TransferSpec
 import com.anggrayudi.storage.transfer.TransferStats
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -174,7 +175,7 @@ fun StorageFile.unzipToAsFlow(
           targetDoc,
           spec.updateInterval,
           spec.sizeChecker(),
-          fileConflictAdapter(context, spec, this),
+          fileConflictAdapter(context, spec, this, TransferState()),
         )
         .collect { send(it.toTransferEvent(context)) }
     is MediaStorageFile ->
@@ -226,77 +227,127 @@ private fun transferFlow(
     return@channelFlow
   }
   val checker = spec.sizeChecker()
-  when (source) {
-    is DocumentStorageFile -> {
-      if (source.doc.isDirectory) {
+  val state = TransferState()
+  val events: Flow<TransferEvent> =
+    when (source) {
+      is DocumentStorageFile ->
+        if (source.doc.isDirectory) {
+          val adapter = folderConflictAdapter(context, spec, this, state)
+          val flow =
+            if (move) {
+              source.doc.moveFolderTo(
+                context,
+                targetDoc,
+                spec.skipEmptyFiles,
+                spec.fileDescription?.name,
+                spec.updateInterval,
+                checker,
+                adapter,
+              )
+            } else {
+              source.doc.copyFolderTo(
+                context,
+                targetDoc,
+                spec.skipEmptyFiles,
+                spec.fileDescription?.name,
+                spec.updateInterval,
+                checker,
+                adapter,
+              )
+            }
+          flow.map { it.toTransferEvent(context) }
+        } else {
+          val adapter = fileConflictAdapter(context, spec, this, state)
+          val flow =
+            if (move) {
+              source.doc.moveFileTo(
+                context,
+                targetDoc,
+                spec.fileDescription,
+                spec.updateInterval,
+                checker,
+                adapter,
+              )
+            } else {
+              source.doc.copyFileTo(
+                context,
+                targetDoc,
+                spec.fileDescription,
+                spec.updateInterval,
+                checker,
+                adapter,
+              )
+            }
+          flow.map { it.toTransferEvent(context, spec) }
+        }
+      is MediaStorageFile -> {
+        val adapter = fileConflictAdapter(context, spec, this, state)
         val flow =
           if (move) {
-            source.doc.moveFolderTo(
-              context,
-              targetDoc,
-              spec.skipEmptyFiles,
-              spec.fileDescription?.name,
-              spec.updateInterval,
-              checker,
-              folderConflictAdapter(context, spec, this),
-            )
-          } else {
-            source.doc.copyFolderTo(
-              context,
-              targetDoc,
-              spec.skipEmptyFiles,
-              spec.fileDescription?.name,
-              spec.updateInterval,
-              checker,
-              folderConflictAdapter(context, spec, this),
-            )
-          }
-        flow.collect { send(it.toTransferEvent(context)) }
-      } else {
-        val flow =
-          if (move) {
-            source.doc.moveFileTo(
-              context,
+            source.media.moveTo(
               targetDoc,
               spec.fileDescription,
               spec.updateInterval,
               checker,
-              fileConflictAdapter(context, spec, this),
+              adapter,
             )
           } else {
-            source.doc.copyFileTo(
-              context,
+            source.media.copyTo(
               targetDoc,
               spec.fileDescription,
               spec.updateInterval,
               checker,
-              fileConflictAdapter(context, spec, this),
+              adapter,
             )
           }
-        flow.collect { send(it.toTransferEvent(context, spec)) }
+        flow.map { it.toTransferEvent(context, spec) }
       }
     }
-    is MediaStorageFile -> {
-      val flow =
-        if (move) {
-          source.media.moveTo(
-            targetDoc,
-            spec.fileDescription,
-            spec.updateInterval,
-            checker,
-            fileConflictAdapter(context, spec, this),
-          )
+
+  var finished = false
+  events.collect { event ->
+    if (event is TransferEvent.Completed<*>) {
+      finished = true
+      send(event.withSkippedStats(state))
+    } else {
+      send(event)
+    }
+  }
+  // The v2 engine closes its flow WITHOUT a terminal event when the resolver skips the top-level
+  // target (both the single-file conflict path and the parent-folder conflict path). Synthesize
+  // the proper terminal here so both the Flow form and the one-shot form see it.
+  if (!finished) {
+    send(
+      TransferEvent.Completed(
+        if (state.skippedByResolver) {
+          TransferResult.Skipped(state.skippedTarget)
         } else {
-          source.media.copyTo(
-            targetDoc,
-            spec.fileDescription,
-            spec.updateInterval,
-            checker,
-            fileConflictAdapter(context, spec, this),
+          TransferResult.Failure(
+            TransferErrorCode.UNKNOWN_IO_ERROR,
+            "Transfer finished without a terminal event",
           )
         }
-      flow.collect { send(it.toTransferEvent(context, spec)) }
-    }
+      )
+    )
+  }
+}
+
+/** Per-transfer signals written by the conflict adapters, read when the engine flow ends. */
+private class TransferState {
+  @Volatile var skippedByResolver = false
+  @Volatile var skippedTarget: StorageFile? = null
+  val filesSkipped = AtomicInteger(0)
+}
+
+private fun TransferEvent.Completed<*>.withSkippedStats(state: TransferState): TransferEvent {
+  val skipped = state.filesSkipped.get()
+  if (skipped == 0) return this
+  return when (val r = result) {
+    is TransferResult.Success<*> ->
+      TransferEvent.Completed(
+        TransferResult.Success(r.result, r.stats.copy(filesSkipped = skipped))
+      )
+    else -> this
   }
 }
 
@@ -331,12 +382,17 @@ private fun fileConflictAdapter(
   context: Context,
   spec: TransferSpec,
   scope: CoroutineScope,
+  state: TransferState,
 ): SingleFileConflictCallback<DocumentFile> =
   object : SingleFileConflictCallback<DocumentFile>(scope) {
     override fun onFileConflict(destinationFile: DocumentFile, action: FileConflictAction) {
       scope.launch {
-        val resolution =
-          spec.conflictResolver.resolve(Conflict.TargetFile(destinationFile.toStorageFile(context)))
+        val conflict = Conflict.TargetFile(destinationFile.toStorageFile(context))
+        val resolution = spec.conflictResolver.resolve(conflict)
+        if (resolution == com.anggrayudi.storage.transfer.ConflictResolution.SKIP) {
+          state.skippedByResolver = true
+          state.skippedTarget = conflict.target
+        }
         action.confirmResolution(resolution.toV2FileResolution())
       }
     }
@@ -346,6 +402,7 @@ private fun folderConflictAdapter(
   context: Context,
   spec: TransferSpec,
   scope: CoroutineScope,
+  state: TransferState,
 ): SingleFolderConflictCallback =
   object : SingleFolderConflictCallback(scope) {
     override fun onParentConflict(
@@ -354,10 +411,12 @@ private fun folderConflictAdapter(
       canMerge: Boolean,
     ) {
       scope.launch {
-        val resolution =
-          spec.conflictResolver.resolve(
-            Conflict.TargetFolder(destinationFolder.toStorageFile(context), canMerge)
-          )
+        val parentConflict = Conflict.TargetFolder(destinationFolder.toStorageFile(context), canMerge)
+        val resolution = spec.conflictResolver.resolve(parentConflict)
+        if (resolution == com.anggrayudi.storage.transfer.ConflictResolution.SKIP) {
+          state.skippedByResolver = true
+          state.skippedTarget = parentConflict.target
+        }
         val v2 =
           when (resolution) {
             com.anggrayudi.storage.transfer.ConflictResolution.REPLACE ->
@@ -381,10 +440,14 @@ private fun folderConflictAdapter(
     ) {
       scope.launch {
         conflictedFiles.forEach { conflict ->
-          conflict.solution =
+          val solution =
             spec.conflictResolver
               .resolve(Conflict.TargetFile(conflict.target.toStorageFile(context)))
               .toV2FileResolution()
+          if (solution == SingleFileConflictCallback.ConflictResolution.SKIP) {
+            state.filesSkipped.incrementAndGet()
+          }
+          conflict.solution = solution
         }
         action.confirmResolution(conflictedFiles)
       }

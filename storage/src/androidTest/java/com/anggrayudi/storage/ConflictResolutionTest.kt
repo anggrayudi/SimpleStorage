@@ -89,29 +89,67 @@ class ConflictResolutionTest {
   fun tc22_skip() = runBlocking {
     val (_, target, newFile) = setUpSingleFileConflict()
 
-    val result1 = storageFile(newFile).copyTo(storageFile(target)) { onConflict { ConflictResolution.SKIP } }
-    // Target must be untouched by the skipped transfer regardless of how the result is shaped.
+    val result = storageFile(newFile).copyTo(storageFile(target)) { onConflict { ConflictResolution.SKIP } }
+    // Target must be untouched by the skipped transfer.
     assertEquals("OLD content", File(target, "a.txt").readText())
     assertTrue(
       "SKIP must not silently fabricate a second file",
       target.listFiles { f -> f.name.startsWith("a") }.orEmpty().size == 1,
     )
 
-    println("TC-22: result of copyTo with SKIP resolution = $result1")
+    // Since 3.0.0-beta02, SKIP is a first-class terminal result instead of the misleading
+    // Failure(UNKNOWN_IO_ERROR) documented in beta01.
+    assertTrue("expected Skipped but was $result", result is TransferResult.Skipped)
+    assertEquals("a.txt", (result as TransferResult.Skipped).existingTarget?.name)
+  }
 
-    // Run again on a fresh, identical setup to confirm the shape is deterministic, not flaky.
-    val (_, target2, newFile2) = setUpSingleFileConflict()
-    val result2 = storageFile(newFile2).copyTo(storageFile(target2)) { onConflict { ConflictResolution.SKIP } }
-    println("TC-22: result of second run with SKIP resolution = $result2")
+  // TC-26: SKIP on the parent-folder conflict aborts the whole transfer as Skipped
+  @Test
+  fun tc26_folderParentSkip() = runBlocking {
+    val sourceParent = File(playground, "skipSrcParent").apply { mkdirs() }
+    val sourceShared = File(sourceParent, "shared").apply { mkdirs() }
+    File(sourceShared, "common.txt").writeText("NEW common")
 
-    assertEquals(
-      "SKIP result shape must be deterministic across runs",
-      result1::class,
-      result2::class,
-    )
-    if (result1 is TransferResult.Failure && result2 is TransferResult.Failure) {
-      assertEquals(result1.errorCode, result2.errorCode)
-    }
+    val targetParent = File(playground, "skipDstParent").apply { mkdirs() }
+    val targetShared = File(targetParent, "shared").apply { mkdirs() }
+    File(targetShared, "common.txt").writeText("OLD common")
+
+    val result =
+      storageFile(sourceShared).copyTo(storageFile(targetParent)) {
+        onConflict { ConflictResolution.SKIP }
+      }
+
+    assertTrue("expected Skipped but was $result", result is TransferResult.Skipped)
+    assertEquals("shared", (result as TransferResult.Skipped).existingTarget?.name)
+    assertEquals("OLD common", File(targetShared, "common.txt").readText())
+  }
+
+  // TC-27: per-file SKIP inside a merge keeps Success and reports stats.filesSkipped
+  @Test
+  fun tc27_mergeWithPerFileSkip() = runBlocking {
+    val sourceParent = File(playground, "mergeSkipSrc").apply { mkdirs() }
+    val sourceShared = File(sourceParent, "shared").apply { mkdirs() }
+    File(sourceShared, "common.txt").writeText("NEW common")
+    File(sourceShared, "onlyInSource.txt").writeText("only in source")
+
+    val targetParent = File(playground, "mergeSkipDst").apply { mkdirs() }
+    val targetShared = File(targetParent, "shared").apply { mkdirs() }
+    File(targetShared, "common.txt").writeText("OLD common")
+
+    val result =
+      storageFile(sourceShared).copyTo(storageFile(targetParent)) {
+        onConflict { conflict ->
+          when (conflict) {
+            is Conflict.TargetFolder -> ConflictResolution.MERGE
+            is Conflict.TargetFile -> ConflictResolution.SKIP
+          }
+        }
+      }
+
+    assertTrue("expected success but was $result", result.isSuccess)
+    assertEquals("OLD common", File(targetShared, "common.txt").readText()) // skipped, untouched
+    assertEquals("only in source", File(targetShared, "onlyInSource.txt").readText())
+    assertEquals(1, (result as TransferResult.Success<*>).stats.filesSkipped)
   }
 
   // TC-23: Suspending resolver, no deadlock

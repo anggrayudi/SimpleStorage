@@ -1,5 +1,7 @@
 package com.anggrayudi.storage.transfer
 
+import com.anggrayudi.storage.StorageFile
+
 /**
  * A single vocabulary for events emitted by every long-running operation in this library (copy,
  * move, zip, unzip), replacing the parallel v2 hierarchies (`SingleFileResult`,
@@ -52,10 +54,12 @@ enum class TransferErrorCode {
   NOT_A_ZIP_FILE,
 }
 
+/** @param filesSkipped files left alone because the conflict resolver chose [ConflictResolution.SKIP] */
 data class TransferStats(
   val totalFiles: Int = 0,
   val filesTransferred: Int = 0,
   val bytesTransferred: Long = 0,
+  val filesSkipped: Int = 0,
 )
 
 /** Terminal outcome of a transfer operation. */
@@ -63,6 +67,15 @@ sealed interface TransferResult<out T> {
 
   data class Success<T>(val result: T, val stats: TransferStats = TransferStats()) :
     TransferResult<T>
+
+  /**
+   * The conflict resolver chose [ConflictResolution.SKIP] for the top-level target: nothing was
+   * written and nothing failed. Per-file skips inside a folder merge do NOT produce this — the
+   * operation still ends in [Success], with the count reported via [TransferStats.filesSkipped].
+   *
+   * @param existingTarget what already occupies the destination, when known
+   */
+  data class Skipped(val existingTarget: StorageFile?) : TransferResult<Nothing>
 
   /**
    * @param cause the exception that triggered this failure, if any
@@ -78,6 +91,9 @@ sealed interface TransferResult<out T> {
 
 val TransferResult<*>.isSuccess: Boolean
   get() = this is TransferResult.Success
+
+val TransferResult<*>.isSkipped: Boolean
+  get() = this is TransferResult.Skipped
 
 fun <T> TransferResult<T>.getOrNull(): T? = (this as? TransferResult.Success<T>)?.result
 

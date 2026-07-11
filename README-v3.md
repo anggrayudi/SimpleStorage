@@ -63,6 +63,7 @@ lifecycleScope.launch {                       // main-safe: call from any dispat
   }
   when (result) {
     is TransferResult.Success -> toast("Copied ${result.result.name}")
+    is TransferResult.Skipped -> toast("Skipped — ${result.existingTarget?.name} already exists")
     is TransferResult.Failure -> Log.e(TAG, "${result.errorCode}", result.cause)
   }
 }
@@ -97,9 +98,10 @@ val result = folder.copyTo(destination) {
 Resolutions: `REPLACE`, `MERGE` (folders; falls back to `CREATE_NEW` on files), `CREATE_NEW`
 (`report.pdf` → `report (1).pdf`), `SKIP`.
 
-> Beta note: when a single-file copy is resolved with `SKIP`, the result currently surfaces as
-> `Failure(UNKNOWN_IO_ERROR)` instead of a dedicated "skipped" result. Deterministic and harmless
-> to your data; a proper result shape lands in the RC.
+Since `beta02`, a top-level `SKIP` (single-file conflict, or the whole-folder conflict) ends the
+operation with a dedicated **`TransferResult.Skipped(existingTarget)`** — not a `Failure`, not a
+`Success`. Per-file skips inside a folder merge keep the operation `Success` and are counted in
+`TransferStats.filesSkipped`.
 
 ## Zip & unzip
 
