@@ -68,7 +68,7 @@ allprojects {
 
 ### Version 3 (beta)
 
-Version `3.0.0-beta02` introduces a redesigned API: one [`StorageFile`](storage/src/main/java/com/anggrayudi/storage/StorageFile.kt)
+Version `3.0.0-beta03` introduces a redesigned API: one [`StorageFile`](storage/src/main/java/com/anggrayudi/storage/StorageFile.kt)
 abstraction over `DocumentFile`/`MediaFile`/`java.io.File`, one-shot suspend operations
 (`copyTo`, `moveTo`, `zipTo`, `unzipTo`) with a unified `TransferResult`, suspend-lambda conflict
 resolution, and [`StorageAccessManager`](storage/src/main/java/com/anggrayudi/storage/access/StorageAccessManager.kt)
