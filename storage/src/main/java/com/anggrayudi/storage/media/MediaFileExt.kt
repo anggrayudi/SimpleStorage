@@ -3,7 +3,6 @@
 package com.anggrayudi.storage.media
 
 import android.content.Context
-import androidx.annotation.WorkerThread
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.extension.closeEntryQuietly
 import com.anggrayudi.storage.extension.closeStreamQuietly
@@ -27,16 +26,20 @@ import java.io.InterruptedIOException
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
 
 /**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ *
  * Created on 21/01/22
  *
  * @author Anggrayudi H
  */
-@WorkerThread
 fun List<MediaFile>.compressToZip(
   context: Context,
   targetZipFile: DocumentFile,
@@ -139,8 +142,12 @@ fun List<MediaFile>.compressToZip(
   }
   close()
 }
+  .flowOn(Dispatchers.IO)
 
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ */
 fun MediaFile.decompressZip(
   context: Context,
   targetFolder: DocumentFile,
@@ -280,3 +287,4 @@ fun MediaFile.decompressZip(
   }
   close()
 }
+  .flowOn(Dispatchers.IO)

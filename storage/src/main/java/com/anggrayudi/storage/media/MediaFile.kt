@@ -58,10 +58,12 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
 
 /**
  * Created on 06/09/20
@@ -403,7 +405,10 @@ class MediaFile(context: Context, val uri: Uri) {
     }
   }
 
-  @WorkerThread
+  /**
+   * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+   * collected from any thread, including the main thread.
+   */
   fun moveTo(
     targetFolder: DocumentFile,
     fileDescription: FileDescription? = null,
@@ -486,8 +491,12 @@ class MediaFile(context: Context, val uri: Uri) {
     }
     close()
   }
+    .flowOn(Dispatchers.IO)
 
-  @WorkerThread
+  /**
+   * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+   * collected from any thread, including the main thread.
+   */
   fun copyTo(
     targetFolder: DocumentFile,
     fileDescription: FileDescription? = null,
@@ -570,6 +579,7 @@ class MediaFile(context: Context, val uri: Uri) {
     }
     close()
   }
+    .flowOn(Dispatchers.IO)
 
   private fun createTargetFile(
     targetDirectory: DocumentFile,

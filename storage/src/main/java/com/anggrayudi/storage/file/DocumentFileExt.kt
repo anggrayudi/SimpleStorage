@@ -71,10 +71,12 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
 
 typealias CheckFileSize = (freeSpace: Long, fileSize: Long) -> Boolean
 
@@ -165,6 +167,9 @@ fun DocumentFile.isEmpty(context: Context): Boolean {
 }
 
 /**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ *
  * Similar to Get Info on MacOS or File Properties in Windows. Example:
  * ```
  * val job = ioScope.launch {
@@ -186,7 +191,6 @@ fun DocumentFile.isEmpty(context: Context): Boolean {
  * job.cancel()
  * ```
  */
-@WorkerThread
 fun DocumentFile.getProperties(
   context: Context,
   updateInterval: Long = 500,
@@ -232,6 +236,7 @@ fun DocumentFile.getProperties(
   }
   close()
 }
+  .flowOn(Dispatchers.IO)
 
 @OptIn(DelicateCoroutinesApi::class)
 private fun <E> DocumentFile.walkFileTreeForInfo(
@@ -1053,6 +1058,9 @@ fun DocumentFile.findFileLiterally(name: String): DocumentFile? =
   children.find { it.name == name && it.isFile }
 
 /**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be collected
+ * from any thread, including the main thread.
+ *
  * @param recursive walk into sub folders
  * @param name find file name exactly
  * @param regex you can use regex `^.*containsName.*\$` to search file name that contains specific
@@ -1061,7 +1069,6 @@ fun DocumentFile.findFileLiterally(name: String): DocumentFile? =
  */
 @OptIn(DelicateCoroutinesApi::class)
 @JvmOverloads
-@WorkerThread
 fun DocumentFile.search(
   recursive: Boolean = false,
   documentType: DocumentFileType = DocumentFileType.ANY,
@@ -1127,6 +1134,7 @@ fun DocumentFile.search(
   }
   close()
 }
+  .flowOn(Dispatchers.IO)
 
 private fun DocumentFile.matchesMimeTypes(filterMimeTypes: Array<String>): Boolean {
   return filterMimeTypes.isEmpty() ||
@@ -1310,11 +1318,13 @@ private fun DocumentFile.walkFileTreeAndGetFilesOnly(): List<DocumentFile> {
 }
 
 /**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ *
  * Use [Zip4j](https://github.com/srikanth-lingala/zip4j) if you want to protect the ZIP file with
  * password. Simple Storage library must be lightweight, so avoid adding external library unless it
  * is really needed.
  */
-@WorkerThread
 fun List<DocumentFile>.compressToZip(
   context: Context,
   targetZipFile: DocumentFile,
@@ -1533,12 +1543,15 @@ fun List<DocumentFile>.compressToZip(
   }
   close()
 }
+  .flowOn(Dispatchers.IO)
 
 /**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ *
  * It can't unzip password-protected archives. You'll need
  * [Zip4j](https://github.com/srikanth-lingala/zip4j) to unzip encrypted archives.
  */
-@WorkerThread
 fun DocumentFile.decompressZip(
   context: Context,
   targetFolder: DocumentFile,
@@ -1712,8 +1725,12 @@ fun DocumentFile.decompressZip(
   }
   close()
 }
+  .flowOn(Dispatchers.IO)
 
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ */
 fun List<DocumentFile>.moveTo(
   context: Context,
   targetParentFolder: DocumentFile,
@@ -1733,7 +1750,10 @@ fun List<DocumentFile>.moveTo(
   )
 }
 
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ */
 fun List<DocumentFile>.copyTo(
   context: Context,
   targetParentFolder: DocumentFile,
@@ -2139,6 +2159,7 @@ private fun List<DocumentFile>.copyTo(
   finalize()
   close()
 }
+  .flowOn(Dispatchers.IO)
 
 private fun List<DocumentFile>.doesMeetCopyRequirements(
   context: Context,
@@ -2277,7 +2298,10 @@ private fun DocumentFile.tryMoveFolderByRenamingPath(
   return null
 }
 
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ */
 fun DocumentFile.moveFolderTo(
   context: Context,
   targetParentFolder: DocumentFile,
@@ -2299,7 +2323,10 @@ fun DocumentFile.moveFolderTo(
   )
 }
 
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ */
 fun DocumentFile.copyFolderTo(
   context: Context,
   targetParentFolder: DocumentFile,
@@ -2639,6 +2666,7 @@ private fun DocumentFile.copyFolderTo(
   finalize()
   close()
 }
+  .flowOn(Dispatchers.IO)
 
 private fun Exception.toFolderCallbackErrorCode(): FolderErrorCode {
   return when (this) {
@@ -2703,8 +2731,12 @@ private fun DocumentFile.doesMeetFolderCopyRequirements(
   return writableFolder
 }
 
-/** @param fileDescription Use it if you want to change file name and type in the destination. */
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ *
+ * @param fileDescription Use it if you want to change file name and type in the destination.
+ */
 fun DocumentFile.copyFileTo(
   context: Context,
   targetFolder: File,
@@ -2724,10 +2756,12 @@ fun DocumentFile.copyFileTo(
 }
 
 /**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ *
  * @param targetFolderAbsolutePath use [DocumentFileCompat.buildAbsolutePath] to construct the path
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
-@WorkerThread
 fun DocumentFile.copyFileTo(
   context: Context,
   targetFolderAbsolutePath: String,
@@ -2752,9 +2786,14 @@ fun DocumentFile.copyFileTo(
     )
   }
 }
+  .flowOn(Dispatchers.IO)
 
-/** @param fileDescription Use it if you want to change file name and type in the destination. */
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ *
+ * @param fileDescription Use it if you want to change file name and type in the destination.
+ */
 fun DocumentFile.copyFileTo(
   context: Context,
   targetFolder: DocumentFile,
@@ -2794,6 +2833,7 @@ fun DocumentFile.copyFileTo(
   }
   close()
 }
+  .flowOn(Dispatchers.IO)
 
 private fun DocumentFile.copyFileTo(
   context: Context,
@@ -2968,8 +3008,12 @@ private fun DocumentFile.copyFileStream(
   }
 }
 
-/** @param fileDescription Use it if you want to change file name and type in the destination. */
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ *
+ * @param fileDescription Use it if you want to change file name and type in the destination.
+ */
 fun DocumentFile.moveFileTo(
   context: Context,
   targetFolder: File,
@@ -2989,10 +3033,12 @@ fun DocumentFile.moveFileTo(
 }
 
 /**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ *
  * @param targetFolderAbsolutePath use [DocumentFileCompat.buildAbsolutePath] to construct the path
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
-@WorkerThread
 fun DocumentFile.moveFileTo(
   context: Context,
   targetFolderAbsolutePath: String,
@@ -3017,9 +3063,14 @@ fun DocumentFile.moveFileTo(
     )
   }
 }
+  .flowOn(Dispatchers.IO)
 
-/** @param fileDescription Use it if you want to change file name and type in the destination. */
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ *
+ * @param fileDescription Use it if you want to change file name and type in the destination.
+ */
 fun DocumentFile.moveFileTo(
   context: Context,
   targetFolder: DocumentFile,
@@ -3059,6 +3110,7 @@ fun DocumentFile.moveFileTo(
   }
   close()
 }
+  .flowOn(Dispatchers.IO)
 
 private fun DocumentFile.moveFileTo(
   context: Context,
@@ -3265,7 +3317,10 @@ private fun DocumentFile.copyFileToMedia(
   }
 }
 
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ */
 @JvmOverloads
 fun DocumentFile.copyFileToDownloadMedia(
   context: Context,
@@ -3288,8 +3343,12 @@ fun DocumentFile.copyFileToDownloadMedia(
   )
   close()
 }
+  .flowOn(Dispatchers.IO)
 
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ */
 @JvmOverloads
 fun DocumentFile.copyFileToPictureMedia(
   context: Context,
@@ -3312,8 +3371,12 @@ fun DocumentFile.copyFileToPictureMedia(
   )
   close()
 }
+  .flowOn(Dispatchers.IO)
 
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ */
 @JvmOverloads
 fun DocumentFile.moveFileToDownloadMedia(
   context: Context,
@@ -3336,8 +3399,12 @@ fun DocumentFile.moveFileToDownloadMedia(
   )
   close()
 }
+  .flowOn(Dispatchers.IO)
 
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ */
 @JvmOverloads
 fun DocumentFile.moveFileToPictureMedia(
   context: Context,
@@ -3360,9 +3427,14 @@ fun DocumentFile.moveFileToPictureMedia(
   )
   close()
 }
+  .flowOn(Dispatchers.IO)
 
-/** @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload] */
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ *
+ * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
+ */
 fun DocumentFile.moveFileTo(
   context: Context,
   targetFile: MediaFile,
@@ -3372,9 +3444,14 @@ fun DocumentFile.moveFileTo(
   copyFileTo(context, targetFile, true, updateInterval, this, isFileSizeAllowed)
   close()
 }
+  .flowOn(Dispatchers.IO)
 
-/** @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload] */
-@WorkerThread
+/**
+ * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
+ * collected from any thread, including the main thread.
+ *
+ * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
+ */
 fun DocumentFile.copyFileTo(
   context: Context,
   targetFile: MediaFile,
@@ -3384,6 +3461,7 @@ fun DocumentFile.copyFileTo(
   copyFileTo(context, targetFile, false, updateInterval, this, isFileSizeAllowed)
   close()
 }
+  .flowOn(Dispatchers.IO)
 
 private fun DocumentFile.copyFileTo(
   context: Context,
