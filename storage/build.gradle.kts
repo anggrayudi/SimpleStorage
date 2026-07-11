@@ -14,6 +14,7 @@ android {
   defaultConfig {
     minSdk = 26
     consumerProguardFiles("consumer-rules.pro")
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   testOptions { targetSdk = 37 }
@@ -58,6 +59,14 @@ dependencies {
   testImplementation(libs.mockk)
   testImplementation(libs.kotlin.test)
   testImplementation(libs.robolectric)
+
+  androidTestImplementation(libs.junit)
+  androidTestImplementation(libs.androidx.junit)
+  androidTestImplementation(libs.androidx.test.runner)
+  androidTestImplementation(libs.androidx.test.core)
+  androidTestImplementation(libs.androidx.test.rules)
+  androidTestImplementation(libs.coroutines.test)
+  androidTestImplementation(libs.kotlin.test)
 }
 
 afterEvaluate {
