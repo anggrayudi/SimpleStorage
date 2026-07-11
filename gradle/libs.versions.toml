@@ -3,9 +3,6 @@ agp = "8.13.2"
 kotlin = "2.3.10"
 activityCompose = "1.13.0"
 coroutines = "1.11.0"
-mockito = "5.23.0"
-mockitoInline = "5.2.0"
-powermock = "2.0.9"
 
 [libraries]
 androidx-core = { group = "androidx.core", name = "core-ktx", version = "1.18.0" }
@@ -41,12 +38,6 @@ coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-
 mockk = { group = "io.mockk", name = "mockk", version = "1.14.11" }
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 robolectric = { group = "org.robolectric", name = "robolectric", version = "4.16.1" }
-mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
-mockito-inline = { group = "org.mockito", name = "mockito-inline", version.ref = "mockitoInline" }
-mockito-all = { group = "org.mockito", name = "mockito-all", version = "1.10.19" }
-mockito-kotlin = { group = "com.nhaarman.mockitokotlin2", name = "mockito-kotlin", version = "2.2.0" }
-powermock-junit4 = { group = "org.powermock", name = "powermock-module-junit4", version.ref = "powermock" }
-powermock-api-mockito = { group = "org.powermock", name = "powermock-api-mockito2", version.ref = "powermock" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

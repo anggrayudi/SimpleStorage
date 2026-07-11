@@ -58,12 +58,6 @@ dependencies {
   testImplementation(libs.mockk)
   testImplementation(libs.kotlin.test)
   testImplementation(libs.robolectric)
-  testImplementation(libs.mockito.core)
-  testImplementation(libs.mockito.inline)
-  testImplementation(libs.mockito.all)
-  testImplementation(libs.mockito.kotlin)
-  testImplementation(libs.powermock.junit4)
-  testImplementation(libs.powermock.api.mockito)
 }
 
 afterEvaluate {
