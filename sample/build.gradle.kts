@@ -7,7 +7,7 @@ plugins {
 
 android {
   namespace = "com.anggrayudi.storage.sample"
-  compileSdk = 36
+  compileSdk = 37
 
   signingConfigs {
     val debugKeystore =
@@ -31,7 +31,7 @@ android {
   defaultConfig {
     applicationId = "com.anggrayudi.storage.sample"
     minSdk = 23
-    targetSdk = 36
+    targetSdk = 37
     versionCode = 1
     versionName = rootProject.extra["VERSION_NAME"] as String
     multiDexEnabled = true
