@@ -36,6 +36,7 @@ import com.anggrayudi.storage.contract.RequestStorageAccessResult
 import com.anggrayudi.storage.contract.StoragePermissionDeniedException
 import com.anggrayudi.storage.contract.intentToDocumentFiles
 import com.anggrayudi.storage.extension.fromTreeUri
+import com.anggrayudi.storage.extension.getStorageId
 import com.anggrayudi.storage.extension.isExternalStorageDocument
 import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.FileFullPath
@@ -664,6 +665,10 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      * It will remove URI permissions that are no longer writable. Maybe you have access to the URI
      * once, but the access is gone now for some reasons, for example when the SD card is
      * changed/replaced. Each SD card has their own unique storage ID.
+     *
+     * Grants on removable volumes that are merely not mounted right now (e.g. an unplugged USB OTG
+     * drive) are kept: their URIs become valid again when the volume is remounted with the same
+     * filesystem UUID, so releasing them would silently lose access the user already granted.
      */
     @JvmStatic
     @WorkerThread
@@ -678,7 +683,12 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
       val writeFlags =
         Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
       persistedUris.forEach {
-        if (DocumentFileCompat.fromUri(context, it)?.isWritable(context) != true) {
+        // A removable volume that is merely unplugged (e.g. a USB OTG drive) must keep its grant:
+        // the URI becomes valid again when the volume is remounted with the same filesystem UUID.
+        val storageId = it.getStorageId(context)
+        val volumePresent =
+          storageId == PRIMARY || DocumentFileCompat.isMountedVolumeId(context, storageId)
+        if (volumePresent && DocumentFileCompat.fromUri(context, it)?.isWritable(context) != true) {
           resolver.releasePersistableUriPermission(it, writeFlags)
           Log.d(TAG, "Removed invalid URI permission => $it")
         }
