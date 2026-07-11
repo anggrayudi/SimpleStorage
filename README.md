@@ -85,12 +85,12 @@ This class contains composable functions:
 - `rememberLauncherForStorageAccess()`
 - `rememberLauncherForFolderPicker()`
 - `rememberLauncherForFilePicker()`
+- `rememberLauncherForFileCreation()`
 
 If you think these composable functions has too many UI manipulations and don't suit your needs, then
 you can copy the logic from [`SimpleStorageCompose.kt`](storage-compose/src/main/java/com/anggrayudi/storage/compose/SimpleStorageCompose.kt)
 and create your own composable functions. Because you might need custom dialogs, custom strings, etc.
 
-For file creation, you can use `rememberLauncherForActivityResult(FileCreationContract(context))`.
 Check all available contracts in the [`SimpleStorageResultContracts.kt`](storage/src/main/java/com/anggrayudi/storage/contract/SimpleStorageResultContracts.kt)
 
 ## Terminology

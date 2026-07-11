@@ -29,6 +29,8 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.R
 import com.anggrayudi.storage.SimpleStorageHelper.Companion.redirectToSystemSettings
+import com.anggrayudi.storage.contract.FileCreationContract
+import com.anggrayudi.storage.contract.FileCreationResult
 import com.anggrayudi.storage.contract.FilePickerResult
 import com.anggrayudi.storage.contract.FolderPickerResult
 import com.anggrayudi.storage.contract.OpenFilePickerContract
@@ -386,6 +388,66 @@ fun rememberLauncherForFilePicker(
       }
     }
   return filePickerLauncher
+}
+
+class FileCreationLauncher
+internal constructor(
+  private val context: Context,
+  private val mimeType: String,
+  private val fileName: String? = null,
+  private val initialPath: FileFullPath? = null,
+) {
+
+  internal lateinit var launcher:
+    ManagedActivityResultLauncher<FileCreationContract.Options, FileCreationResult>
+
+  fun launch() {
+    try {
+      launcher.launch(FileCreationContract.Options(mimeType, fileName, initialPath))
+    } catch (_: ActivityNotFoundException) {
+      handleMissingActivityHandler(context)
+    }
+  }
+}
+
+@Composable
+fun rememberLauncherForFileCreation(
+  mimeType: String,
+  fileName: String? = null,
+  /** It only takes effect on API 26+ */
+  initialPath: FileFullPath? = null,
+  onFileCreated: (file: DocumentFile) -> Unit,
+): FileCreationLauncher {
+  val activity = LocalActivity.current!!
+  val currentFileCreatedCallback = rememberUpdatedState(onFileCreated)
+  val fileCreationLauncher =
+    remember(mimeType, fileName, initialPath) {
+      FileCreationLauncher(activity, mimeType, fileName, initialPath)
+    }
+
+  val permissionLauncher = rememberLauncherForStoragePermission { granted ->
+    if (granted) {
+      fileCreationLauncher.launch()
+    }
+  }
+
+  fileCreationLauncher.launcher =
+    rememberLauncherForActivityResult(FileCreationContract(activity)) { result ->
+      when (result) {
+        is FileCreationResult.CanceledByUser -> {
+          // no-op, just dismiss the dialog
+        }
+
+        is FileCreationResult.Created -> {
+          currentFileCreatedCallback.value(result.file)
+        }
+
+        is FileCreationResult.StoragePermissionDenied -> {
+          permissionLauncher.launch(Unit)
+        }
+      }
+    }
+  return fileCreationLauncher
 }
 
 class FolderPickerLauncher
