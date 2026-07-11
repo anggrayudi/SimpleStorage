@@ -2,10 +2,16 @@ package com.anggrayudi.storage.access
 
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.os.Build
+import android.os.Environment
+import android.os.storage.StorageManager
+import android.os.storage.StorageVolume
 import androidx.activity.ComponentActivity
+import androidx.annotation.RequiresApi
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import com.anggrayudi.storage.ExperimentalSimpleStorageApi
 import com.anggrayudi.storage.StorageFile
 import com.anggrayudi.storage.StoragePath
 import com.anggrayudi.storage.contract.FileCreationContract
@@ -18,10 +24,14 @@ import com.anggrayudi.storage.contract.RequestStorageAccessContract
 import com.anggrayudi.storage.contract.RequestStorageAccessResult
 import com.anggrayudi.storage.contract.StoragePermissionContract
 import com.anggrayudi.storage.contract.StoragePermissionDeniedException
+import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.FileFullPath
 import com.anggrayudi.storage.toStorageFile
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -254,6 +264,90 @@ class StorageAccessManager(activity: ComponentActivity) {
       }
     return result.isNotEmpty() && result.values.all { it }
   }
+
+  // region Experimental: volume bookmarks
+
+  /**
+   * Re-resolves a [VolumeBookmark] created earlier with [createBookmark].
+   *
+   * Resolution order:
+   * 1. The bookmarked [VolumeBookmark.storageId] still resolves (mainline Android: filesystem
+   *    UUIDs are stable across replugs) → [BookmarkResult.Granted] with no user interaction.
+   * 2. The ID is mounted but the grant is gone, or a mounted volume carries the same
+   *    [VolumeBookmark.volumeLabel] under a different ID → asks the user once via [ensureAccess]
+   *    and returns [BookmarkResult.Granted] with an **updated** bookmark to persist.
+   * 3. Nothing matches → [BookmarkResult.VolumeNotMounted].
+   */
+  @ExperimentalSimpleStorageApi
+  suspend fun resolveBookmark(
+    bookmark: VolumeBookmark,
+    requiresWriteAccess: Boolean = true,
+  ): BookmarkResult {
+    StorageFile.fromPath(appContext, bookmark.toStoragePath(), requiresWriteAccess)?.let {
+      return BookmarkResult.Granted(it, bookmark)
+    }
+
+    val candidateId =
+      when {
+        DocumentFileCompat.isMountedVolumeId(appContext, bookmark.storageId) -> bookmark.storageId
+        bookmark.volumeLabel.isNotBlank() ->
+          storageManager.storageVolumes
+            .firstOrNull {
+              !it.isPrimary && it.getDescription(appContext) == bookmark.volumeLabel
+            }
+            ?.uuid
+        else -> null
+      } ?: return BookmarkResult.VolumeNotMounted
+
+    return when (val access =
+      ensureAccess(StoragePath(candidateId, bookmark.basePath), requiresWriteAccess)) {
+      is AccessResult.Granted ->
+        BookmarkResult.Granted(access.folder, bookmark.copy(storageId = candidateId))
+      is AccessResult.WrongRootSelected -> BookmarkResult.WrongRootSelected(access.grantedRoot)
+      is AccessResult.CanceledByUser -> BookmarkResult.CanceledByUser
+      is AccessResult.PermissionDenied -> BookmarkResult.PermissionDenied
+    }
+  }
+
+  /**
+   * Builds a [VolumeBookmark] for [folder] so it can be re-resolved later with [resolveBookmark].
+   * Returns `null` when the folder has no resolvable [StorageFile.path].
+   */
+  @ExperimentalSimpleStorageApi
+  fun createBookmark(folder: StorageFile): VolumeBookmark? {
+    val path = folder.path ?: return null
+    val label =
+      storageManager.storageVolumes
+        .firstOrNull { it.uuid.equals(path.storageId, ignoreCase = true) }
+        ?.getDescription(appContext)
+        .orEmpty()
+    return VolumeBookmark(label, path.storageId, path.basePath)
+  }
+
+  /**
+   * Emits every [StorageVolume] that reaches the mounted state — e.g. a USB OTG drive being
+   * plugged in — for as long as the flow is collected. Pair it with [resolveBookmark] to reopen
+   * remembered locations automatically.
+   */
+  @ExperimentalSimpleStorageApi
+  @RequiresApi(Build.VERSION_CODES.R)
+  fun volumeMountEvents(): Flow<StorageVolume> = callbackFlow {
+    val callback =
+      object : StorageManager.StorageVolumeCallback() {
+        override fun onStateChanged(volume: StorageVolume) {
+          if (volume.state == Environment.MEDIA_MOUNTED) {
+            trySend(volume)
+          }
+        }
+      }
+    storageManager.registerStorageVolumeCallback(appContext.mainExecutor, callback)
+    awaitClose { storageManager.unregisterStorageVolumeCallback(callback) }
+  }
+
+  private val storageManager: StorageManager
+    get() = appContext.getSystemService(Context.STORAGE_SERVICE) as StorageManager
+
+  // endregion
 
   private fun StoragePath.toFileFullPath(): FileFullPath =
     FileFullPath(appContext, storageId, basePath)

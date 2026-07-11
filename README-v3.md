@@ -174,7 +174,30 @@ class MainActivity : AppCompatActivity() {
 ```
 
 Also available: `pickFiles(allowMultiple, filterMimeTypes)`, `createFile(mimeType, fileName)`,
-`requestStoragePermission()`. There are no built-in dialogs — you own the UX around
+`requestStoragePermission()`.
+
+### Remembering removable volumes (experimental)
+
+Marked `@ExperimentalSimpleStorageApi` — opt in and expect changes. A `VolumeBookmark` remembers a
+location on an SD card or USB OTG drive and re-resolves it after replug:
+
+```kotlin
+// After the user grants access once:
+val bookmark = storageAccess.createBookmark(folder)   // persist it yourself
+
+// Later — no UI when the volume ID is unchanged (mainline Android):
+when (val result = storageAccess.resolveBookmark(bookmark)) {
+  is BookmarkResult.Granted -> use(result.folder)     // persist result.bookmark: ID may have changed
+  BookmarkResult.VolumeNotMounted -> askUserToPlugDriveIn()
+  else -> showError()
+}
+
+// Optional (API 30+): react to drives being plugged in
+storageAccess.volumeMountEvents().collect { volume -> maybeResolveBookmarks() }
+```
+
+If the ID changed (some OEM builds, ChromeOS), a volume with the same label triggers a single SAF
+re-grant and `Granted` carries the updated bookmark. There are no built-in dialogs — you own the UX around
 `WrongRootSelected` retries. If you prefer the old guided dialogs, the deprecated
 `SimpleStorageHelper` still works.
 
