@@ -3,7 +3,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
   id("com.android.library")
   id("org.jetbrains.kotlin.plugin.parcelize")
-  alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.dokka)
   alias(libs.plugins.maven.publish)
