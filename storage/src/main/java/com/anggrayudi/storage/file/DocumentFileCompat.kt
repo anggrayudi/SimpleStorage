@@ -6,6 +6,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.storage.StorageManager
 import android.os.StatFs
 import android.system.Os
 import androidx.annotation.RestrictTo
@@ -65,8 +66,13 @@ object DocumentFileCompat {
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   val FILE_NAME_DUPLICATION_REGEX_WITHOUT_EXTENSION = Regex("(.*?) \\(\\d+\\)")
 
+  /**
+   * Matches known removable-volume ID formats: FAT/exFAT serials like `AAAA-BBBB`, NTFS serials
+   * (16 hex digits), and ChromeOS volume IDs (40 hex digits). Kept as a grouped alternation so it
+   * can be embedded in [SD_CARD_STORAGE_PATH_REGEX].
+   */
   @RestrictTo(RestrictTo.Scope.LIBRARY)
-  val SD_CARD_STORAGE_ID_REGEX = Regex("[A-Z0-9]{4}-[A-Z0-9]{4}")
+  val SD_CARD_STORAGE_ID_REGEX = Regex("(?:[A-Z0-9]{4}-[A-Z0-9]{4}|[A-F0-9]{8,64})")
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   val SD_CARD_STORAGE_PATH_REGEX = Regex("/storage/$SD_CARD_STORAGE_ID_REGEX(.*?)")
@@ -90,14 +96,25 @@ object DocumentFileCompat {
       when {
         fullPath.startsWith(SimpleStorage.externalStoragePath) -> PRIMARY
         fullPath.startsWith(context.dataDirectory.path) -> DATA
-        else ->
-          if (fullPath.matches(SD_CARD_STORAGE_PATH_REGEX)) {
-            fullPath.substringAfter("/storage/", "").substringBefore('/')
-          } else ""
+        // Any first segment under /storage/ is a volume ID: FAT (AAAA-BBBB), NTFS (16 hex),
+        // ChromeOS (40 hex), or whatever the OEM mounted there. Paths outside /storage/ yield "".
+        else -> fullPath.substringAfter("/storage/", "").substringBefore('/')
       }
     } else {
       fullPath.substringBefore(':', "").substringAfterLast('/')
     }
+  }
+
+  /**
+   * `true` when [storageId] belongs to a volume that is currently mounted, regardless of its ID
+   * format. This is the authoritative check; [SD_CARD_STORAGE_ID_REGEX] is only a fallback for
+   * when the volume list cannot be consulted.
+   */
+  @JvmStatic
+  fun isMountedVolumeId(context: Context, storageId: String): Boolean {
+    if (storageId.isEmpty()) return false
+    val sm = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
+    return sm.storageVolumes.any { storageId.equals(it.uuid, ignoreCase = true) }
   }
 
   /**
@@ -116,10 +133,7 @@ object DocumentFileCompat {
         when {
           fullPath.startsWith(externalStoragePath) -> fullPath.substringAfter(externalStoragePath)
           fullPath.startsWith(dataDir) -> fullPath.substringAfter(dataDir)
-          else ->
-            if (fullPath.matches(SD_CARD_STORAGE_PATH_REGEX)) {
-              fullPath.substringAfter("/storage/", "").substringAfter('/', "")
-            } else ""
+          else -> fullPath.substringAfter("/storage/", "").substringAfter('/', "")
         }
       } else {
         fullPath.substringAfter(':', "")
@@ -605,7 +619,9 @@ object DocumentFileCompat {
             storages[PRIMARY]?.add(
               "${Environment.getExternalStorageDirectory()}/$rootFolder".trimEnd('/')
             )
-          } else if (storageId.matches(SD_CARD_STORAGE_ID_REGEX)) {
+          } else if (
+            isMountedVolumeId(context, storageId) || storageId.matches(SD_CARD_STORAGE_ID_REGEX)
+          ) {
             val paths = storages[storageId] ?: HashSet()
             paths.add("/storage/$storageId/$rootFolder".trimEnd('/'))
             storages[storageId] = paths

@@ -4,6 +4,7 @@ package com.anggrayudi.storage.extension
 
 import androidx.annotation.RestrictTo
 import com.anggrayudi.storage.SimpleStorage
+import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.DocumentFileCompat.removeForbiddenCharsFromFilename
 
 /**
@@ -65,7 +66,7 @@ fun String.parent(): String {
   val parentPath = folderTree.take(folderTree.size - 1).joinToString("/", "/")
   return if (
     parentPath.startsWith(SimpleStorage.externalStoragePath) ||
-      parentPath.matches(Regex("/storage/[A-Z0-9]{4}-[A-Z0-9]{4}(.*?)"))
+      parentPath.matches(DocumentFileCompat.SD_CARD_STORAGE_PATH_REGEX)
   ) {
     parentPath
   } else {

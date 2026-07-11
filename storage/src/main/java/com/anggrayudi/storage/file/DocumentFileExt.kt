@@ -291,9 +291,9 @@ fun DocumentFile.inPrimaryStorage(context: Context) =
   isTreeDocumentFile && getStorageId(context) == PRIMARY ||
     isRawFile && uri.path.orEmpty().startsWith(SimpleStorage.externalStoragePath)
 
-/** `true` if this file located in SD Card */
+/** `true` if this file is located on a removable volume (SD card, USB OTG drive, etc.) */
 fun DocumentFile.inSdCardStorage(context: Context) =
-  getStorageId(context).matches(DocumentFileCompat.SD_CARD_STORAGE_ID_REGEX)
+  StorageType.fromStorageId(context, getStorageId(context)) == StorageType.SD_CARD
 
 fun DocumentFile.inDataStorage(context: Context) =
   isRawFile && File(uri.path!!).inDataStorage(context)

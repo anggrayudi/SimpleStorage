@@ -61,18 +61,18 @@ class FileFullPath : Parcelable {
           simplePath = "$storageId:$basePath"
           absolutePath = "$rootPath/$basePath".trimEnd('/')
         }
-        else ->
-          if (fullPath.matches(DocumentFileCompat.SD_CARD_STORAGE_PATH_REGEX)) {
-            storageId = fullPath.substringAfter("/storage/", "").substringBefore('/')
+        else -> {
+          storageId = fullPath.substringAfter("/storage/", "").substringBefore('/')
+          if (storageId.isNotEmpty()) {
             basePath = fullPath.substringAfter("/storage/$storageId", "").trimFileSeparator()
             simplePath = "$storageId:$basePath"
             absolutePath = "/storage/$storageId/$basePath".trimEnd('/')
           } else {
-            storageId = ""
             basePath = ""
             simplePath = ""
             absolutePath = ""
           }
+        }
       }
     } else {
       simplePath = fullPath

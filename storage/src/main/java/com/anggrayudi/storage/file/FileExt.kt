@@ -33,10 +33,7 @@ fun File.getStorageId(context: Context) =
   when {
     path.startsWith(SimpleStorage.externalStoragePath) -> PRIMARY
     path.startsWith(context.dataDirectory.path) -> DATA
-    else ->
-      if (path.matches(DocumentFileCompat.SD_CARD_STORAGE_PATH_REGEX)) {
-        path.substringAfter("/storage/", "").substringBefore('/')
-      } else ""
+    else -> path.substringAfter("/storage/", "").substringBefore('/')
   }
 
 val File.inPrimaryStorage: Boolean
