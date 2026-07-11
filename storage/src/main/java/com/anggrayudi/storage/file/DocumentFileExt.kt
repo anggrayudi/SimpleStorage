@@ -1076,14 +1076,17 @@ fun DocumentFile.search(
       val fileTree = mutableListOf<DocumentFile>()
       val timer =
         if (updateInterval < 1) null
-        else startCoroutineTimer(repeatMillis = updateInterval) { trySend(fileTree) }
+        else
+          startCoroutineTimer(repeatMillis = updateInterval) {
+            trySend(synchronized(fileTree) { fileTree.toList() })
+          }
       if (mimeTypes.isNullOrEmpty() || mimeTypes.any { it == MimeType.UNKNOWN }) {
         walkFileTreeForSearch(fileTree, documentType, emptyArray(), name, regex, this)
       } else {
         walkFileTreeForSearch(fileTree, DocumentFileType.FILE, mimeTypes, name, regex, this)
       }
       timer?.cancel()
-      send(fileTree)
+      send(synchronized(fileTree) { fileTree.toList() })
     }
 
     else -> {
@@ -1108,15 +1111,18 @@ fun DocumentFile.search(
       val fileTree = mutableListOf<DocumentFile>()
       val timer =
         if (updateInterval < 1) null
-        else startCoroutineTimer(repeatMillis = updateInterval) { trySend(fileTree) }
+        else
+          startCoroutineTimer(repeatMillis = updateInterval) {
+            trySend(synchronized(fileTree) { fileTree.toList() })
+          }
       sequence.forEach {
         if (isClosedForSend) {
           return@forEach
         }
-        fileTree.add(it)
+        synchronized(fileTree) { fileTree.add(it) }
       }
       timer?.cancel()
-      send(fileTree)
+      send(synchronized(fileTree) { fileTree.toList() })
     }
   }
   close()
@@ -1135,10 +1141,10 @@ private fun DocumentFile.walkFileTreeForSearch(
   nameFilter: String,
   regex: Regex?,
   scope: ProducerScope<List<DocumentFile>>,
-): List<DocumentFile> {
+) {
   for (file in listFiles()) {
     if (scope.isClosedForSend) break
-    if (!canRead()) continue
+    if (!file.canRead()) continue
 
     if (file.isFile) {
       if (documentType == DocumentFileType.FOLDER) {
@@ -1150,7 +1156,7 @@ private fun DocumentFile.walkFileTreeForSearch(
           (regex == null || regex.matches(filename)) &&
           file.matchesMimeTypes(mimeTypes)
       ) {
-        fileTree.add(file)
+        synchronized(fileTree) { fileTree.add(file) }
       }
     } else {
       if (documentType != DocumentFileType.FILE) {
@@ -1159,15 +1165,12 @@ private fun DocumentFile.walkFileTreeForSearch(
           (nameFilter.isEmpty() || folderName == nameFilter) &&
             (regex == null || regex.matches(folderName))
         ) {
-          fileTree.add(file)
+          synchronized(fileTree) { fileTree.add(file) }
         }
       }
-      fileTree.addAll(
-        file.walkFileTreeForSearch(fileTree, documentType, mimeTypes, nameFilter, regex, scope)
-      )
+      file.walkFileTreeForSearch(fileTree, documentType, mimeTypes, nameFilter, regex, scope)
     }
   }
-  return fileTree
 }
 
 /**
