@@ -4,7 +4,6 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
-  alias(libs.plugins.ksp)
 }
 
 android {
@@ -32,7 +31,7 @@ android {
 
   defaultConfig {
     applicationId = "com.anggrayudi.storage.sample"
-    minSdk = 21
+    minSdk = 23
     targetSdk = 36
     versionCode = 1
     versionName = rootProject.extra["VERSION_NAME"] as String
@@ -73,12 +72,6 @@ android {
         // Check for updates every build
         resolutionStrategy.cacheChangingModulesFor(0, TimeUnit.SECONDS)
       }
-    }
-  }
-
-  applicationVariants.forEach { variant ->
-    variant.sourceSets.forEach {
-      it.javaDirectories += files("build/generated/ksp/${variant.name}/kotlin")
     }
   }
 }
