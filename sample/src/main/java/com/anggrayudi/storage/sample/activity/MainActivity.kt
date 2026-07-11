@@ -48,6 +48,7 @@ import com.anggrayudi.storage.result.MultipleFilesResult
 import com.anggrayudi.storage.result.SingleFileResult
 import com.anggrayudi.storage.result.SingleFolderResult
 import com.anggrayudi.storage.sample.R
+import com.anggrayudi.storage.sample.applyEdgeToEdgeContentInsets
 import com.anggrayudi.storage.sample.StorageInfoAdapter
 import com.anggrayudi.storage.sample.compose.StorageComposeActivity
 import com.anggrayudi.storage.sample.databinding.ActivityMainBinding
@@ -97,6 +98,7 @@ class MainActivity : AppCompatActivity() {
     super.onCreate(savedInstanceState)
     binding = ActivityMainBinding.inflate(layoutInflater)
     setContentView(binding.root)
+    applyEdgeToEdgeContentInsets()
 
     binding.recyclerView.adapter = StorageInfoAdapter(applicationContext, ioScope, uiScope)
 

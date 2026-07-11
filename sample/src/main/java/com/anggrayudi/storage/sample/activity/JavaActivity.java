@@ -19,6 +19,7 @@ import com.anggrayudi.storage.permission.ActivityPermissionRequest;
 import com.anggrayudi.storage.permission.PermissionCallback;
 import com.anggrayudi.storage.permission.PermissionReport;
 import com.anggrayudi.storage.permission.PermissionResult;
+import com.anggrayudi.storage.sample.ActivityUtils;
 import com.anggrayudi.storage.sample.R;
 
 import org.jetbrains.annotations.NotNull;
@@ -54,6 +55,7 @@ public class JavaActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ActivityUtils.applyEdgeToEdgeContentInsets(this);
 
         setupSimpleStorage(savedInstanceState);
         setupButtonActions();
