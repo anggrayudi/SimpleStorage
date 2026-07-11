@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+          Host activity for StorageAccessManager tests (V3_TEST_CASES.md Group 9). The manager
+          registers ActivityResult launchers, which must happen before the activity is STARTED,
+          so tests launch this activity via ActivityScenario and the manager is constructed in
+          onCreate.
+        -->
+        <activity
+            android:name="com.anggrayudi.storage.BookmarkTestActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+    </application>
+</manifest>

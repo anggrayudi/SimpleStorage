@@ -12,6 +12,7 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 androidx-test-runner = { group = "androidx.test", name = "runner", version = "1.7.0" }
 androidx-test-core = { group = "androidx.test", name = "core", version = "1.7.0" }
 androidx-test-rules = { group = "androidx.test", name = "rules", version = "1.7.0" }
+androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version = "2.3.0" }
 androidx-lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version = "2.10.0" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version = "1.7.1" }
 androidx-activity = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityCompose" }

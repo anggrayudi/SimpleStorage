@@ -67,6 +67,7 @@ dependencies {
   androidTestImplementation(libs.androidx.test.rules)
   androidTestImplementation(libs.coroutines.test)
   androidTestImplementation(libs.kotlin.test)
+  androidTestImplementation(libs.androidx.test.uiautomator)
 }
 
 afterEvaluate {
