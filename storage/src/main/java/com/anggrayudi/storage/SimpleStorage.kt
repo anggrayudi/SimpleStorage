@@ -48,6 +48,10 @@ import java.io.File
  * @author Anggrayudi Hardiannico A. (anggrayudi.hardiannico@dana.id)
  * @version SimpleStorage, v 0.0.1 09/08/20 19.08 by Anggrayudi Hardiannico A.
  */
+@Deprecated(
+  "Superseded in v3 by StorageAccessManager and the contracts in com.anggrayudi.storage.contract. This class still relies on startActivityForResult and request codes. See MIGRATION.md.",
+  ReplaceWith("com.anggrayudi.storage.access.StorageAccessManager"),
+)
 class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
   // For unknown Activity type
