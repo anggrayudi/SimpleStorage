@@ -10,18 +10,18 @@ import com.anggrayudi.storage.file.StorageType
  * @version StoragePermissionCallback, v 0.0.1 10/08/20 01.32 by Anggrayudi Hardiannico A.
  */
 @Deprecated("Superseded in v3 by StorageAccessManager.ensureAccess(), which returns an AccessResult instead of using callbacks. See MIGRATION.md.")
-interface StorageAccessCallback {
+public interface StorageAccessCallback {
 
-  fun onCanceledByUser(requestCode: Int) {
+  public fun onCanceledByUser(requestCode: Int) {
     // default implementation
   }
 
-  fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
+  public fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
     // default implementation
   }
 
   /** Triggered on Android 10 and lower. */
-  fun onRootPathNotSelected(
+  public fun onRootPathNotSelected(
     requestCode: Int,
     rootPath: String,
     uri: Uri,
@@ -30,7 +30,7 @@ interface StorageAccessCallback {
   )
 
   /** Triggered on Android 11 and higher. */
-  fun onExpectedStorageNotSelected(
+  public fun onExpectedStorageNotSelected(
     requestCode: Int,
     selectedFolder: DocumentFile,
     selectedStorageType: StorageType,
@@ -39,7 +39,7 @@ interface StorageAccessCallback {
   )
 
   /** Triggered on Android 9 and lower. */
-  fun onStoragePermissionDenied(requestCode: Int)
+  public fun onStoragePermissionDenied(requestCode: Int)
 
-  fun onRootPathPermissionGranted(requestCode: Int, root: DocumentFile)
+  public fun onRootPathPermissionGranted(requestCode: Int, root: DocumentFile)
 }

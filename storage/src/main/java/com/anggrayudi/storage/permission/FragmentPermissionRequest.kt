@@ -12,7 +12,7 @@ import androidx.fragment.app.Fragment
  *
  * @author Anggrayudi H
  */
-class FragmentPermissionRequest
+public class FragmentPermissionRequest
 private constructor(
   private val fragment: Fragment,
   private val permissions: Array<String>,
@@ -85,7 +85,7 @@ private constructor(
     )
   }
 
-  class Builder(private val fragment: Fragment) {
+  public class Builder(private val fragment: Fragment) {
 
     private var permissions = emptySet<String>()
 
@@ -93,17 +93,17 @@ private constructor(
 
     private var options: ActivityOptionsCompat? = null
 
-    fun withPermissions(vararg permissions: String) = apply {
+    public fun withPermissions(vararg permissions: String): Builder = apply {
       this.permissions = permissions.toSet()
     }
 
-    fun withCallback(callback: PermissionCallback) = apply { this.callback = callback }
+    public fun withCallback(callback: PermissionCallback): Builder = apply { this.callback = callback }
 
-    fun withActivityOptions(options: ActivityOptionsCompat?) = apply { this.options = options }
+    public fun withActivityOptions(options: ActivityOptionsCompat?): Builder = apply { this.options = options }
 
-    fun build() =
+    public fun build(): FragmentPermissionRequest =
       FragmentPermissionRequest(fragment, permissions.toTypedArray(), options, callback!!)
 
-    fun check() = build().check()
+    public fun check(): Unit = build().check()
   }
 }

@@ -13,7 +13,7 @@ import java.io.File
  *
  * @author Anggrayudi H
  */
-enum class MediaType(val readUri: Uri?, val writeUri: Uri?) {
+public enum class MediaType(public val readUri: Uri?, public val writeUri: Uri?) {
   IMAGE(
     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
     MediaStore.Images.Media.getContentUri(MediaStoreCompat.volumeName),
@@ -34,7 +34,7 @@ enum class MediaType(val readUri: Uri?, val writeUri: Uri?) {
   );
 
   /** Get all directories associated with this media type. */
-  val directories: List<File>
+  public val directories: List<File>
     get() =
       when (this) {
         IMAGE ->
@@ -52,7 +52,7 @@ enum class MediaType(val readUri: Uri?, val writeUri: Uri?) {
         DOWNLOADS -> listOf(PublicDirectory.DOWNLOADS.file)
       }
 
-  val mimeType: String
+  public val mimeType: String
     get() =
       when (this) {
         IMAGE -> MimeType.IMAGE

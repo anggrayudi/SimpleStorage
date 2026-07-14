@@ -18,33 +18,33 @@ import java.io.OutputStream
  * @author Anggrayudi Hardiannico A. (anggrayudi.hardiannico@dana.id)
  * @version FileWrapper, 09/07/22 18.41
  */
-interface FileWrapper {
+public interface FileWrapper {
 
-  val uri: Uri
+  public val uri: Uri
 
-  val name: String?
+  public val name: String?
 
-  val baseName: String
+  public val baseName: String
 
-  val extension: String
+  public val extension: String
 
-  val mimeType: String?
+  public val mimeType: String?
 
-  fun isEmpty(context: Context): Boolean
+  public fun isEmpty(context: Context): Boolean
 
-  fun getAbsolutePath(context: Context): String
+  public fun getAbsolutePath(context: Context): String
 
-  fun getBasePath(context: Context): String
+  public fun getBasePath(context: Context): String
 
-  fun getRelativePath(context: Context): String
+  public fun getRelativePath(context: Context): String
 
-  @WorkerThread fun openOutputStream(context: Context, append: Boolean = true): OutputStream?
+  @WorkerThread public fun openOutputStream(context: Context, append: Boolean = true): OutputStream?
 
-  @WorkerThread fun openInputStream(context: Context): InputStream?
+  @WorkerThread public fun openInputStream(context: Context): InputStream?
 
-  fun delete(): Boolean
+  public fun delete(): Boolean
 
-  class Media(val mediaFile: MediaFile) : FileWrapper {
+  public class Media(public val mediaFile: MediaFile) : FileWrapper {
 
     override val uri: Uri
       get() = mediaFile.uri
@@ -77,7 +77,7 @@ interface FileWrapper {
     override fun delete(): Boolean = mediaFile.delete()
   }
 
-  class Document(val documentFile: DocumentFile) : FileWrapper {
+  public class Document(public val documentFile: DocumentFile) : FileWrapper {
 
     override val uri: Uri
       get() = documentFile.uri

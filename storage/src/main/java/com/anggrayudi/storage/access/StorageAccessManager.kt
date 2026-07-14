@@ -41,21 +41,21 @@ import kotlinx.coroutines.sync.withLock
  *
  * @author Anggrayudi H
  */
-sealed interface AccessResult {
+public sealed interface AccessResult {
   /** URI permission for the requested path is held; [folder] is ready for read/write. */
-  data class Granted(val folder: StorageFile) : AccessResult
+  public data class Granted(val folder: StorageFile) : AccessResult
 
   /**
    * The user granted access to [grantedRoot] (possibly `null` when nothing was resolvable), but it
    * does not cover the requested path. Callers usually explain and call
    * [StorageAccessManager.ensureAccess] again.
    */
-  data class WrongRootSelected(val grantedRoot: StorageFile?) : AccessResult
+  public data class WrongRootSelected(val grantedRoot: StorageFile?) : AccessResult
 
-  data object CanceledByUser : AccessResult
+  public data object CanceledByUser : AccessResult
 
   /** Runtime storage permission was denied (only possible on API 26–29). */
-  data object PermissionDenied : AccessResult
+  public data object PermissionDenied : AccessResult
 }
 
 /**
@@ -85,7 +85,7 @@ sealed interface AccessResult {
  *
  * @author Anggrayudi H
  */
-class StorageAccessManager(activity: ComponentActivity) {
+public class StorageAccessManager(activity: ComponentActivity) {
 
   private val appContext: Context = activity.applicationContext
   private val mutex = Mutex()
@@ -139,7 +139,7 @@ class StorageAccessManager(activity: ComponentActivity) {
    * Makes sure this app holds read/write URI permission for [path], asking the user through SAF
    * when it does not. Handles the runtime-permission dance on API 26–29 automatically.
    */
-  suspend fun ensureAccess(
+  public suspend fun ensureAccess(
     path: StoragePath,
     requiresWriteAccess: Boolean = true,
   ): AccessResult =
@@ -194,7 +194,7 @@ class StorageAccessManager(activity: ComponentActivity) {
   }
 
   /** Opens the SAF folder picker and suspends until the user answers. */
-  suspend fun pickFolder(initialPath: StoragePath? = null): FolderPickerResult =
+  public suspend fun pickFolder(initialPath: StoragePath? = null): FolderPickerResult =
     mutex.withLock {
       val options = OpenFolderPickerContract.Options(initialPath?.toFileFullPath())
       try {
@@ -205,7 +205,7 @@ class StorageAccessManager(activity: ComponentActivity) {
     }
 
   /** Opens the SAF file picker and suspends until the user answers. */
-  suspend fun pickFiles(
+  public suspend fun pickFiles(
     allowMultiple: Boolean = false,
     filterMimeTypes: Set<String> = emptySet(),
     initialPath: StoragePath? = null,
@@ -221,7 +221,7 @@ class StorageAccessManager(activity: ComponentActivity) {
     }
 
   /** Lets the user place a new file via SAF and suspends until the user answers. */
-  suspend fun createFile(
+  public suspend fun createFile(
     mimeType: String,
     fileName: String? = null,
     initialPath: StoragePath? = null,
@@ -239,7 +239,7 @@ class StorageAccessManager(activity: ComponentActivity) {
    * Opens the system Photo Picker ([ActivityResultContracts.PickVisualMedia]) — no permission and
    * no SAF grant needed. Returns the picked media as [StorageFile]s, empty when canceled.
    */
-  suspend fun pickMedia(
+  public suspend fun pickMedia(
     type: ActivityResultContracts.PickVisualMedia.VisualMediaType =
       ActivityResultContracts.PickVisualMedia.ImageAndVideo
   ): List<StorageFile> =
@@ -255,7 +255,7 @@ class StorageAccessManager(activity: ComponentActivity) {
     }
 
   /** Requests READ/WRITE_EXTERNAL_STORAGE. Only meaningful on API 26–29; `true` elsewhere. */
-  suspend fun requestStoragePermission(): Boolean {
+  public suspend fun requestStoragePermission(): Boolean {
     val result =
       try {
         awaitResult<Unit, Map<String, Boolean>>(permissionLauncher, Unit) { permissionContinuation = it }
@@ -279,7 +279,7 @@ class StorageAccessManager(activity: ComponentActivity) {
    * 3. Nothing matches → [BookmarkResult.VolumeNotMounted].
    */
   @ExperimentalSimpleStorageApi
-  suspend fun resolveBookmark(
+  public suspend fun resolveBookmark(
     bookmark: VolumeBookmark,
     requiresWriteAccess: Boolean = true,
   ): BookmarkResult {
@@ -314,7 +314,7 @@ class StorageAccessManager(activity: ComponentActivity) {
    * Returns `null` when the folder has no resolvable [StorageFile.path].
    */
   @ExperimentalSimpleStorageApi
-  fun createBookmark(folder: StorageFile): VolumeBookmark? {
+  public fun createBookmark(folder: StorageFile): VolumeBookmark? {
     val path = folder.path ?: return null
     val label =
       storageManager.storageVolumes
@@ -331,7 +331,7 @@ class StorageAccessManager(activity: ComponentActivity) {
    */
   @ExperimentalSimpleStorageApi
   @RequiresApi(Build.VERSION_CODES.R)
-  fun volumeMountEvents(): Flow<StorageVolume> = callbackFlow {
+  public fun volumeMountEvents(): Flow<StorageVolume> = callbackFlow {
     val callback =
       object : StorageManager.StorageVolumeCallback() {
         override fun onStateChanged(volume: StorageVolume) {

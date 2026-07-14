@@ -9,7 +9,7 @@ import java.util.Date
  *
  * @author Anggrayudi H
  */
-data class FileProperties(
+public data class FileProperties(
   var name: String = "",
   var location: String = "",
   var size: Long = 0,
@@ -21,13 +21,13 @@ data class FileProperties(
   var isVirtual: Boolean = false,
   var lastModified: Date? = null,
 ) {
-  fun formattedSize(context: Context): String = Formatter.formatFileSize(context, size)
+  public fun formattedSize(context: Context): String = Formatter.formatFileSize(context, size)
 }
 
-sealed class FilePropertiesResult {
-  data class Updating(val properties: FileProperties) : FilePropertiesResult()
+public sealed class FilePropertiesResult {
+  public data class Updating(val properties: FileProperties) : FilePropertiesResult()
 
-  data class Completed(val properties: FileProperties) : FilePropertiesResult()
+  public data class Completed(val properties: FileProperties) : FilePropertiesResult()
 
-  data object Error : FilePropertiesResult()
+  public data object Error : FilePropertiesResult()
 }

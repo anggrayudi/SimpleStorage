@@ -19,4 +19,4 @@ package com.anggrayudi.storage
   AnnotationTarget.PROPERTY,
   AnnotationTarget.CONSTRUCTOR,
 )
-annotation class ExperimentalSimpleStorageApi
+public annotation class ExperimentalSimpleStorageApi

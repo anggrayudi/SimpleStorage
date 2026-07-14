@@ -5,8 +5,8 @@ package com.anggrayudi.storage.permission
  *
  * @author Anggrayudi H
  */
-class PermissionResult(val permissions: List<PermissionReport>) {
+public class PermissionResult(public val permissions: List<PermissionReport>) {
 
-  val areAllPermissionsGranted: Boolean
+  public val areAllPermissionsGranted: Boolean
     get() = permissions.all { it.isGranted }
 }

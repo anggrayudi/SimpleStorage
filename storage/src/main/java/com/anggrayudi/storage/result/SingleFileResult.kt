@@ -8,33 +8,33 @@ import com.anggrayudi.storage.media.MediaFile
  *
  * @author Anggrayudi Hardiannico A.
  */
-sealed class SingleFileResult {
-  data object Validating : SingleFileResult()
+public sealed class SingleFileResult {
+  public data object Validating : SingleFileResult()
 
-  data object Preparing : SingleFileResult()
+  public data object Preparing : SingleFileResult()
 
-  data object CountingFiles : SingleFileResult()
+  public data object CountingFiles : SingleFileResult()
 
-  data object DeletingConflictedFile : SingleFileResult()
+  public data object DeletingConflictedFile : SingleFileResult()
 
-  data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) :
+  public data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) :
     SingleFileResult()
 
-  data class InProgress(val progress: Float, val bytesMoved: Long, val writeSpeed: Int) :
+  public data class InProgress(val progress: Float, val bytesMoved: Long, val writeSpeed: Int) :
     SingleFileResult()
 
   /** @param result can be [DocumentFile] or [MediaFile] */
-  data class Completed(val result: Any) : SingleFileResult()
+  public data class Completed(val result: Any) : SingleFileResult()
 
   /** @param cause the exception that triggered this error, if any */
-  data class Error(
+  public data class Error(
     val errorCode: SingleFileErrorCode,
     val message: String? = null,
     val cause: Throwable? = null,
   ) : SingleFileResult()
 }
 
-enum class SingleFileErrorCode {
+public enum class SingleFileErrorCode {
   STORAGE_PERMISSION_DENIED,
   CANNOT_CREATE_FILE_IN_TARGET,
   SOURCE_FILE_NOT_FOUND,

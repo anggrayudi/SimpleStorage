@@ -7,12 +7,12 @@ import com.anggrayudi.storage.StorageFile
  *
  * @author Anggrayudi H
  */
-sealed interface Conflict {
+public sealed interface Conflict {
   /** What already exists in the destination. */
-  val target: StorageFile
+  public val target: StorageFile
 
   /** A file with the same name already exists in the destination folder. */
-  data class TargetFile(override val target: StorageFile) : Conflict
+  public data class TargetFile(override val target: StorageFile) : Conflict
 
   /**
    * A folder with the same name already exists in the destination.
@@ -20,10 +20,10 @@ sealed interface Conflict {
    * @param canMerge `false` when the destination cannot be merged, e.g. a file occupies the
    *   folder's name; [ConflictResolution.MERGE] is then treated as [ConflictResolution.CREATE_NEW]
    */
-  data class TargetFolder(override val target: StorageFile, val canMerge: Boolean) : Conflict
+  public data class TargetFolder(override val target: StorageFile, val canMerge: Boolean) : Conflict
 }
 
-enum class ConflictResolution {
+public enum class ConflictResolution {
   /** Delete the target, then transfer. */
   REPLACE,
 
@@ -46,6 +46,6 @@ enum class ConflictResolution {
  * }
  * ```
  */
-fun interface ConflictResolver {
-  suspend fun resolve(conflict: Conflict): ConflictResolution
+public fun interface ConflictResolver {
+  public suspend fun resolve(conflict: Conflict): ConflictResolution
 }

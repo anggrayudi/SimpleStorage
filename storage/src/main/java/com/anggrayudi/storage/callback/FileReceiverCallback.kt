@@ -8,9 +8,9 @@ import androidx.documentfile.provider.DocumentFile
  *
  * @author Anggrayudi H
  */
-interface FileReceiverCallback {
+public interface FileReceiverCallback {
 
-  fun onFileReceived(files: List<DocumentFile>)
+  public fun onFileReceived(files: List<DocumentFile>)
 
-  fun onNonFileReceived(intent: Intent)
+  public fun onNonFileReceived(intent: Intent)
 }

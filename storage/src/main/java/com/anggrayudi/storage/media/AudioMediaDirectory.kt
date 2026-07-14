@@ -7,7 +7,7 @@ import android.os.Environment
  *
  * @author Anggrayudi H
  */
-enum class AudioMediaDirectory(val folderName: String) {
+public enum class AudioMediaDirectory(public val folderName: String) {
   MUSIC(Environment.DIRECTORY_MUSIC),
   PODCASTS(Environment.DIRECTORY_PODCASTS),
   RINGTONES(Environment.DIRECTORY_RINGTONES),

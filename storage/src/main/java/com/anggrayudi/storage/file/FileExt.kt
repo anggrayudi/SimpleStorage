@@ -29,29 +29,29 @@ import java.io.IOException
  * ID of this storage. For external storage, it will return [PRIMARY], otherwise it is a SD Card and
  * will return integers like `6881-2249`.
  */
-fun File.getStorageId(context: Context) =
+public fun File.getStorageId(context: Context): String =
   when {
     path.startsWith(SimpleStorage.externalStoragePath) -> PRIMARY
     path.startsWith(context.dataDirectory.path) -> DATA
     else -> path.substringAfter("/storage/", "").substringBefore('/')
   }
 
-val File.inPrimaryStorage: Boolean
+public val File.inPrimaryStorage: Boolean
   get() = path.startsWith(SimpleStorage.externalStoragePath)
 
-fun File.inDataStorage(context: Context) = path.startsWith(context.dataDirectory.path)
+public fun File.inDataStorage(context: Context): Boolean = path.startsWith(context.dataDirectory.path)
 
-fun File.inSdCardStorage(context: Context) =
+public fun File.inSdCardStorage(context: Context): Boolean =
   getStorageId(context).let { it != PRIMARY && it != DATA && path.startsWith("/storage/$it") }
 
-fun File.inSameMountPointWith(context: Context, file: File): Boolean {
+public fun File.inSameMountPointWith(context: Context, file: File): Boolean {
   val storageId1 = getStorageId(context)
   val storageId2 = file.getStorageId(context)
   return storageId1 == storageId2 ||
     (storageId1 == PRIMARY || storageId1 == DATA) && (storageId2 == PRIMARY || storageId2 == DATA)
 }
 
-fun File.getStorageType(context: Context) =
+public fun File.getStorageType(context: Context): StorageType =
   when {
     inPrimaryStorage -> StorageType.EXTERNAL
     inDataStorage(context) -> StorageType.DATA
@@ -60,16 +60,16 @@ fun File.getStorageType(context: Context) =
   }
 
 /** @param path single file name or file path */
-fun File.child(path: String) = File(this, path)
+public fun File.child(path: String): File = File(this, path)
 
 /**
  * @see [Context.getDataDir]
  * @see [Context.getFilesDir]
  */
-val Context.dataDirectory: File
+public val Context.dataDirectory: File
   get() = dataDir
 
-fun File.getBasePath(context: Context): String {
+public fun File.getBasePath(context: Context): String {
   val externalStoragePath = SimpleStorage.externalStoragePath
   if (path.startsWith(externalStoragePath)) {
     return path.substringAfter(externalStoragePath, "").trimFileSeparator()
@@ -82,7 +82,7 @@ fun File.getBasePath(context: Context): String {
   return path.substringAfter("/storage/$storageId", "").trimFileSeparator()
 }
 
-fun File.getRootPath(context: Context): String {
+public fun File.getRootPath(context: Context): String {
   val storageId = getStorageId(context)
   return when {
     storageId == PRIMARY || storageId == HOME -> SimpleStorage.externalStoragePath
@@ -92,7 +92,7 @@ fun File.getRootPath(context: Context): String {
   }
 }
 
-fun File.getSimplePath(context: Context) =
+public fun File.getSimplePath(context: Context): String =
   "${getStorageId(context)}:${getBasePath(context)}".removePrefix(":")
 
 /**
@@ -100,42 +100,42 @@ fun File.getSimplePath(context: Context) =
  * * `null` if it is a directory or the file does not exist
  * * [MimeType.UNKNOWN] if the file exists but the mime type is not found
  */
-val File.mimeType: String?
+public val File.mimeType: String?
   get() = if (isFile) MimeType.getMimeTypeFromExtension(extension) else null
 
 @JvmOverloads
-fun File.getRootRawFile(context: Context, requiresWriteAccess: Boolean = false) =
+public fun File.getRootRawFile(context: Context, requiresWriteAccess: Boolean = false): File? =
   getRootPath(context).let {
     if (it.isEmpty()) null else File(it).run { takeIfWritable(context, requiresWriteAccess) }
   }
 
-fun File.isReadOnly(context: Context) = canRead() && !isWritable(context)
+public fun File.isReadOnly(context: Context): Boolean = canRead() && !isWritable(context)
 
-fun File.canModify(context: Context) = canRead() && isWritable(context)
+public fun File.canModify(context: Context): Boolean = canRead() && isWritable(context)
 
-val File.isEmpty: Boolean
+public val File.isEmpty: Boolean
   get() = isFile && length() == 0L || isDirectory && list().isNullOrEmpty()
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun File.shouldWritable(context: Context, requiresWriteAccess: Boolean) =
+public fun File.shouldWritable(context: Context, requiresWriteAccess: Boolean): Boolean =
   requiresWriteAccess && isWritable(context) || !requiresWriteAccess
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun File.takeIfWritable(context: Context, requiresWriteAccess: Boolean) = takeIf {
+public fun File.takeIfWritable(context: Context, requiresWriteAccess: Boolean): File? = takeIf {
   it.canRead() && it.shouldWritable(context, requiresWriteAccess)
 }
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun File.checkRequirements(
+public fun File.checkRequirements(
   context: Context,
   requiresWriteAccess: Boolean,
   considerRawFile: Boolean,
-) =
+): Boolean =
   canRead() &&
     shouldWritable(context, requiresWriteAccess) &&
     (considerRawFile || isExternalStorageManager(context))
 
-fun File.createNewFileIfPossible(): Boolean =
+public fun File.createNewFileIfPossible(): Boolean =
   try {
     isFile || createNewFile()
   } catch (_: IOException) {
@@ -146,13 +146,13 @@ fun File.createNewFileIfPossible(): Boolean =
  * Use it, because [File.canWrite] is unreliable on Android 10. Read
  * [this issue](https://github.com/anggrayudi/SimpleStorage/issues/24#issuecomment-830000378)
  */
-fun File.isWritable(context: Context) = canWrite() && (isFile || isExternalStorageManager(context))
+public fun File.isWritable(context: Context): Boolean = canWrite() && (isFile || isExternalStorageManager(context))
 
 /**
  * @return `true` if you have full disk access
  * @see Environment.isExternalStorageManager
  */
-fun File.isExternalStorageManager(context: Context) =
+public fun File.isExternalStorageManager(context: Context): Boolean =
   Build.VERSION.SDK_INT > Build.VERSION_CODES.Q && Environment.isExternalStorageManager(this) ||
     Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
       path.startsWith(SimpleStorage.externalStoragePath) &&
@@ -163,7 +163,7 @@ fun File.isExternalStorageManager(context: Context) =
  * These directories do not require storage permissions. They are always writable with full disk
  * access.
  */
-val Context.writableDirs: Set<File>
+public val Context.writableDirs: Set<File>
   get() {
     val dirs = mutableSetOf(dataDirectory)
     dirs.addAll(obbDirs.filterNotNull())
@@ -179,7 +179,7 @@ val Context.writableDirs: Set<File>
  */
 @WorkerThread
 @JvmOverloads
-fun File.makeFile(
+public fun File.makeFile(
   context: Context,
   name: String,
   mimeType: String? = MimeType.UNKNOWN,
@@ -240,7 +240,7 @@ fun File.makeFile(
 /** @param name can input `MyFolder` or `MyFolder/SubFolder` */
 @WorkerThread
 @JvmOverloads
-fun File.makeFolder(
+public fun File.makeFolder(
   context: Context,
   name: String,
   mode: CreateMode = CreateMode.CREATE_NEW,
@@ -271,10 +271,10 @@ fun File.makeFolder(
   return if (folder.isDirectory) folder else null
 }
 
-fun File.toDocumentFile(context: Context) =
+public fun File.toDocumentFile(context: Context): DocumentFile? =
   if (canRead()) DocumentFileCompat.fromFile(context, this) else null
 
-fun File.deleteEmptyFolders(context: Context): Boolean {
+public fun File.deleteEmptyFolders(context: Context): Boolean {
   return if (isDirectory && isWritable(context)) {
     walkFileTreeAndDeleteEmptyFolders().reversed().forEach { it.delete() }
     true
@@ -297,7 +297,7 @@ private fun File.walkFileTreeAndDeleteEmptyFolders(): List<File> {
  * @see DocumentFile.deleteRecursively
  */
 @JvmOverloads
-fun File.forceDelete(childrenOnly: Boolean = false): Boolean {
+public fun File.forceDelete(childrenOnly: Boolean = false): Boolean {
   return if (isDirectory) {
     val success = deleteRecursively()
     if (childrenOnly) {
@@ -311,12 +311,12 @@ fun File.forceDelete(childrenOnly: Boolean = false): Boolean {
   }
 }
 
-fun File.recreateFile(): Boolean {
+public fun File.recreateFile(): Boolean {
   forceDelete()
   return tryCreateNewFile()
 }
 
-fun File.tryCreateNewFile() =
+public fun File.tryCreateNewFile(): Boolean =
   try {
     createNewFile()
   } catch (_: IOException) {
@@ -327,7 +327,7 @@ fun File.tryCreateNewFile() =
  * Avoid duplicate file name. It doesn't work if you are outside [Context.getExternalFilesDir] and
  * don't have full disk access for Android 10+.
  */
-fun File.autoIncrementFileName(filename: String): String {
+public fun File.autoIncrementFileName(filename: String): String {
   return if (child(filename).exists()) {
     val baseName = MimeType.getBaseFileName(filename)
     val ext = MimeType.getExtensionFromFileName(filename)
@@ -349,7 +349,7 @@ fun File.autoIncrementFileName(filename: String): String {
 }
 
 @JvmOverloads
-fun File.moveTo(
+public fun File.moveTo(
   context: Context,
   targetFolder: String,
   newFileNameInTarget: String? = null,
@@ -364,7 +364,7 @@ fun File.moveTo(
  *   `null`
  */
 @JvmOverloads
-fun File.moveTo(
+public fun File.moveTo(
   context: Context,
   targetFolder: File,
   newFileNameInTarget: String? = null,

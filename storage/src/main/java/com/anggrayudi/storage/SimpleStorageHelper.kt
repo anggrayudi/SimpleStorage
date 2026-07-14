@@ -39,9 +39,9 @@ import com.anggrayudi.storage.permission.PermissionResult
   "Superseded in v3 by StorageAccessManager, which is contracts-based, dialog-free, and exposes suspend functions instead of callbacks. See MIGRATION.md.",
   ReplaceWith("com.anggrayudi.storage.access.StorageAccessManager"),
 )
-class SimpleStorageHelper {
+public class SimpleStorageHelper {
 
-  val storage: SimpleStorage
+  public val storage: SimpleStorage
   private val permissionRequest: PermissionRequest
 
   private var originalRequestCode = 0
@@ -51,7 +51,7 @@ class SimpleStorageHelper {
 
   // For unknown Activity type
   @JvmOverloads
-  constructor(activity: Activity, requestCodeForPermissionDialog: Int, savedState: Bundle? = null) {
+  public constructor(activity: Activity, requestCodeForPermissionDialog: Int, savedState: Bundle? = null) {
     storage = SimpleStorage(activity)
     init(savedState)
     permissionRequest =
@@ -62,7 +62,7 @@ class SimpleStorageHelper {
   }
 
   @JvmOverloads
-  constructor(activity: ComponentActivity, savedState: Bundle? = null) {
+  public constructor(activity: ComponentActivity, savedState: Bundle? = null) {
     storage = SimpleStorage(activity)
     init(savedState)
     permissionRequest =
@@ -73,7 +73,7 @@ class SimpleStorageHelper {
   }
 
   @JvmOverloads
-  constructor(fragment: Fragment, savedState: Bundle? = null) {
+  public constructor(fragment: Fragment, savedState: Bundle? = null) {
     storage = SimpleStorage(fragment)
     init(savedState)
     permissionRequest =
@@ -83,9 +83,9 @@ class SimpleStorageHelper {
         .build()
   }
 
-  var onStorageAccessGranted: ((requestCode: Int, root: DocumentFile) -> Unit)? = null
+  public var onStorageAccessGranted: ((requestCode: Int, root: DocumentFile) -> Unit)? = null
 
-  var onFolderSelected: ((requestCode: Int, folder: DocumentFile) -> Unit)? = null
+  public var onFolderSelected: ((requestCode: Int, folder: DocumentFile) -> Unit)? = null
     set(callback) {
       field = callback
       storage.folderPickerCallback =
@@ -132,7 +132,7 @@ class SimpleStorageHelper {
         }
     }
 
-  var onFileSelected:
+  public var onFileSelected:
     ((requestCode: Int, /* non-empty list */ files: List<DocumentFile>) -> Unit)? =
     null
     set(callback) {
@@ -158,7 +158,7 @@ class SimpleStorageHelper {
         }
     }
 
-  var onFileCreated: ((requestCode: Int, file: DocumentFile) -> Unit)? = null
+  public var onFileCreated: ((requestCode: Int, file: DocumentFile) -> Unit)? = null
     set(callback) {
       field = callback
       storage.createFileCallback =
@@ -322,7 +322,7 @@ class SimpleStorageHelper {
   }
 
   /** Mandatory for [Activity], but not for [Fragment] and [ComponentActivity] */
-  fun onRequestPermissionsResult(
+  public fun onRequestPermissionsResult(
     requestCode: Int,
     permissions: Array<String>,
     grantResults: IntArray,
@@ -373,7 +373,7 @@ class SimpleStorageHelper {
   }
 
   @JvmOverloads
-  fun openFolderPicker(
+  public fun openFolderPicker(
     requestCode: Int = storage.requestCodeFolderPicker,
     initialPath: FileFullPath? = null,
   ) {
@@ -383,7 +383,7 @@ class SimpleStorageHelper {
   }
 
   @JvmOverloads
-  fun openFilePicker(
+  public fun openFilePicker(
     requestCode: Int = storage.requestCodeFilePicker,
     allowMultiple: Boolean = false,
     initialPath: FileFullPath? = null,
@@ -398,7 +398,7 @@ class SimpleStorageHelper {
   }
 
   @JvmOverloads
-  fun requestStorageAccess(
+  public fun requestStorageAccess(
     requestCode: Int = storage.requestCodeStorageAccess,
     initialPath: FileFullPath? = null,
     expectedStorageType: StorageType = StorageType.UNKNOWN,
@@ -410,7 +410,7 @@ class SimpleStorageHelper {
   }
 
   @JvmOverloads
-  fun createFile(
+  public fun createFile(
     mimeType: String,
     fileName: String? = null,
     initialPath: FileFullPath? = null,
@@ -421,31 +421,31 @@ class SimpleStorageHelper {
     storage.createFile(mimeType, fileName, initialPath, requestCode)
   }
 
-  fun onSaveInstanceState(outState: Bundle) {
+  public fun onSaveInstanceState(outState: Bundle) {
     storage.onSaveInstanceState(outState)
     outState.putInt(KEY_ORIGINAL_REQUEST_CODE, originalRequestCode)
     outState.putInt(KEY_OPEN_FOLDER_PICKER_ONCE_GRANTED, pickerToOpenOnceGranted)
     filterMimeTypes?.let { outState.putStringArray(KEY_FILTER_MIME_TYPES, it.toTypedArray()) }
   }
 
-  fun onRestoreInstanceState(savedInstanceState: Bundle) {
+  public fun onRestoreInstanceState(savedInstanceState: Bundle) {
     storage.onRestoreInstanceState(savedInstanceState)
     originalRequestCode = savedInstanceState.getInt(KEY_ORIGINAL_REQUEST_CODE)
     pickerToOpenOnceGranted = savedInstanceState.getInt(KEY_OPEN_FOLDER_PICKER_ONCE_GRANTED)
     filterMimeTypes = savedInstanceState.getStringArray(KEY_FILTER_MIME_TYPES)?.toSet()
   }
 
-  interface OnFileReceived {
-    fun onFileReceived(files: List<DocumentFile>)
+  public interface OnFileReceived {
+    public fun onFileReceived(files: List<DocumentFile>)
 
-    fun onNonFileReceived(intent: Intent) {
+    public fun onNonFileReceived(intent: Intent) {
       // default implementation
     }
   }
 
-  companion object {
-    const val TYPE_FILE_PICKER = 1
-    const val TYPE_FOLDER_PICKER = 2
+  public companion object {
+    public const val TYPE_FILE_PICKER: Int = 1
+    public const val TYPE_FOLDER_PICKER: Int = 2
 
     private const val KEY_OPEN_FOLDER_PICKER_ONCE_GRANTED =
       LIBRARY_PACKAGE_NAME + ".pickerToOpenOnceGranted"
@@ -454,7 +454,7 @@ class SimpleStorageHelper {
     private const val KEY_FILTER_MIME_TYPES = LIBRARY_PACKAGE_NAME + ".filterMimeTypes"
 
     @JvmStatic
-    fun redirectToSystemSettings(context: Context) {
+    public fun redirectToSystemSettings(context: Context) {
       AlertDialog.Builder(context)
         .setMessage(R.string.ss_storage_permission_permanently_disabled)
         .setNegativeButton(android.R.string.cancel) { _, _ -> }

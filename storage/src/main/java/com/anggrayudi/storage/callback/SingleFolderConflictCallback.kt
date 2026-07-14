@@ -15,10 +15,10 @@ import kotlinx.coroutines.GlobalScope
  *
  * @author Anggrayudi H
  */
-abstract class SingleFolderConflictCallback
+public abstract class SingleFolderConflictCallback
 @OptIn(DelicateCoroutinesApi::class)
 @JvmOverloads
-constructor(var uiScope: CoroutineScope = GlobalScope) {
+constructor(public var uiScope: CoroutineScope = GlobalScope) {
 
   /**
    * Do not call `super` when you override this function.
@@ -35,7 +35,7 @@ constructor(var uiScope: CoroutineScope = GlobalScope) {
    *   destination is a file.
    */
   @UiThread
-  open fun onParentConflict(
+  public open fun onParentConflict(
     destinationFolder: DocumentFile,
     action: ParentFolderConflictAction,
     canMerge: Boolean,
@@ -44,7 +44,7 @@ constructor(var uiScope: CoroutineScope = GlobalScope) {
   }
 
   @UiThread
-  open fun onContentConflict(
+  public open fun onContentConflict(
     destinationFolder: DocumentFile,
     conflictedFiles: MutableList<FileConflict>,
     action: FolderContentConflictAction,
@@ -52,25 +52,25 @@ constructor(var uiScope: CoroutineScope = GlobalScope) {
     action.confirmResolution(conflictedFiles)
   }
 
-  class ParentFolderConflictAction(
+  public class ParentFolderConflictAction(
     private val continuation: CancellableContinuation<ConflictResolution>
   ) {
 
-    fun confirmResolution(resolution: ConflictResolution) {
+    public fun confirmResolution(resolution: ConflictResolution) {
       continuation.resumeWith(Result.success(resolution))
     }
   }
 
-  class FolderContentConflictAction(
+  public class FolderContentConflictAction(
     private val continuation: CancellableContinuation<List<FileConflict>>
   ) {
 
-    fun confirmResolution(resolutions: List<FileConflict>) {
+    public fun confirmResolution(resolutions: List<FileConflict>) {
       continuation.resumeWith(Result.success(resolutions))
     }
   }
 
-  enum class ConflictResolution {
+  public enum class ConflictResolution {
     /** Delete the folder in destination if existed, then start copy/move. */
     REPLACE,
 
@@ -87,7 +87,7 @@ constructor(var uiScope: CoroutineScope = GlobalScope) {
     SKIP;
 
     @RestrictTo(RestrictTo.Scope.LIBRARY)
-    fun toCreateMode() =
+    public fun toCreateMode(): CreateMode =
       when (this) {
         REPLACE -> CreateMode.REPLACE
         MERGE -> CreateMode.REUSE
@@ -95,7 +95,7 @@ constructor(var uiScope: CoroutineScope = GlobalScope) {
       }
 
     @RestrictTo(RestrictTo.Scope.LIBRARY)
-    fun toFileConflictResolution() =
+    public fun toFileConflictResolution(): SingleFileConflictCallback.ConflictResolution =
       when (this) {
         REPLACE -> SingleFileConflictCallback.ConflictResolution.REPLACE
         CREATE_NEW -> SingleFileConflictCallback.ConflictResolution.CREATE_NEW
@@ -103,10 +103,10 @@ constructor(var uiScope: CoroutineScope = GlobalScope) {
       }
   }
 
-  class FileConflict(
-    val source: DocumentFile,
-    val target: DocumentFile,
-    var solution: SingleFileConflictCallback.ConflictResolution =
+  public class FileConflict(
+    public val source: DocumentFile,
+    public val target: DocumentFile,
+    public var solution: SingleFileConflictCallback.ConflictResolution =
       SingleFileConflictCallback.ConflictResolution.CREATE_NEW,
   )
 }

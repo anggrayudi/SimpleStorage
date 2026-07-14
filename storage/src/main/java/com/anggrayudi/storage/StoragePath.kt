@@ -14,27 +14,27 @@ import java.io.File
  *
  * @author Anggrayudi H
  */
-data class StoragePath(val storageId: String, val basePath: String = "") {
+public data class StoragePath(val storageId: String, val basePath: String = "") {
 
   /** Resolves this path to an absolute path like `/storage/emulated/0/Download/MyMovie.mp4`. */
-  fun toAbsolutePath(context: Context): String =
+  public fun toAbsolutePath(context: Context): String =
     DocumentFileCompat.buildAbsolutePath(context, storageId, basePath)
 
   override fun toString(): String = "$storageId:$basePath"
 
-  companion object {
+  public companion object {
     /** Creates a path on the primary/external storage volume. */
-    @JvmStatic fun primary(basePath: String = ""): StoragePath = StoragePath(StorageId.PRIMARY, basePath)
+    @JvmStatic public fun primary(basePath: String = ""): StoragePath = StoragePath(StorageId.PRIMARY, basePath)
 
     /** Parses an absolute path like `/storage/AAAA-BBBB/Download` or a `storageId:basePath` string. */
     @JvmStatic
-    fun fromAbsolutePath(context: Context, fullPath: String): StoragePath =
+    public fun fromAbsolutePath(context: Context, fullPath: String): StoragePath =
       StoragePath(
         DocumentFileCompat.getStorageId(context, fullPath),
         DocumentFileCompat.getBasePath(context, fullPath),
       )
 
     @JvmStatic
-    fun from(context: Context, file: File): StoragePath = fromAbsolutePath(context, file.absolutePath)
+    public fun from(context: Context, file: File): StoragePath = fromAbsolutePath(context, file.absolutePath)
   }
 }

@@ -23,31 +23,31 @@ import com.anggrayudi.storage.StoragePath
  * @author Anggrayudi H
  */
 @ExperimentalSimpleStorageApi
-data class VolumeBookmark(
+public data class VolumeBookmark(
   val volumeLabel: String,
   val storageId: String,
   val basePath: String = "",
 ) {
-  fun toStoragePath(): StoragePath = StoragePath(storageId, basePath)
+  public fun toStoragePath(): StoragePath = StoragePath(storageId, basePath)
 }
 
 /** The outcome of [StorageAccessManager.resolveBookmark]. */
 @ExperimentalSimpleStorageApi
-sealed interface BookmarkResult {
+public sealed interface BookmarkResult {
 
   /**
    * Access is available. [bookmark] may differ from the input when the volume was re-granted
    * under a new ID — persist the updated value.
    */
-  data class Granted(val folder: StorageFile, val bookmark: VolumeBookmark) : BookmarkResult
+  public data class Granted(val folder: StorageFile, val bookmark: VolumeBookmark) : BookmarkResult
 
   /** No mounted volume matches the bookmark by ID or label. Plugging the drive in may fix it. */
-  data object VolumeNotMounted : BookmarkResult
+  public data object VolumeNotMounted : BookmarkResult
 
   /** The user granted a root that does not cover the bookmarked volume. */
-  data class WrongRootSelected(val grantedRoot: StorageFile?) : BookmarkResult
+  public data class WrongRootSelected(val grantedRoot: StorageFile?) : BookmarkResult
 
-  data object CanceledByUser : BookmarkResult
+  public data object CanceledByUser : BookmarkResult
 
-  data object PermissionDenied : BookmarkResult
+  public data object PermissionDenied : BookmarkResult
 }

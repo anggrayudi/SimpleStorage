@@ -10,25 +10,25 @@ import com.anggrayudi.storage.callback.SingleFolderConflictCallback.ConflictReso
  *
  * @author Anggrayudi Hardiannico A.
  */
-sealed class SingleFolderResult {
-  data object Validating : SingleFolderResult()
+public sealed class SingleFolderResult {
+  public data object Validating : SingleFolderResult()
 
-  data object Preparing : SingleFolderResult()
+  public data object Preparing : SingleFolderResult()
 
-  data object CountingFiles : SingleFolderResult()
+  public data object CountingFiles : SingleFolderResult()
 
   /**
    * Called after the user chooses [SingleFolderConflictCallback.ConflictResolution.REPLACE] or
    * [SingleFileConflictCallback.ConflictResolution.REPLACE]
    */
-  data object DeletingConflictedFiles : SingleFolderResult()
+  public data object DeletingConflictedFiles : SingleFolderResult()
 
   /** A good state to start showing notification */
-  data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) :
+  public data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) :
     SingleFolderResult()
 
   /** @param fileCount total files/folders that are successfully copied/moved */
-  data class InProgress(
+  public data class InProgress(
     val progress: Float,
     val bytesMoved: Long,
     val writeSpeed: Int,
@@ -44,7 +44,7 @@ sealed class SingleFolderResult {
    * @param totalFilesToCopy total files, not folders
    * @param totalCopiedFiles total files, not folders
    */
-  data class Completed(
+  public data class Completed(
     val folder: DocumentFile,
     val totalFilesToCopy: Int,
     val totalCopiedFiles: Int,
@@ -52,7 +52,7 @@ sealed class SingleFolderResult {
   ) : SingleFolderResult()
 
   /** @param cause the exception that triggered this error, if any */
-  data class Error(
+  public data class Error(
     val errorCode: FolderErrorCode,
     val message: String? = null,
     val completedData: Completed? = null,
@@ -60,7 +60,7 @@ sealed class SingleFolderResult {
   ) : SingleFolderResult()
 }
 
-enum class FolderErrorCode {
+public enum class FolderErrorCode {
   STORAGE_PERMISSION_DENIED,
   CANNOT_CREATE_FILE_IN_TARGET,
   SOURCE_FOLDER_NOT_FOUND,

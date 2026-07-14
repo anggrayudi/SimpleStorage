@@ -12,7 +12,7 @@ import androidx.core.content.ContextCompat
  *
  * @author Anggrayudi H
  */
-class ActivityPermissionRequest
+public class ActivityPermissionRequest
 private constructor(
   private val activity: Activity,
   private val permissions: Array<String>,
@@ -44,7 +44,7 @@ private constructor(
     }
   }
 
-  fun onRequestPermissionsResult(
+  public fun onRequestPermissionsResult(
     requestCode: Int,
     permissions: Array<String>,
     grantResults: IntArray,
@@ -121,17 +121,17 @@ private constructor(
     )
   }
 
-  class Builder {
+  public class Builder {
 
     private val activity: Activity
     private val requestCode: Int?
 
-    constructor(activity: Activity, requestCode: Int) {
+    public constructor(activity: Activity, requestCode: Int) {
       this.activity = activity
       this.requestCode = requestCode
     }
 
-    constructor(activity: ComponentActivity) {
+    public constructor(activity: ComponentActivity) {
       this.activity = activity
       this.requestCode = null
     }
@@ -140,15 +140,15 @@ private constructor(
 
     private var callback: PermissionCallback? = null
 
-    fun withPermissions(vararg permissions: String) = apply {
+    public fun withPermissions(vararg permissions: String): Builder = apply {
       this.permissions = permissions.toSet()
     }
 
-    fun withCallback(callback: PermissionCallback) = apply { this.callback = callback }
+    public fun withCallback(callback: PermissionCallback): Builder = apply { this.callback = callback }
 
-    fun build() =
+    public fun build(): ActivityPermissionRequest =
       ActivityPermissionRequest(activity, permissions.toTypedArray(), requestCode, callback!!)
 
-    fun check() = build().check()
+    public fun check(): Unit = build().check()
   }
 }

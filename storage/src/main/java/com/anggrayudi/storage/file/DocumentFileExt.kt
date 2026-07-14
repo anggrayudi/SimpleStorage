@@ -78,7 +78,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 
-typealias CheckFileSize = (freeSpace: Long, fileSize: Long) -> Boolean
+public typealias CheckFileSize = (freeSpace: Long, fileSize: Long) -> Boolean
 
 internal val defaultFileSizeChecker: CheckFileSize = { freeSpace, fileSize ->
   fileSize + 100 * FileSize.MB < freeSpace /* 100MB tolerance */
@@ -95,39 +95,39 @@ internal val defaultFileSizeChecker: CheckFileSize = { freeSpace, fileSize ->
  * will return integers like `6881-2249`. However, it will return empty `String` if this
  * [DocumentFile] is picked from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT]
  */
-fun DocumentFile.getStorageId(context: Context) = uri.getStorageId(context)
+public fun DocumentFile.getStorageId(context: Context): String = uri.getStorageId(context)
 
-val DocumentFile.isTreeDocumentFile: Boolean
+public val DocumentFile.isTreeDocumentFile: Boolean
   get() = uri.isTreeDocumentFile
 
-val DocumentFile.isExternalStorageDocument: Boolean
+public val DocumentFile.isExternalStorageDocument: Boolean
   get() = uri.isExternalStorageDocument
 
-val DocumentFile.isDownloadsDocument: Boolean
+public val DocumentFile.isDownloadsDocument: Boolean
   get() = uri.isDownloadsDocument
 
-val DocumentFile.isDocumentsDocument: Boolean
+public val DocumentFile.isDocumentsDocument: Boolean
   get() = uri.isDocumentsDocument
 
-val DocumentFile.isMediaDocument: Boolean
+public val DocumentFile.isMediaDocument: Boolean
   get() = uri.isMediaDocument
 
-fun DocumentFile.isReadOnly(context: Context) = canRead() && !isWritable(context)
+public fun DocumentFile.isReadOnly(context: Context): Boolean = canRead() && !isWritable(context)
 
-val DocumentFile.id: String
+public val DocumentFile.id: String
   get() = DocumentsContract.getDocumentId(uri)
 
-val DocumentFile.rootId: String
+public val DocumentFile.rootId: String
   get() = DocumentsContract.getRootId(uri)
 
-fun DocumentFile.isExternalStorageManager(context: Context) =
+public fun DocumentFile.isExternalStorageManager(context: Context): Boolean =
   isRawFile && File(uri.path!!).isExternalStorageManager(context)
 
 /**
  * Some media files do not return file extension from [DocumentFile.getName]. This function helps
  * you to fix this kind of issue.
  */
-val DocumentFile.fullName: String
+public val DocumentFile.fullName: String
   get() =
     if (isRawFile || isExternalStorageDocument || isDirectory) {
       name.orEmpty()
@@ -135,14 +135,14 @@ val DocumentFile.fullName: String
       MimeType.getFullFileName(name.orEmpty(), type)
     }
 
-fun DocumentFile.inSameMountPointWith(context: Context, file: DocumentFile): Boolean {
+public fun DocumentFile.inSameMountPointWith(context: Context, file: DocumentFile): Boolean {
   val storageId1 = getStorageId(context)
   val storageId2 = file.getStorageId(context)
   return storageId1 == storageId2 || inInternalStorage(storageId1) && inInternalStorage(storageId2)
 }
 
 @SuppressLint("NewApi")
-fun DocumentFile.isEmpty(context: Context): Boolean {
+public fun DocumentFile.isEmpty(context: Context): Boolean {
   return isFile && length() == 0L ||
     isDirectory &&
       kotlin.run {
@@ -191,7 +191,7 @@ fun DocumentFile.isEmpty(context: Context): Boolean {
  * job.cancel()
  * ```
  */
-fun DocumentFile.getProperties(
+public fun DocumentFile.getProperties(
   context: Context,
   updateInterval: Long = 500,
 ): Flow<FilePropertiesResult> = callbackFlow {
@@ -268,7 +268,7 @@ private fun <E> DocumentFile.walkFileTreeForInfo(
  * Returns `null` if this [DocumentFile] is picked from [Intent.ACTION_OPEN_DOCUMENT] or
  * [Intent.ACTION_CREATE_DOCUMENT]
  */
-fun DocumentFile.getStorageType(context: Context): StorageType {
+public fun DocumentFile.getStorageType(context: Context): StorageType {
   return if (isTreeDocumentFile) {
     if (inPrimaryStorage(context)) StorageType.EXTERNAL else StorageType.SD_CARD
   } else
@@ -281,33 +281,33 @@ fun DocumentFile.getStorageType(context: Context): StorageType {
 
 private fun inInternalStorage(storageId: String) = storageId == PRIMARY || storageId == DATA
 
-fun DocumentFile.inInternalStorage(context: Context) = inInternalStorage(getStorageId(context))
+public fun DocumentFile.inInternalStorage(context: Context): Boolean = inInternalStorage(getStorageId(context))
 
 /**
  * `true` if this file located in primary storage, i.e. external storage. All files created by
  * [DocumentFile.fromFile] are always treated from external storage.
  */
-fun DocumentFile.inPrimaryStorage(context: Context) =
+public fun DocumentFile.inPrimaryStorage(context: Context): Boolean =
   isTreeDocumentFile && getStorageId(context) == PRIMARY ||
     isRawFile && uri.path.orEmpty().startsWith(SimpleStorage.externalStoragePath)
 
 /** `true` if this file is located on a removable volume (SD card, USB OTG drive, etc.) */
-fun DocumentFile.inSdCardStorage(context: Context) =
+public fun DocumentFile.inSdCardStorage(context: Context): Boolean =
   StorageType.fromStorageId(context, getStorageId(context)) == StorageType.SD_CARD
 
-fun DocumentFile.inDataStorage(context: Context) =
+public fun DocumentFile.inDataStorage(context: Context): Boolean =
   isRawFile && File(uri.path!!).inDataStorage(context)
 
 /** `true` if this file was created with [File] */
-val DocumentFile.isRawFile: Boolean
+public val DocumentFile.isRawFile: Boolean
   get() = uri.isRawFile
 
 /** Filename without extension */
-val DocumentFile.baseName: String
+public val DocumentFile.baseName: String
   get() = if (isFile) MimeType.getBaseFileName(fullName) else name.orEmpty()
 
 /** File extension */
-val DocumentFile.extension: String
+public val DocumentFile.extension: String
   get() = if (isFile) MimeType.getExtensionFromFileName(fullName) else ""
 
 /**
@@ -315,10 +315,10 @@ val DocumentFile.extension: String
  * * `null` if it is a directory or the file does not exist
  * * [MimeType.UNKNOWN] if the file exists but the mime type is not found
  */
-val DocumentFile.mimeType: String?
+public val DocumentFile.mimeType: String?
   get() = if (isFile) type ?: MimeType.getMimeTypeFromExtension(extension) else null
 
-val DocumentFile.mimeTypeByFileName: String?
+public val DocumentFile.mimeTypeByFileName: String?
   get() =
     if (isDirectory) null
     else {
@@ -335,7 +335,7 @@ val DocumentFile.mimeTypeByFileName: String?
  *   [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT].
  * @see toDocumentFile
  */
-fun DocumentFile.toRawFile(context: Context): File? {
+public fun DocumentFile.toRawFile(context: Context): File? {
   return when {
     isRawFile -> File(uri.path ?: return null)
     inPrimaryStorage(context) ->
@@ -351,11 +351,11 @@ fun DocumentFile.toRawFile(context: Context): File? {
   }
 }
 
-fun DocumentFile.toRawDocumentFile(context: Context): DocumentFile? {
+public fun DocumentFile.toRawDocumentFile(context: Context): DocumentFile? {
   return if (isRawFile) this else DocumentFile.fromFile(toRawFile(context) ?: return null)
 }
 
-fun DocumentFile.toTreeDocumentFile(context: Context): DocumentFile? {
+public fun DocumentFile.toTreeDocumentFile(context: Context): DocumentFile? {
   return if (isRawFile) {
     DocumentFileCompat.fromFile(context, toRawFile(context) ?: return null, considerRawFile = false)
   } else if (isTreeDocumentFile) {
@@ -369,7 +369,7 @@ fun DocumentFile.toTreeDocumentFile(context: Context): DocumentFile? {
   }
 }
 
-fun DocumentFile.toMediaFile(context: Context) =
+public fun DocumentFile.toMediaFile(context: Context): MediaFile? =
   if (isTreeDocumentFile) null else MediaFile(context, uri)
 
 /**
@@ -382,7 +382,7 @@ fun DocumentFile.toMediaFile(context: Context) =
  * @see toTreeDocumentFile
  */
 @JvmOverloads
-fun DocumentFile.changeName(
+public fun DocumentFile.changeName(
   context: Context,
   newBaseName: String,
   newExtension: String? = null,
@@ -419,7 +419,7 @@ fun DocumentFile.changeName(
  * @param path single file name or file path. Empty string returns to itself.
  */
 @JvmOverloads
-fun DocumentFile.child(
+public fun DocumentFile.child(
   context: Context,
   path: String,
   requiresWriteAccess: Boolean = false,
@@ -454,11 +454,11 @@ fun DocumentFile.child(
  * Safer method than [DocumentFile.listFiles] which throws [UnsupportedOperationException] if this
  * [DocumentFile] is a file.
  */
-val DocumentFile.children: List<DocumentFile>
+public val DocumentFile.children: List<DocumentFile>
   get() = if (isDirectory) listFiles().toList() else emptyList()
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun DocumentFile.quickFindRawFile(name: String): DocumentFile? {
+public fun DocumentFile.quickFindRawFile(name: String): DocumentFile? {
   return DocumentFile.fromFile(File(uri.path!!, name)).takeIf { it.canRead() }
 }
 
@@ -469,7 +469,7 @@ fun DocumentFile.quickFindRawFile(name: String): DocumentFile? {
  */
 @SuppressLint("NewApi")
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun DocumentFile.quickFindTreeFile(
+public fun DocumentFile.quickFindTreeFile(
   context: Context,
   resolver: ContentResolver,
   name: String,
@@ -500,20 +500,20 @@ fun DocumentFile.quickFindTreeFile(
 }
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun DocumentFile.shouldWritable(context: Context, requiresWriteAccess: Boolean) =
+public fun DocumentFile.shouldWritable(context: Context, requiresWriteAccess: Boolean): Boolean =
   requiresWriteAccess && isWritable(context) || !requiresWriteAccess
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun DocumentFile.takeIfWritable(context: Context, requiresWriteAccess: Boolean) = takeIf {
+public fun DocumentFile.takeIfWritable(context: Context, requiresWriteAccess: Boolean): DocumentFile? = takeIf {
   it.shouldWritable(context, requiresWriteAccess)
 }
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-fun DocumentFile.checkRequirements(
+public fun DocumentFile.checkRequirements(
   context: Context,
   requiresWriteAccess: Boolean,
   considerRawFile: Boolean,
-) =
+): Boolean =
   canRead() &&
     (considerRawFile || isExternalStorageManager(context)) &&
     shouldWritable(context, requiresWriteAccess)
@@ -527,7 +527,7 @@ fun DocumentFile.checkRequirements(
  * * The authority is [DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY], but [isTreeDocumentFile]
  *   returns `false`
  */
-fun DocumentFile.getBasePath(context: Context): String {
+public fun DocumentFile.getBasePath(context: Context): String {
   val path = uri.path.orEmpty()
   val storageID = getStorageId(context)
   return when {
@@ -617,7 +617,7 @@ private fun DocumentFile.getSubPath(context: Context, otherFolderAbsolutePath: S
  *   [SimpleStorage.externalStoragePath].
  * * For file stored in SD Card, it will return something like `/storage/6881-2249`
  */
-fun DocumentFile.getRootPath(context: Context) =
+public fun DocumentFile.getRootPath(context: Context): String =
   when {
     isRawFile -> uri.path?.let { File(it).getRootPath(context) }.orEmpty()
     !isTreeDocumentFile -> ""
@@ -625,7 +625,7 @@ fun DocumentFile.getRootPath(context: Context) =
     else -> SimpleStorage.externalStoragePath
   }
 
-fun DocumentFile.getRelativePath(context: Context) =
+public fun DocumentFile.getRelativePath(context: Context): String =
   getBasePath(context).substringBeforeLast('/', "")
 
 /**
@@ -645,7 +645,7 @@ fun DocumentFile.getRelativePath(context: Context) =
  * @see File.getAbsolutePath
  * @see getSimplePath
  */
-fun DocumentFile.getAbsolutePath(context: Context): String {
+public fun DocumentFile.getAbsolutePath(context: Context): String {
   val path = uri.path.orEmpty()
   val storageID = getStorageId(context)
   return when {
@@ -707,11 +707,11 @@ fun DocumentFile.getAbsolutePath(context: Context): String {
 }
 
 /** @see getAbsolutePath */
-fun DocumentFile.getSimplePath(context: Context) =
+public fun DocumentFile.getSimplePath(context: Context): String =
   "${getStorageId(context)}:${getBasePath(context)}".removePrefix(":")
 
 @JvmOverloads
-fun DocumentFile.findParent(context: Context, requiresWriteAccess: Boolean = true): DocumentFile? {
+public fun DocumentFile.findParent(context: Context, requiresWriteAccess: Boolean = true): DocumentFile? {
   return parentFile
     ?: if (isTreeDocumentFile || isRawFile) {
       val parentPath = getAbsolutePath(context).parent()
@@ -745,7 +745,7 @@ fun DocumentFile.findParent(context: Context, requiresWriteAccess: Boolean = tru
  * Delete this file and create new empty file using previous `filename` and `mimeType`. It cannot be
  * applied if current [DocumentFile] is a directory.
  */
-fun DocumentFile.recreateFile(context: Context): DocumentFile? {
+public fun DocumentFile.recreateFile(context: Context): DocumentFile? {
   return if (isFile && (isRawFile || isExternalStorageDocument)) {
     val filename = name.orEmpty()
     val parent = findParent(context)
@@ -758,7 +758,7 @@ fun DocumentFile.recreateFile(context: Context): DocumentFile? {
 }
 
 @JvmOverloads
-fun DocumentFile.getRootDocumentFile(context: Context, requiresWriteAccess: Boolean = false) =
+public fun DocumentFile.getRootDocumentFile(context: Context, requiresWriteAccess: Boolean = false): DocumentFile? =
   when {
     isTreeDocumentFile ->
       DocumentFileCompat.getRootDocumentFile(context, getStorageId(context), requiresWriteAccess)
@@ -773,26 +773,26 @@ fun DocumentFile.getRootDocumentFile(context: Context, requiresWriteAccess: Bool
  * @return `true` if this file exists and writeable. [DocumentFile.canWrite] may return false if you
  *   have no URI permission for read & write access.
  */
-fun DocumentFile.canModify(context: Context) = canRead() && isWritable(context)
+public fun DocumentFile.canModify(context: Context): Boolean = canRead() && isWritable(context)
 
 /**
  * Use it, because [DocumentFile.canWrite] is unreliable on Android 10. Read
  * [this issue](https://github.com/anggrayudi/SimpleStorage/issues/24#issuecomment-830000378)
  */
-fun DocumentFile.isWritable(context: Context) =
+public fun DocumentFile.isWritable(context: Context): Boolean =
   if (isRawFile) File(uri.path!!).isWritable(context) else canWrite()
 
-fun DocumentFile.isRootUriPermissionGranted(context: Context): Boolean {
+public fun DocumentFile.isRootUriPermissionGranted(context: Context): Boolean {
   return isExternalStorageDocument &&
     DocumentFileCompat.isStorageUriPermissionGranted(context, getStorageId(context))
 }
 
-fun DocumentFile.getFormattedSize(context: Context): String =
+public fun DocumentFile.getFormattedSize(context: Context): String =
   Formatter.formatFileSize(context, length())
 
 /** Avoid duplicate file name. */
 @WorkerThread
-fun DocumentFile.autoIncrementFileName(context: Context, filename: String): String {
+public fun DocumentFile.autoIncrementFileName(context: Context, filename: String): String {
   toRawFile(context)?.let { if (it.canRead()) return it.autoIncrementFileName(filename) }
   val files = children
   return if (files.find { it.name == filename }?.exists() == true) {
@@ -819,11 +819,11 @@ fun DocumentFile.autoIncrementFileName(context: Context, filename: String): Stri
 /** Useful for creating temporary files. The extension is `*.bin` */
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.createBinaryFile(
+public fun DocumentFile.createBinaryFile(
   context: Context,
   name: String,
   mode: CreateMode = CreateMode.CREATE_NEW,
-) = makeFile(context, name, MimeType.BINARY_FILE, mode)
+): DocumentFile? = makeFile(context, name, MimeType.BINARY_FILE, mode)
 
 /**
  * Similar to [DocumentFile.createFile], but adds compatibility on API 28 and lower. Creating files
@@ -837,7 +837,7 @@ fun DocumentFile.createBinaryFile(
  */
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.makeFile(
+public fun DocumentFile.makeFile(
   context: Context,
   name: String,
   mimeType: String? = MimeType.UNKNOWN,
@@ -918,7 +918,7 @@ fun DocumentFile.makeFile(
 /** @param name can input `MyFolder` or `MyFolder/SubFolder` */
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.makeFolder(
+public fun DocumentFile.makeFolder(
   context: Context,
   name: String,
   mode: CreateMode = CreateMode.CREATE_NEW,
@@ -977,7 +977,7 @@ fun DocumentFile.makeFolder(
 
 /** Use this function if you cannot create or read file/folder in downloads directory. */
 @WorkerThread
-fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile? {
+public fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile? {
   return if (isDownloadsDocument) {
     val path = uri.path.orEmpty()
     when {
@@ -1038,7 +1038,7 @@ fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile
 }
 
 /** @param names full file names, with their extension */
-fun DocumentFile.findFiles(
+public fun DocumentFile.findFiles(
   names: Array<String>,
   documentType: DocumentFileType = DocumentFileType.ANY,
 ): List<DocumentFile> {
@@ -1050,11 +1050,11 @@ fun DocumentFile.findFiles(
   }
 }
 
-fun DocumentFile.findFolder(name: String): DocumentFile? =
+public fun DocumentFile.findFolder(name: String): DocumentFile? =
   children.find { it.name == name && it.isDirectory }
 
 /** Expect the file is a file literally, not a folder. */
-fun DocumentFile.findFileLiterally(name: String): DocumentFile? =
+public fun DocumentFile.findFileLiterally(name: String): DocumentFile? =
   children.find { it.name == name && it.isFile }
 
 /**
@@ -1069,7 +1069,7 @@ fun DocumentFile.findFileLiterally(name: String): DocumentFile? =
  */
 @OptIn(DelicateCoroutinesApi::class)
 @JvmOverloads
-fun DocumentFile.search(
+public fun DocumentFile.search(
   recursive: Boolean = false,
   documentType: DocumentFileType = DocumentFileType.ANY,
   mimeTypes: Array<String>? = null,
@@ -1187,7 +1187,7 @@ private fun DocumentFile.walkFileTreeForSearch(
  */
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.deleteRecursively(context: Context, childrenOnly: Boolean = false): Boolean {
+public fun DocumentFile.deleteRecursively(context: Context, childrenOnly: Boolean = false): Boolean {
   return if (isDirectory && canRead()) {
     val files =
       if (isDownloadsDocument) {
@@ -1212,7 +1212,7 @@ fun DocumentFile.deleteRecursively(context: Context, childrenOnly: Boolean = fal
  */
 @WorkerThread
 @JvmOverloads
-fun DocumentFile.forceDelete(context: Context, childrenOnly: Boolean = false): Boolean {
+public fun DocumentFile.forceDelete(context: Context, childrenOnly: Boolean = false): Boolean {
   return if (isDirectory) {
     deleteRecursively(context, childrenOnly)
   } else {
@@ -1233,7 +1233,7 @@ private fun DocumentFile.walkFileTreeForDeletion(): List<DocumentFile> {
   return fileTree
 }
 
-fun DocumentFile.deleteEmptyFolders(context: Context): Boolean {
+public fun DocumentFile.deleteEmptyFolders(context: Context): Boolean {
   return if (isRawFile) {
     File(uri.path!!).deleteEmptyFolders(context)
     true
@@ -1257,13 +1257,13 @@ private fun DocumentFile.walkFileTreeAndDeleteEmptyFolders(): List<DocumentFile>
 /** @param append if `false` and the file already exists, it will recreate the file. */
 @JvmOverloads
 @WorkerThread
-fun DocumentFile.openOutputStream(context: Context, append: Boolean = true) =
+public fun DocumentFile.openOutputStream(context: Context, append: Boolean = true): OutputStream? =
   uri.openOutputStream(context, append)
 
-@WorkerThread fun DocumentFile.openInputStream(context: Context) = uri.openInputStream(context)
+@WorkerThread public fun DocumentFile.openInputStream(context: Context): InputStream? = uri.openInputStream(context)
 
 @UiThread
-fun DocumentFile.openFileIntent(context: Context, authority: String) =
+public fun DocumentFile.openFileIntent(context: Context, authority: String): Intent =
   Intent(Intent.ACTION_VIEW)
     .setData(
       if (isRawFile) FileProvider.getUriForFile(context, authority, File(uri.path!!)) else uri
@@ -1271,10 +1271,10 @@ fun DocumentFile.openFileIntent(context: Context, authority: String) =
     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-fun DocumentFile.hasParent(context: Context, parent: DocumentFile) =
+public fun DocumentFile.hasParent(context: Context, parent: DocumentFile): Boolean =
   getAbsolutePath(context).hasParent(parent.getAbsolutePath(context))
 
-fun DocumentFile.childOf(context: Context, parent: DocumentFile) =
+public fun DocumentFile.childOf(context: Context, parent: DocumentFile): Boolean =
   getAbsolutePath(context).childOf(parent.getAbsolutePath(context))
 
 private fun DocumentFile.walkFileTree(context: Context): List<DocumentFile> {
@@ -1325,7 +1325,7 @@ private fun DocumentFile.walkFileTreeAndGetFilesOnly(): List<DocumentFile> {
  * password. Simple Storage library must be lightweight, so avoid adding external library unless it
  * is really needed.
  */
-fun List<DocumentFile>.compressToZip(
+public fun List<DocumentFile>.compressToZip(
   context: Context,
   targetZipFile: DocumentFile,
   deleteSourceWhenComplete: Boolean = false,
@@ -1554,7 +1554,7 @@ fun List<DocumentFile>.compressToZip(
  * It can't unzip password-protected archives. You'll need
  * [Zip4j](https://github.com/srikanth-lingala/zip4j) to unzip encrypted archives.
  */
-fun DocumentFile.decompressZip(
+public fun DocumentFile.decompressZip(
   context: Context,
   targetFolder: DocumentFile,
   updateInterval: Long = 500,
@@ -1742,7 +1742,7 @@ fun DocumentFile.decompressZip(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
-fun List<DocumentFile>.moveTo(
+public fun List<DocumentFile>.moveTo(
   context: Context,
   targetParentFolder: DocumentFile,
   skipEmptyFiles: Boolean = true,
@@ -1765,7 +1765,7 @@ fun List<DocumentFile>.moveTo(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
-fun List<DocumentFile>.copyTo(
+public fun List<DocumentFile>.copyTo(
   context: Context,
   targetParentFolder: DocumentFile,
   skipEmptyFiles: Boolean = true,
@@ -2310,7 +2310,7 @@ private fun DocumentFile.tryMoveFolderByRenamingPath(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
-fun DocumentFile.moveFolderTo(
+public fun DocumentFile.moveFolderTo(
   context: Context,
   targetParentFolder: DocumentFile,
   skipEmptyFiles: Boolean = true,
@@ -2335,7 +2335,7 @@ fun DocumentFile.moveFolderTo(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
-fun DocumentFile.copyFolderTo(
+public fun DocumentFile.copyFolderTo(
   context: Context,
   targetParentFolder: DocumentFile,
   skipEmptyFiles: Boolean = true,
@@ -2752,7 +2752,7 @@ private fun DocumentFile.doesMeetFolderCopyRequirements(
  *
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
-fun DocumentFile.copyFileTo(
+public fun DocumentFile.copyFileTo(
   context: Context,
   targetFolder: File,
   fileDescription: FileDescription? = null,
@@ -2777,7 +2777,7 @@ fun DocumentFile.copyFileTo(
  * @param targetFolderAbsolutePath use [DocumentFileCompat.buildAbsolutePath] to construct the path
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
-fun DocumentFile.copyFileTo(
+public fun DocumentFile.copyFileTo(
   context: Context,
   targetFolderAbsolutePath: String,
   fileDescription: FileDescription? = null,
@@ -2809,7 +2809,7 @@ fun DocumentFile.copyFileTo(
  *
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
-fun DocumentFile.copyFileTo(
+public fun DocumentFile.copyFileTo(
   context: Context,
   targetFolder: DocumentFile,
   fileDescription: FileDescription? = null,
@@ -3029,7 +3029,7 @@ private fun DocumentFile.copyFileStream(
  *
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
-fun DocumentFile.moveFileTo(
+public fun DocumentFile.moveFileTo(
   context: Context,
   targetFolder: File,
   fileDescription: FileDescription? = null,
@@ -3054,7 +3054,7 @@ fun DocumentFile.moveFileTo(
  * @param targetFolderAbsolutePath use [DocumentFileCompat.buildAbsolutePath] to construct the path
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
-fun DocumentFile.moveFileTo(
+public fun DocumentFile.moveFileTo(
   context: Context,
   targetFolderAbsolutePath: String,
   fileDescription: FileDescription? = null,
@@ -3086,7 +3086,7 @@ fun DocumentFile.moveFileTo(
  *
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
-fun DocumentFile.moveFileTo(
+public fun DocumentFile.moveFileTo(
   context: Context,
   targetFolder: DocumentFile,
   fileDescription: FileDescription? = null,
@@ -3336,7 +3336,7 @@ private fun DocumentFile.copyFileToMedia(
  * collected from any thread, including the main thread.
  */
 @JvmOverloads
-fun DocumentFile.copyFileToDownloadMedia(
+public fun DocumentFile.copyFileToDownloadMedia(
   context: Context,
   fileDescription: FileDescription,
   mode: CreateMode = CreateMode.CREATE_NEW,
@@ -3364,7 +3364,7 @@ fun DocumentFile.copyFileToDownloadMedia(
  * collected from any thread, including the main thread.
  */
 @JvmOverloads
-fun DocumentFile.copyFileToPictureMedia(
+public fun DocumentFile.copyFileToPictureMedia(
   context: Context,
   fileDescription: FileDescription,
   mode: CreateMode = CreateMode.CREATE_NEW,
@@ -3392,7 +3392,7 @@ fun DocumentFile.copyFileToPictureMedia(
  * collected from any thread, including the main thread.
  */
 @JvmOverloads
-fun DocumentFile.moveFileToDownloadMedia(
+public fun DocumentFile.moveFileToDownloadMedia(
   context: Context,
   fileDescription: FileDescription,
   mode: CreateMode = CreateMode.CREATE_NEW,
@@ -3420,7 +3420,7 @@ fun DocumentFile.moveFileToDownloadMedia(
  * collected from any thread, including the main thread.
  */
 @JvmOverloads
-fun DocumentFile.moveFileToPictureMedia(
+public fun DocumentFile.moveFileToPictureMedia(
   context: Context,
   fileDescription: FileDescription,
   mode: CreateMode = CreateMode.CREATE_NEW,
@@ -3449,7 +3449,7 @@ fun DocumentFile.moveFileToPictureMedia(
  *
  * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
  */
-fun DocumentFile.moveFileTo(
+public fun DocumentFile.moveFileTo(
   context: Context,
   targetFile: MediaFile,
   updateInterval: Long = 500,
@@ -3466,7 +3466,7 @@ fun DocumentFile.moveFileTo(
  *
  * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
  */
-fun DocumentFile.copyFileTo(
+public fun DocumentFile.copyFileTo(
   context: Context,
   targetFile: MediaFile,
   updateInterval: Long = 500,

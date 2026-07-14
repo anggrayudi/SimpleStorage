@@ -7,7 +7,7 @@ import android.os.Environment
  *
  * @author Anggrayudi H
  */
-enum class ImageMediaDirectory(val folderName: String) {
+public enum class ImageMediaDirectory(public val folderName: String) {
   PICTURES(Environment.DIRECTORY_PICTURES),
   DCIM(Environment.DIRECTORY_DCIM),
 }

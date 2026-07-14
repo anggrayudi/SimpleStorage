@@ -35,10 +35,10 @@ import kotlinx.coroutines.runBlocking
  * method to create files with "write and forget" strategy, which means you have no intention to
  * rename or search the file in the future.
  */
-object MediaStoreCompat {
+public object MediaStoreCompat {
 
   @JvmStatic
-  val volumeName: String
+  public val volumeName: String
     @SuppressLint("InlinedApi")
     get() =
       if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) MediaStore.VOLUME_EXTERNAL
@@ -46,7 +46,7 @@ object MediaStoreCompat {
 
   @JvmStatic
   @JvmOverloads
-  fun createDownload(
+  public fun createDownload(
     context: Context,
     file: FileDescription,
     mode: CreateMode = CreateMode.CREATE_NEW,
@@ -56,7 +56,7 @@ object MediaStoreCompat {
 
   @JvmOverloads
   @JvmStatic
-  fun createImage(
+  public fun createImage(
     context: Context,
     file: FileDescription,
     relativeParentDirectory: ImageMediaDirectory = ImageMediaDirectory.PICTURES,
@@ -67,7 +67,7 @@ object MediaStoreCompat {
 
   @JvmOverloads
   @JvmStatic
-  fun createAudio(
+  public fun createAudio(
     context: Context,
     file: FileDescription,
     relativeParentDirectory: AudioMediaDirectory = AudioMediaDirectory.MUSIC,
@@ -78,7 +78,7 @@ object MediaStoreCompat {
 
   @JvmOverloads
   @JvmStatic
-  fun createVideo(
+  public fun createVideo(
     context: Context,
     file: FileDescription,
     relativeParentDirectory: VideoMediaDirectory = VideoMediaDirectory.MOVIES,
@@ -89,7 +89,7 @@ object MediaStoreCompat {
 
   @JvmStatic
   @JvmOverloads
-  fun createMedia(
+  public fun createMedia(
     context: Context,
     fullPath: String,
     file: FileDescription,
@@ -234,7 +234,7 @@ object MediaStoreCompat {
    * @see MediaFile.owner
    */
   @JvmStatic
-  fun deleteEmptyMediaFiles(context: Context, mediaType: MediaType): Int {
+  public fun deleteEmptyMediaFiles(context: Context, mediaType: MediaType): Int {
     var deleted = 0
     fromMediaType(context, mediaType).forEach {
       if (it.hasZeroLength) {
@@ -246,17 +246,17 @@ object MediaStoreCompat {
   }
 
   @JvmStatic
-  fun fromMediaId(context: Context, mediaType: MediaType, id: String): MediaFile? {
+  public fun fromMediaId(context: Context, mediaType: MediaType, id: String): MediaFile? {
     return mediaType.writeUri?.let { MediaFile(context, it.buildUpon().appendPath(id).build()) }
   }
 
   @JvmStatic
-  fun fromMediaId(context: Context, mediaType: MediaType, id: Long): MediaFile? {
+  public fun fromMediaId(context: Context, mediaType: MediaType, id: Long): MediaFile? {
     return fromMediaId(context, mediaType, id.toString())
   }
 
   @JvmStatic
-  fun fromFileName(context: Context, mediaType: MediaType, name: String): MediaFile? {
+  public fun fromFileName(context: Context, mediaType: MediaType, name: String): MediaFile? {
     return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
       File(PublicDirectory.DOWNLOADS.file, name).let {
         if (it.isFile && it.canRead()) MediaFile(context, it) else null
@@ -280,7 +280,7 @@ object MediaStoreCompat {
    * @return `null` if base path does not contain relative path or the media is not found
    */
   @JvmStatic
-  fun fromBasePath(context: Context, mediaType: MediaType, basePath: String): MediaFile? {
+  public fun fromBasePath(context: Context, mediaType: MediaType, basePath: String): MediaFile? {
     val cleanBasePath = basePath.removeForbiddenCharsFromFilename().trimFileSeparator()
     return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
       File(Environment.getExternalStorageDirectory(), cleanBasePath).let {
@@ -325,12 +325,12 @@ object MediaStoreCompat {
 
   /** @see MediaStore.MediaColumns.RELATIVE_PATH */
   @JvmStatic
-  fun fromRelativePath(context: Context, publicDirectory: PublicDirectory) =
+  public fun fromRelativePath(context: Context, publicDirectory: PublicDirectory): List<MediaFile> =
     fromRelativePath(context, publicDirectory.folderName)
 
   /** @see MediaStore.MediaColumns.RELATIVE_PATH */
   @JvmStatic
-  fun fromRelativePath(context: Context, relativePath: String): List<MediaFile> = runBlocking {
+  public fun fromRelativePath(context: Context, relativePath: String): List<MediaFile> = runBlocking {
     val cleanRelativePath = relativePath.trimFileSeparator()
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
       DocumentFile.fromFile(File(Environment.getExternalStorageDirectory(), cleanRelativePath))
@@ -357,7 +357,7 @@ object MediaStoreCompat {
 
   /** @see MediaStore.MediaColumns.RELATIVE_PATH */
   @JvmStatic
-  fun fromRelativePath(context: Context, relativePath: String, name: String): MediaFile? =
+  public fun fromRelativePath(context: Context, relativePath: String, name: String): MediaFile? =
     runBlocking {
       val cleanRelativePath = relativePath.trimFileSeparator()
       if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -385,7 +385,7 @@ object MediaStoreCompat {
     }
 
   @JvmStatic
-  fun fromFileNameContains(
+  public fun fromFileNameContains(
     context: Context,
     mediaType: MediaType,
     containsName: String,
@@ -419,7 +419,7 @@ object MediaStoreCompat {
   }
 
   @JvmStatic
-  fun fromMimeType(context: Context, mediaType: MediaType, mimeType: String): List<MediaFile> =
+  public fun fromMimeType(context: Context, mediaType: MediaType, mimeType: String): List<MediaFile> =
     runBlocking {
       if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
         mediaType.directories
@@ -446,7 +446,7 @@ object MediaStoreCompat {
     }
 
   @JvmStatic
-  fun fromMediaType(context: Context, mediaType: MediaType): List<MediaFile> = runBlocking {
+  public fun fromMediaType(context: Context, mediaType: MediaType): List<MediaFile> = runBlocking {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
       mediaType.directories
         .map { directory ->

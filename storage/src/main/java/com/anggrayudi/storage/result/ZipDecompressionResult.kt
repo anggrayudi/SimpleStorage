@@ -8,14 +8,14 @@ import com.anggrayudi.storage.media.MediaFile
  *
  * @author Anggrayudi Hardiannico A.
  */
-sealed class ZipDecompressionResult {
-  data object Validating : ZipDecompressionResult()
+public sealed class ZipDecompressionResult {
+  public data object Validating : ZipDecompressionResult()
 
-  data class Decompressing(val bytesDecompressed: Long, val writeSpeed: Int, val fileCount: Int) :
+  public data class Decompressing(val bytesDecompressed: Long, val writeSpeed: Int, val fileCount: Int) :
     ZipDecompressionResult()
 
   /** @param zipFile can be [DocumentFile] or [MediaFile] */
-  data class Completed(
+  public data class Completed(
     val zipFile: Any,
     val targetFolder: DocumentFile,
     val bytesDecompressed: Long,
@@ -25,14 +25,14 @@ sealed class ZipDecompressionResult {
   ) : ZipDecompressionResult()
 
   /** @param cause the exception that triggered this error, if any */
-  data class Error(
+  public data class Error(
     val errorCode: ZipDecompressionErrorCode,
     val message: String? = null,
     val cause: Throwable? = null,
   ) : ZipDecompressionResult()
 }
 
-enum class ZipDecompressionErrorCode {
+public enum class ZipDecompressionErrorCode {
   STORAGE_PERMISSION_DENIED,
   CANNOT_CREATE_FILE_IN_TARGET,
   MISSING_ZIP_FILE,

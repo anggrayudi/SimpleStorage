@@ -8,9 +8,9 @@ package com.anggrayudi.storage.permission
  *
  * @author Anggrayudi H
  */
-interface PermissionRequest {
+public interface PermissionRequest {
 
-  fun check()
+  public fun check()
 
-  fun continueToPermissionRequest()
+  public fun continueToPermissionRequest()
 }

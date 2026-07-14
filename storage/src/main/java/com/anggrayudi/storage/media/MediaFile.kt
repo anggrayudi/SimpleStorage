@@ -70,13 +70,13 @@ import kotlinx.coroutines.flow.flowOn
  *
  * @author Anggrayudi H
  */
-class MediaFile(context: Context, val uri: Uri) {
+public class MediaFile(context: Context, public val uri: Uri) {
 
-  constructor(context: Context, rawFile: File) : this(context, Uri.fromFile(rawFile))
+  public constructor(context: Context, rawFile: File) : this(context, Uri.fromFile(rawFile))
 
   private val context = context.applicationContext
 
-  interface AccessCallback {
+  public interface AccessCallback {
 
     /**
      * When this function called, you can ask user's consent to modify other app's files.
@@ -84,7 +84,7 @@ class MediaFile(context: Context, val uri: Uri) {
      * @see RecoverableSecurityException
      * @see [android.app.Activity.startIntentSenderForResult]
      */
-    fun onWriteAccessDenied(mediaFile: MediaFile, sender: IntentSender)
+    public fun onWriteAccessDenied(mediaFile: MediaFile, sender: IntentSender)
   }
 
   /**
@@ -92,14 +92,14 @@ class MediaFile(context: Context, val uri: Uri) {
    *
    * @see RecoverableSecurityException
    */
-  var accessCallback: AccessCallback? = null
+  public var accessCallback: AccessCallback? = null
 
   /**
    * Some media files do not return file extension. This function helps you to fix this kind of
    * issue.
    */
   @Suppress("DEPRECATION")
-  val fullName: String
+  public val fullName: String
     get() =
       if (isRawFile) {
         toRawFile()?.name.orEmpty()
@@ -111,31 +111,31 @@ class MediaFile(context: Context, val uri: Uri) {
 
   /** @see [fullName] */
   @Suppress("DEPRECATION")
-  val name: String?
+  public val name: String?
     get() = toRawFile()?.name ?: getColumnInfoString(MediaStore.MediaColumns.DISPLAY_NAME)
 
-  val baseName: String
+  public val baseName: String
     get() = MimeType.getBaseFileName(fullName)
 
-  val extension: String
+  public val extension: String
     get() = MimeType.getExtensionFromFileName(fullName)
 
   /** @see [mimeType] */
   @Suppress("DEPRECATION")
-  val type: String?
+  public val type: String?
     get() =
       toRawFile()?.name?.let {
         MimeType.getMimeTypeFromExtension(MimeType.getExtensionFromFileName(it))
       } ?: getColumnInfoString(MediaStore.MediaColumns.MIME_TYPE)
 
   /** Advanced version of [type]. Returns [MimeType.UNKNOWN] if the mime type is not found. */
-  val mimeType: String
+  public val mimeType: String
     get() =
       getColumnInfoString(MediaStore.MediaColumns.MIME_TYPE)
         ?: MimeType.getMimeTypeFromExtension(extension)
 
   @Suppress("DEPRECATION")
-  var length: Long
+  public var length: Long
     get() = toRawFile()?.length() ?: getColumnInfoLong(MediaStore.MediaColumns.SIZE)
     set(value) {
       try {
@@ -146,7 +146,7 @@ class MediaFile(context: Context, val uri: Uri) {
       }
     }
 
-  val formattedSize: String
+  public val formattedSize: String
     get() = Formatter.formatFileSize(context, length)
 
   /**
@@ -154,33 +154,33 @@ class MediaFile(context: Context, val uri: Uri) {
    *
    * @see hasZeroLength
    */
-  val isEmpty: Boolean
+  public val isEmpty: Boolean
     get() = presentsInSafDatabase && hasZeroLength
 
-  val presentsInSafDatabase: Boolean
+  public val presentsInSafDatabase: Boolean
     get() =
       context.contentResolver.query(uri, null, null, null, null)?.use { it.count > 0 } ?: false
 
   /** @see isEmpty */
-  val hasZeroLength: Boolean
+  public val hasZeroLength: Boolean
     get() = uri.openInputStream(context)?.use { stream -> stream.available() == 0 } != false
 
   /** `true` if this file was created with [File]. Only works on API 28 and lower. */
-  val isRawFile: Boolean
+  public val isRawFile: Boolean
     get() = uri.isRawFile
 
   @Suppress("DEPRECATION")
-  val lastModified: Long
+  public val lastModified: Long
     get() = toRawFile()?.lastModified() ?: getColumnInfoLong(MediaStore.MediaColumns.DATE_MODIFIED)
 
-  val owner: String?
+  public val owner: String?
     get() =
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
         getColumnInfoString(MediaStore.MediaColumns.OWNER_PACKAGE_NAME)
       else null
 
   /** Check if this media is owned by your app. */
-  val isMine: Boolean
+  public val isMine: Boolean
     get() = owner == context.packageName
 
   /**
@@ -191,13 +191,13 @@ class MediaFile(context: Context, val uri: Uri) {
   @Deprecated(
     "Accessing files with java.io.File only works on app private directory since Android 10."
   )
-  fun toRawFile() = if (isRawFile) uri.path?.let { File(it) } else null
+  public fun toRawFile(): File? = if (isRawFile) uri.path?.let { File(it) } else null
 
-  fun toDocumentFile() =
+  public fun toDocumentFile(): DocumentFile? =
     absolutePath.let { if (it.isEmpty()) null else DocumentFileCompat.fromFullPath(context, it) }
 
   @Suppress("DEPRECATION")
-  val absolutePath: String
+  public val absolutePath: String
     @SuppressLint("InlinedApi")
     get() {
       val file = toRawFile()
@@ -238,12 +238,12 @@ class MediaFile(context: Context, val uri: Uri) {
       }
     }
 
-  val basePath: String
+  public val basePath: String
     get() = absolutePath.substringAfter(SimpleStorage.externalStoragePath).trimFileSeparator()
 
   /** @see MediaStore.MediaColumns.RELATIVE_PATH */
   @Suppress("DEPRECATION")
-  val relativePath: String
+  public val relativePath: String
     @SuppressLint("InlinedApi")
     get() {
       val file = toRawFile()
@@ -292,7 +292,7 @@ class MediaFile(context: Context, val uri: Uri) {
     }
 
   @Suppress("DEPRECATION")
-  fun delete(): Boolean {
+  public fun delete(): Boolean {
     val file = toRawFile()
     return if (file != null) {
       file.delete() || !file.exists()
@@ -310,7 +310,7 @@ class MediaFile(context: Context, val uri: Uri) {
    * `Download/filename.mp4`. If you want to move media files, please use [moveFileTo] instead.
    */
   @Suppress("DEPRECATION")
-  fun renameTo(newName: String): Boolean {
+  public fun renameTo(newName: String): Boolean {
     val file = toRawFile()
     val contentValues =
       ContentValues(1).apply { put(MediaStore.MediaColumns.DISPLAY_NAME, newName) }
@@ -327,7 +327,7 @@ class MediaFile(context: Context, val uri: Uri) {
    *
    * @see MediaStore.MediaColumns.IS_PENDING
    */
-  var isPending: Boolean
+  public var isPending: Boolean
     @RequiresApi(Build.VERSION_CODES.Q)
     get() = getColumnInfoInt(MediaStore.MediaColumns.IS_PENDING) == 1
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -355,7 +355,7 @@ class MediaFile(context: Context, val uri: Uri) {
   }
 
   @UiThread
-  fun openFileIntent(authority: String) =
+  public fun openFileIntent(authority: String): Intent =
     Intent(Intent.ACTION_VIEW)
       .setData(
         if (isRawFile) FileProvider.getUriForFile(context, authority, File(uri.path!!)) else uri
@@ -367,7 +367,7 @@ class MediaFile(context: Context, val uri: Uri) {
   @Suppress("DEPRECATION")
   @WorkerThread
   @JvmOverloads
-  fun openOutputStream(append: Boolean = true): OutputStream? {
+  public fun openOutputStream(append: Boolean = true): OutputStream? {
     return try {
       val file = toRawFile()
       if (file != null) {
@@ -382,7 +382,7 @@ class MediaFile(context: Context, val uri: Uri) {
 
   @Suppress("DEPRECATION")
   @WorkerThread
-  fun openInputStream(): InputStream? {
+  public fun openInputStream(): InputStream? {
     return try {
       val file = toRawFile()
       if (file != null) {
@@ -396,7 +396,7 @@ class MediaFile(context: Context, val uri: Uri) {
   }
 
   @RequiresApi(Build.VERSION_CODES.Q)
-  fun moveTo(relativePath: String): Boolean {
+  public fun moveTo(relativePath: String): Boolean {
     val contentValues =
       ContentValues(1).apply { put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath) }
     return try {
@@ -411,7 +411,7 @@ class MediaFile(context: Context, val uri: Uri) {
    * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
    * collected from any thread, including the main thread.
    */
-  fun moveTo(
+  public fun moveTo(
     targetFolder: DocumentFile,
     fileDescription: FileDescription? = null,
     updateInterval: Long = 500,
@@ -499,7 +499,7 @@ class MediaFile(context: Context, val uri: Uri) {
    * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
    * collected from any thread, including the main thread.
    */
-  fun copyTo(
+  public fun copyTo(
     targetFolder: DocumentFile,
     fileDescription: FileDescription? = null,
     updateInterval: Long = 500,
@@ -740,9 +740,9 @@ class MediaFile(context: Context, val uri: Uri) {
     return 0
   }
 
-  override fun equals(other: Any?) = other === this || other is MediaFile && other.uri == uri
+  override fun equals(other: Any?): Boolean = other === this || other is MediaFile && other.uri == uri
 
-  override fun hashCode() = uri.hashCode()
+  override fun hashCode(): Int = uri.hashCode()
 
-  override fun toString() = uri.toString()
+  override fun toString(): String = uri.toString()
 }

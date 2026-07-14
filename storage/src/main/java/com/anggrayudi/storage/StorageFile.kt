@@ -29,61 +29,61 @@ import java.io.OutputStream
  *
  * @author Anggrayudi H
  */
-sealed interface StorageFile {
+public sealed interface StorageFile {
 
-  val uri: Uri
-  val name: String
+  public val uri: Uri
+  public val name: String
 
   /** MIME type, or `null` for folders and unknown types. */
-  val mimeType: String?
+  public val mimeType: String?
 
-  val length: Long
-  val isDirectory: Boolean
-  val isFile: Boolean
-  val exists: Boolean
+  public val length: Long
+  public val isDirectory: Boolean
+  public val isFile: Boolean
+  public val exists: Boolean
 
   /** Milliseconds since epoch, or `0` when unknown. */
-  val lastModified: Long
+  public val lastModified: Long
 
   /**
    * Absolute filesystem path like `/storage/emulated/0/Download/movie.mp4`, or `null` when the
    * file has no resolvable physical path (e.g. a `SingleDocumentFile` from the downloads
    * provider). This replaces v2's empty-string convention.
    */
-  val absolutePath: String?
+  public val absolutePath: String?
 
   /** [StoragePath] form of [absolutePath], or `null` for the same reason. */
-  val path: StoragePath?
+  public val path: StoragePath?
 
-  val canRead: Boolean
-  val canWrite: Boolean
+  public val canRead: Boolean
+  public val canWrite: Boolean
 
-  fun openInputStream(): InputStream?
+  public fun openInputStream(): InputStream?
 
-  fun openOutputStream(append: Boolean = false): OutputStream?
+  public fun openOutputStream(append: Boolean = false): OutputStream?
 
   /** Direct children when [isDirectory], empty otherwise. */
-  fun list(): List<StorageFile>
+  public fun list(): List<StorageFile>
 
   /** Resolves a direct or nested child by path like `docs/report.pdf`. */
-  fun child(path: String, requiresWriteAccess: Boolean = false): StorageFile?
+  public fun child(path: String, requiresWriteAccess: Boolean = false): StorageFile?
 
-  fun delete(): Boolean
+  public fun delete(): Boolean
 
   // Escape hatches to the underlying worlds:
-  fun asDocumentFile(): DocumentFile?
+  public fun asDocumentFile(): DocumentFile?
 
-  fun asMediaFile(): MediaFile?
+  public fun asMediaFile(): MediaFile?
 
-  fun asRawFile(): File?
+  public fun asRawFile(): File?
 
-  companion object {
+  public companion object {
     /**
      * Wraps any URI this library understands: SAF tree/single URIs, `file://` URIs, and
      * MediaStore URIs (`content://media/...`).
      */
     @JvmStatic
-    fun from(context: Context, uri: Uri): StorageFile? {
+    public fun from(context: Context, uri: Uri): StorageFile? {
       val appContext = context.applicationContext
       if (uri.authority == MEDIA_AUTHORITY) {
         return MediaStorageFile(appContext, MediaFile(appContext, uri))
@@ -92,13 +92,13 @@ sealed interface StorageFile {
     }
 
     @JvmStatic
-    fun from(context: Context, file: File): StorageFile =
+    public fun from(context: Context, file: File): StorageFile =
       DocumentStorageFile(context.applicationContext, DocumentFile.fromFile(file))
 
     /** Resolves a [StoragePath]; returns `null` when the path is not accessible. */
     @JvmStatic
     @JvmOverloads
-    fun fromPath(
+    public fun fromPath(
       context: Context,
       path: StoragePath,
       requiresWriteAccess: Boolean = false,
@@ -116,7 +116,7 @@ sealed interface StorageFile {
     /** Resolves an absolute path like `/storage/emulated/0/Download/movie.mp4`. */
     @JvmStatic
     @JvmOverloads
-    fun fromPath(
+    public fun fromPath(
       context: Context,
       absolutePath: String,
       requiresWriteAccess: Boolean = false,
@@ -132,7 +132,7 @@ sealed interface StorageFile {
 
     @JvmStatic
     @JvmOverloads
-    fun fromPublicDirectory(
+    public fun fromPublicDirectory(
       context: Context,
       type: PublicDirectory,
       subFile: String = "",
@@ -147,15 +147,15 @@ sealed interface StorageFile {
   }
 }
 
-fun DocumentFile.toStorageFile(context: Context): StorageFile =
+public fun DocumentFile.toStorageFile(context: Context): StorageFile =
   DocumentStorageFile(context.applicationContext, this)
 
-fun MediaFile.toStorageFile(context: Context): StorageFile =
+public fun MediaFile.toStorageFile(context: Context): StorageFile =
   MediaStorageFile(context.applicationContext, this)
 
-fun File.toStorageFile(context: Context): StorageFile = StorageFile.from(context, this)
+public fun File.toStorageFile(context: Context): StorageFile = StorageFile.from(context, this)
 
-fun Uri.toStorageFile(context: Context): StorageFile? = StorageFile.from(context, this)
+public fun Uri.toStorageFile(context: Context): StorageFile? = StorageFile.from(context, this)
 
 internal class DocumentStorageFile(
   internal val context: Context,

@@ -8,20 +8,20 @@ import com.anggrayudi.storage.callback.SingleFolderConflictCallback.ConflictReso
  *
  * @author Anggrayudi Hardiannico A.
  */
-sealed class MultipleFilesResult {
-  data object Validating : MultipleFilesResult()
+public sealed class MultipleFilesResult {
+  public data object Validating : MultipleFilesResult()
 
-  data object Preparing : MultipleFilesResult()
+  public data object Preparing : MultipleFilesResult()
 
-  data object CountingFiles : MultipleFilesResult()
+  public data object CountingFiles : MultipleFilesResult()
 
-  data object DeletingConflictedFiles : MultipleFilesResult()
+  public data object DeletingConflictedFiles : MultipleFilesResult()
 
-  data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) :
+  public data class Starting(val files: List<DocumentFile>, val totalFilesToCopy: Int) :
     MultipleFilesResult()
 
   /** @param fileCount total files/folders that are successfully copied/moved */
-  data class InProgress(
+  public data class InProgress(
     val progress: Float,
     val bytesMoved: Long,
     val writeSpeed: Int,
@@ -37,7 +37,7 @@ sealed class MultipleFilesResult {
    * @param totalFilesToCopy total files, not folders
    * @param totalCopiedFiles total files, not folders
    */
-  data class Completed(
+  public data class Completed(
     val files: List<DocumentFile>,
     val totalFilesToCopy: Int,
     val totalCopiedFiles: Int,
@@ -45,7 +45,7 @@ sealed class MultipleFilesResult {
   ) : MultipleFilesResult()
 
   /** @param cause the exception that triggered this error, if any */
-  data class Error(
+  public data class Error(
     val errorCode: MultipleFilesErrorCode,
     val message: String? = null,
     val completedData: Completed? = null,
@@ -53,7 +53,7 @@ sealed class MultipleFilesResult {
   ) : MultipleFilesResult()
 }
 
-enum class MultipleFilesErrorCode {
+public enum class MultipleFilesErrorCode {
   STORAGE_PERMISSION_DENIED,
   CANNOT_CREATE_FILE_IN_TARGET,
   SOURCE_FILE_NOT_FOUND,

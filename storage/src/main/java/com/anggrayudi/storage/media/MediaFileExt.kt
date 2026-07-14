@@ -40,7 +40,7 @@ import kotlinx.coroutines.flow.flowOn
  *
  * @author Anggrayudi H
  */
-fun List<MediaFile>.compressToZip(
+public fun List<MediaFile>.compressToZip(
   context: Context,
   targetZipFile: DocumentFile,
   deleteSourceWhenComplete: Boolean = false,
@@ -154,7 +154,7 @@ fun List<MediaFile>.compressToZip(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
-fun MediaFile.decompressZip(
+public fun MediaFile.decompressZip(
   context: Context,
   targetFolder: DocumentFile,
   updateInterval: Long = 500,

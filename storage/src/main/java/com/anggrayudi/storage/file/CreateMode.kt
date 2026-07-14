@@ -12,7 +12,7 @@ import java.io.File
  * @see DocumentFile.makeFolder
  * @author Anggrayudi H
  */
-enum class CreateMode {
+public enum class CreateMode {
 
   /**
    * For folder case:

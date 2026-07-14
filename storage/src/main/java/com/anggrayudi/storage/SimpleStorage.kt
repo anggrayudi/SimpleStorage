@@ -53,14 +53,14 @@ import java.io.File
   "Superseded in v3 by StorageAccessManager and the contracts in com.anggrayudi.storage.contract. This class still relies on startActivityForResult and request codes. See MIGRATION.md.",
   ReplaceWith("com.anggrayudi.storage.access.StorageAccessManager"),
 )
-class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
+public class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
   // For unknown Activity type
-  constructor(activity: Activity, savedState: Bundle? = null) : this(ActivityWrapper(activity)) {
+  public constructor(activity: Activity, savedState: Bundle? = null) : this(ActivityWrapper(activity)) {
     savedState?.let { onRestoreInstanceState(it) }
   }
 
-  constructor(
+  public constructor(
     activity: ComponentActivity,
     savedState: Bundle? = null,
   ) : this(ComponentActivityWrapper(activity)) {
@@ -68,44 +68,44 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     (wrapper as ComponentActivityWrapper).storage = this
   }
 
-  constructor(fragment: Fragment, savedState: Bundle? = null) : this(FragmentWrapper(fragment)) {
+  public constructor(fragment: Fragment, savedState: Bundle? = null) : this(FragmentWrapper(fragment)) {
     savedState?.let { onRestoreInstanceState(it) }
     (wrapper as FragmentWrapper).storage = this
   }
 
-  var storageAccessCallback: StorageAccessCallback? = null
+  public var storageAccessCallback: StorageAccessCallback? = null
 
-  var folderPickerCallback: FolderPickerCallback? = null
+  public var folderPickerCallback: FolderPickerCallback? = null
 
-  var filePickerCallback: FilePickerCallback? = null
+  public var filePickerCallback: FilePickerCallback? = null
 
-  var createFileCallback: CreateFileCallback? = null
+  public var createFileCallback: CreateFileCallback? = null
 
-  var requestCodeStorageAccess = DEFAULT_REQUEST_CODE_STORAGE_ACCESS
+  public var requestCodeStorageAccess: Int = DEFAULT_REQUEST_CODE_STORAGE_ACCESS
     set(value) {
       field = value
       checkRequestCode()
     }
 
-  var requestCodeFolderPicker = DEFAULT_REQUEST_CODE_FOLDER_PICKER
+  public var requestCodeFolderPicker: Int = DEFAULT_REQUEST_CODE_FOLDER_PICKER
     set(value) {
       field = value
       checkRequestCode()
     }
 
-  var requestCodeFilePicker = DEFAULT_REQUEST_CODE_FILE_PICKER
+  public var requestCodeFilePicker: Int = DEFAULT_REQUEST_CODE_FILE_PICKER
     set(value) {
       field = value
       checkRequestCode()
     }
 
-  var requestCodeCreateFile = DEFAULT_REQUEST_CODE_CREATE_FILE
+  public var requestCodeCreateFile: Int = DEFAULT_REQUEST_CODE_CREATE_FILE
     set(value) {
       field = value
       checkRequestCode()
     }
 
-  val context: Context
+  public val context: Context
     get() = wrapper.context
 
   /**
@@ -117,7 +117,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
    *   access.
    * @see [DocumentFileCompat.getStorageIds]
    */
-  fun isStorageAccessGranted(storageId: String) =
+  public fun isStorageAccessGranted(storageId: String): Boolean =
     DocumentFileCompat.isAccessGranted(context, storageId)
 
   private var expectedStorageTypeForAccessRequest = StorageType.UNKNOWN
@@ -140,7 +140,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     ReplaceWith("RequestStorageAccessContract() with ActivityResultLauncher"),
   )
   @JvmOverloads
-  fun requestStorageAccess(
+  public fun requestStorageAccess(
     requestCode: Int = requestCodeStorageAccess,
     initialPath: FileFullPath? = null,
     expectedStorageType: StorageType = StorageType.UNKNOWN,
@@ -189,7 +189,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
    */
   @RequiresPermission(Manifest.permission.MANAGE_EXTERNAL_STORAGE)
   @RequiresApi(Build.VERSION_CODES.R)
-  fun requestFullStorageAccess() {
+  public fun requestFullStorageAccess() {
     context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
   }
 
@@ -202,7 +202,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     ReplaceWith("FileCreationContract() with ActivityResultLauncher"),
   )
   @JvmOverloads
-  fun createFile(
+  public fun createFile(
     mimeType: String,
     fileName: String? = null,
     initialPath: FileFullPath? = null,
@@ -232,7 +232,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
   )
   @SuppressLint("InlinedApi")
   @JvmOverloads
-  fun openFolderPicker(
+  public fun openFolderPicker(
     requestCode: Int = requestCodeFolderPicker,
     initialPath: FileFullPath? = null,
   ) {
@@ -267,7 +267,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     ReplaceWith("OpenFilePickerContract() with ActivityResultLauncher"),
   )
   @JvmOverloads
-  fun openFilePicker(
+  public fun openFilePicker(
     requestCode: Int = requestCodeFilePicker,
     allowMultiple: Boolean = false,
     initialPath: FileFullPath? = null,
@@ -292,7 +292,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
       filePickerCallback?.onActivityHandlerNotFound(requestCode, intent)
   }
 
-  fun checkIfFileReceived(intent: Intent?, callback: FileReceiverCallback?) {
+  public fun checkIfFileReceived(intent: Intent?, callback: FileReceiverCallback?) {
     when (intent?.action) {
       Intent.ACTION_SEND,
       Intent.ACTION_SEND_MULTIPLE -> {
@@ -306,7 +306,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
   }
 
-  fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+  public fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
     checkRequestCode()
 
     when (requestCode) {
@@ -454,7 +454,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
   }
 
-  fun onSaveInstanceState(outState: Bundle) {
+  public fun onSaveInstanceState(outState: Bundle) {
     outState.putString(KEY_LAST_VISITED_FOLDER, lastVisitedFolder.path)
     outState.putString(KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST, expectedBasePathForAccessRequest)
     outState.putInt(
@@ -470,7 +470,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
   }
 
-  fun onRestoreInstanceState(savedInstanceState: Bundle) {
+  public fun onRestoreInstanceState(savedInstanceState: Bundle) {
     savedInstanceState.getString(KEY_LAST_VISITED_FOLDER)?.let { lastVisitedFolder = File(it) }
     expectedBasePathForAccessRequest =
       savedInstanceState.getString(KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST)
@@ -532,8 +532,8 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     }
   }
 
-  companion object {
-    const val LIBRARY_PACKAGE_NAME = "com.anggrayudi.storage"
+  public companion object {
+    public const val LIBRARY_PACKAGE_NAME: String = "com.anggrayudi.storage"
     private const val KEY_REQUEST_CODE_STORAGE_ACCESS =
       LIBRARY_PACKAGE_NAME + ".requestCodeStorageAccess"
     private const val KEY_REQUEST_CODE_FOLDER_PICKER =
@@ -558,15 +558,15 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
     private const val DEFAULT_REQUEST_CODE_CREATE_FILE: Int = 4
 
     @JvmStatic
-    val externalStoragePath: String
+    public val externalStoragePath: String
       get() = Environment.getExternalStorageDirectory().absolutePath
 
     @JvmStatic
-    val isSdCardPresent: Boolean
+    public val isSdCardPresent: Boolean
       get() = Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED
 
     @JvmStatic
-    fun getDefaultExternalStorageIntent(context: Context): Intent {
+    public fun getDefaultExternalStorageIntent(context: Context): Intent {
       return Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
         .putExtra(
           DocumentsContract.EXTRA_INITIAL_URI,
@@ -576,20 +576,20 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
     /** For read and write permissions */
     @JvmStatic
-    fun hasStoragePermission(context: Context): Boolean {
+    public fun hasStoragePermission(context: Context): Boolean {
       return checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
         PackageManager.PERMISSION_GRANTED && hasStorageReadPermission(context)
     }
 
     /** For read permission only */
     @JvmStatic
-    fun hasStorageReadPermission(context: Context): Boolean {
+    public fun hasStorageReadPermission(context: Context): Boolean {
       return checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) ==
         PackageManager.PERMISSION_GRANTED
     }
 
     @JvmStatic
-    fun hasFullDiskAccess(context: Context, storageId: String): Boolean {
+    public fun hasFullDiskAccess(context: Context, storageId: String): Boolean {
       return hasStorageAccess(context, DocumentFileCompat.buildAbsolutePath(context, storageId, ""))
     }
 
@@ -604,7 +604,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      */
     @JvmStatic
     @JvmOverloads
-    fun hasStorageAccess(
+    public fun hasStorageAccess(
       context: Context,
       fullPath: String,
       requiresWriteAccess: Boolean = true,
@@ -632,7 +632,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      */
     @JvmStatic
     @WorkerThread
-    fun cleanupRedundantUriPermissions(context: Context) {
+    public fun cleanupRedundantUriPermissions(context: Context) {
       val resolver = context.contentResolver
       // e.g. content://com.android.externalstorage.documents/tree/primary%3AMusic
       val persistedUris =
@@ -672,7 +672,7 @@ class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
      */
     @JvmStatic
     @WorkerThread
-    fun removeObsoleteUriPermissions(context: Context) {
+    public fun removeObsoleteUriPermissions(context: Context) {
       val resolver = context.contentResolver
       val persistedUris =
         resolver.persistedUriPermissions

@@ -9,7 +9,7 @@ import com.anggrayudi.storage.SimpleStorage
  *
  * @author Anggrayudi H
  */
-enum class StorageType {
+public enum class StorageType {
   /**
    * Equals to primary storage.
    *
@@ -20,9 +20,9 @@ enum class StorageType {
   SD_CARD,
   UNKNOWN;
 
-  fun isExpected(actualStorageType: StorageType) = this == UNKNOWN || this == actualStorageType
+  public fun isExpected(actualStorageType: StorageType): Boolean = this == UNKNOWN || this == actualStorageType
 
-  companion object {
+  public companion object {
 
     /**
      * Format-based classification. Prefer the [Context] overload, which also recognizes mounted
@@ -31,7 +31,7 @@ enum class StorageType {
      * @param storageId get it from [Uri.getStorageId]
      */
     @JvmStatic
-    fun fromStorageId(storageId: String) =
+    public fun fromStorageId(storageId: String): StorageType =
       when {
         storageId == StorageId.PRIMARY -> EXTERNAL
         storageId == StorageId.DATA -> DATA
@@ -45,7 +45,7 @@ enum class StorageType {
      * format is not recognized.
      */
     @JvmStatic
-    fun fromStorageId(context: Context, storageId: String) =
+    public fun fromStorageId(context: Context, storageId: String): StorageType =
       when {
         storageId == StorageId.PRIMARY -> EXTERNAL
         storageId == StorageId.DATA -> DATA

@@ -17,7 +17,7 @@ import java.util.zip.ZipOutputStream
  */
 
 /** Closing stream safely */
-fun OutputStream?.closeStreamQuietly() {
+public fun OutputStream?.closeStreamQuietly() {
   try {
     this?.close()
   } catch (_: IOException) {
@@ -26,7 +26,7 @@ fun OutputStream?.closeStreamQuietly() {
 }
 
 /** Closing stream safely */
-fun InputStream?.closeStreamQuietly() {
+public fun InputStream?.closeStreamQuietly() {
   try {
     this?.close()
   } catch (_: IOException) {
@@ -35,7 +35,7 @@ fun InputStream?.closeStreamQuietly() {
 }
 
 /** Closing stream safely */
-fun Reader?.closeStreamQuietly() {
+public fun Reader?.closeStreamQuietly() {
   try {
     this?.close()
   } catch (_: IOException) {
@@ -43,7 +43,7 @@ fun Reader?.closeStreamQuietly() {
   }
 }
 
-fun ZipInputStream?.closeEntryQuietly() {
+public fun ZipInputStream?.closeEntryQuietly() {
   try {
     this?.closeEntry()
   } catch (_: Exception) {
@@ -51,7 +51,7 @@ fun ZipInputStream?.closeEntryQuietly() {
   }
 }
 
-fun ZipOutputStream?.closeEntryQuietly() {
+public fun ZipOutputStream?.closeEntryQuietly() {
   try {
     this?.closeEntry()
   } catch (_: IOException) {
@@ -59,7 +59,7 @@ fun ZipOutputStream?.closeEntryQuietly() {
   }
 }
 
-fun Cursor.getString(column: String) =
+public fun Cursor.getString(column: String): String? =
   try {
     getString(getColumnIndexOrThrow(column))
   } catch (_: Exception) {

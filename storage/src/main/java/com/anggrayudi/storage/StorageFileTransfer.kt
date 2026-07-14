@@ -65,7 +65,7 @@ import kotlinx.coroutines.withContext
  * }
  * ```
  */
-suspend fun StorageFile.copyTo(
+public suspend fun StorageFile.copyTo(
   targetFolder: StorageFile,
   configure: TransferSpec.() -> Unit = {},
 ): TransferResult<StorageFile> {
@@ -74,7 +74,7 @@ suspend fun StorageFile.copyTo(
 }
 
 /** Moves this file or folder into [targetFolder]. */
-suspend fun StorageFile.moveTo(
+public suspend fun StorageFile.moveTo(
   targetFolder: StorageFile,
   configure: TransferSpec.() -> Unit = {},
 ): TransferResult<StorageFile> {
@@ -83,7 +83,7 @@ suspend fun StorageFile.moveTo(
 }
 
 /** Compresses these files/folders into [targetZipFile], which must already exist. */
-suspend fun List<StorageFile>.zipTo(
+public suspend fun List<StorageFile>.zipTo(
   targetZipFile: StorageFile,
   configure: TransferSpec.() -> Unit = {},
 ): TransferResult<StorageFile> {
@@ -92,7 +92,7 @@ suspend fun List<StorageFile>.zipTo(
 }
 
 /** Extracts this ZIP file into [targetFolder]. */
-suspend fun StorageFile.unzipTo(
+public suspend fun StorageFile.unzipTo(
   targetFolder: StorageFile,
   configure: TransferSpec.() -> Unit = {},
 ): TransferResult<StorageFile> {
@@ -101,7 +101,7 @@ suspend fun StorageFile.unzipTo(
 }
 
 /** Recursively deletes this file or folder. Main-safe. */
-suspend fun StorageFile.deleteRecursively(childrenOnly: Boolean = false): Boolean =
+public suspend fun StorageFile.deleteRecursively(childrenOnly: Boolean = false): Boolean =
   withContext(Dispatchers.IO) {
     when (this@deleteRecursively) {
       is DocumentStorageFile -> doc.deleteRecursively(context, childrenOnly)
@@ -113,17 +113,17 @@ suspend fun StorageFile.deleteRecursively(childrenOnly: Boolean = false): Boolea
 
 // region Flow operations
 
-fun StorageFile.copyToAsFlow(
+public fun StorageFile.copyToAsFlow(
   targetFolder: StorageFile,
   spec: TransferSpec = TransferSpec(),
 ): Flow<TransferEvent> = transferFlow(this, targetFolder, spec, move = false)
 
-fun StorageFile.moveToAsFlow(
+public fun StorageFile.moveToAsFlow(
   targetFolder: StorageFile,
   spec: TransferSpec = TransferSpec(),
 ): Flow<TransferEvent> = transferFlow(this, targetFolder, spec, move = true)
 
-fun List<StorageFile>.zipToAsFlow(
+public fun List<StorageFile>.zipToAsFlow(
   targetZipFile: StorageFile,
   spec: TransferSpec = TransferSpec(),
 ): Flow<TransferEvent> = channelFlow {
@@ -157,7 +157,7 @@ fun List<StorageFile>.zipToAsFlow(
     .collect { send(it.toTransferEvent(context, spec)) }
 }
 
-fun StorageFile.unzipToAsFlow(
+public fun StorageFile.unzipToAsFlow(
   targetFolder: StorageFile,
   spec: TransferSpec = TransferSpec(),
 ): Flow<TransferEvent> = channelFlow {
@@ -187,7 +187,7 @@ fun StorageFile.unzipToAsFlow(
 
 /** Searches inside this folder. Emits snapshots every [updateInterval] ms when it is > 0. */
 @JvmOverloads
-fun StorageFile.search(
+public fun StorageFile.search(
   recursive: Boolean = true,
   documentType: DocumentFileType = DocumentFileType.ANY,
   mimeTypes: Array<String>? = null,

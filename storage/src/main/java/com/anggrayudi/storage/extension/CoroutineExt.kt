@@ -6,6 +6,7 @@ import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -18,12 +19,12 @@ import kotlinx.coroutines.suspendCancellableCoroutine
  * @version CoroutineExt.kt, v 0.0.1 04/04/20 18.26 by Anggrayudi Hardiannico A.
  */
 @Suppress("OPT_IN_USAGE")
-fun startCoroutineTimer(
+public fun startCoroutineTimer(
   delayMillis: Long = 0,
   repeatMillis: Long = 0,
   runActionOnUiThread: Boolean = false,
   action: () -> Unit,
-) =
+): Job =
   GlobalScope.launch {
     delay(delayMillis)
     if (repeatMillis > 0) {
@@ -45,10 +46,10 @@ fun startCoroutineTimer(
   }
 
 @Suppress("OPT_IN_USAGE")
-fun launchOnUiThread(action: suspend CoroutineScope.() -> Unit) =
+public fun launchOnUiThread(action: suspend CoroutineScope.() -> Unit): Job =
   GlobalScope.launch(Dispatchers.Main, block = action)
 
-inline fun <R> awaitUiResultWithPending(
+public inline fun <R> awaitUiResultWithPending(
   uiScope: CoroutineScope,
   crossinline action: (CancellableContinuation<R>) -> Unit,
 ): R {
@@ -57,7 +58,7 @@ inline fun <R> awaitUiResultWithPending(
   }
 }
 
-inline fun <R> awaitUiResult(uiScope: CoroutineScope, crossinline action: () -> R): R {
+public inline fun <R> awaitUiResult(uiScope: CoroutineScope, crossinline action: () -> R): R {
   return runBlocking {
     suspendCancellableCoroutine {
       uiScope.launch(Dispatchers.Main) { it.resumeWith(Result.success(action())) }
@@ -65,16 +66,16 @@ inline fun <R> awaitUiResult(uiScope: CoroutineScope, crossinline action: () -> 
   }
 }
 
-inline fun CoroutineScope.postToUi(crossinline action: () -> Unit) {
+public inline fun CoroutineScope.postToUi(crossinline action: () -> Unit) {
   launch(Dispatchers.Main) { action() }
 }
 
-suspend fun <E> SendChannel<E>.sendAndClose(element: E) {
+public suspend fun <E> SendChannel<E>.sendAndClose(element: E) {
   send(element)
   close()
 }
 
-suspend inline fun <E> SendChannel<E>.sendAll(flow: Flow<E>) {
+public suspend inline fun <E> SendChannel<E>.sendAll(flow: Flow<E>) {
   flow.collect { send(it) }
   close()
 }

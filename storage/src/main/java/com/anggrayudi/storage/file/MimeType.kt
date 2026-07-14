@@ -10,18 +10,18 @@ import com.anggrayudi.storage.extension.normalizeFileName
  *
  * @author Anggrayudi H
  */
-object MimeType {
-  const val UNKNOWN = "*/*"
-  const val BINARY_FILE = "application/octet-stream"
-  const val ZIP = "application/zip"
-  const val IMAGE = "image/*"
-  const val AUDIO = "audio/*"
-  const val VIDEO = "video/*"
-  const val TEXT = "text/*"
-  const val FONT = "font/*"
-  const val APPLICATION = "application/*"
-  const val CHEMICAL = "chemical/*"
-  const val MODEL = "model/*"
+public object MimeType {
+  public const val UNKNOWN: String = "*/*"
+  public const val BINARY_FILE: String = "application/octet-stream"
+  public const val ZIP: String = "application/zip"
+  public const val IMAGE: String = "image/*"
+  public const val AUDIO: String = "audio/*"
+  public const val VIDEO: String = "video/*"
+  public const val TEXT: String = "text/*"
+  public const val FONT: String = "font/*"
+  public const val APPLICATION: String = "application/*"
+  public const val CHEMICAL: String = "chemical/*"
+  public const val MODEL: String = "model/*"
 
   /**
    * * Given `name` = `ABC` AND `mimeType` = `video/mp4`, then return `ABC.mp4`
@@ -31,7 +31,7 @@ object MimeType {
    * @param name can have file extension or not
    */
   @JvmStatic
-  fun getFullFileName(name: String, mimeType: String?): String {
+  public fun getFullFileName(name: String, mimeType: String?): String {
     // Prior to API 29, MimeType.BINARY_FILE has no file extension
     val cleanName = name.normalizeFileName()
     if (mimeType == BINARY_FILE || mimeType == UNKNOWN) {
@@ -52,7 +52,7 @@ object MimeType {
    * @see getExtensionFromMimeTypeOrFileName
    */
   @JvmStatic
-  fun getExtensionFromMimeType(mimeType: String?): String {
+  public fun getExtensionFromMimeType(mimeType: String?): String {
     return mimeType
       ?.let {
         if (it == BINARY_FILE) "bin" else MimeTypeMap.getSingleton().getExtensionFromMimeType(it)
@@ -61,13 +61,13 @@ object MimeType {
   }
 
   @JvmStatic
-  fun getBaseFileName(filename: String?): String {
+  public fun getBaseFileName(filename: String?): String {
     return if (hasExtension(filename)) filename.orEmpty().substringBeforeLast('.')
     else filename.orEmpty()
   }
 
   @JvmStatic
-  fun getExtensionFromFileName(filename: String?): String {
+  public fun getExtensionFromFileName(filename: String?): String {
     return if (hasExtension(filename)) filename.orEmpty().substringAfterLast('.', "") else ""
   }
 
@@ -78,11 +78,11 @@ object MimeType {
    * * `abc.あん`
    */
   @JvmStatic
-  fun hasExtension(filename: String?) = filename?.matches(Regex("(.*?)\\.[a-zA-Z0-9]+")) == true
+  public fun hasExtension(filename: String?): Boolean = filename?.matches(Regex("(.*?)\\.[a-zA-Z0-9]+")) == true
 
   /** @see getExtensionFromMimeType */
   @JvmStatic
-  fun getExtensionFromMimeTypeOrFileName(mimeType: String?, filename: String): String {
+  public fun getExtensionFromMimeTypeOrFileName(mimeType: String?, filename: String): String {
     return if (mimeType == null || mimeType == UNKNOWN) getExtensionFromFileName(filename)
     else getExtensionFromMimeType(mimeType)
   }
@@ -92,13 +92,13 @@ object MimeType {
    * accross API levels.
    */
   @JvmStatic
-  fun getMimeTypeFromExtension(fileExtension: String): String {
+  public fun getMimeTypeFromExtension(fileExtension: String): String {
     return if (fileExtension.equals("bin", ignoreCase = true)) BINARY_FILE
     else MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileExtension) ?: UNKNOWN
   }
 
   @JvmStatic
-  fun getMimeTypeFromFileName(filename: String?): String {
+  public fun getMimeTypeFromFileName(filename: String?): String {
     return getMimeTypeFromExtension(getExtensionFromFileName(filename))
   }
 }

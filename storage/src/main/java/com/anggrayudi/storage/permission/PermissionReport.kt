@@ -5,8 +5,8 @@ package com.anggrayudi.storage.permission
  *
  * @author Anggrayudi H
  */
-class PermissionReport(
-  val permission: String,
-  val isGranted: Boolean,
-  val deniedPermanently: Boolean,
+public class PermissionReport(
+  public val permission: String,
+  public val isGranted: Boolean,
+  public val deniedPermanently: Boolean,
 )

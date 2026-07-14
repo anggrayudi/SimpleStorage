@@ -51,7 +51,7 @@ import com.anggrayudi.storage.permission.PermissionRequest
 import com.anggrayudi.storage.permission.PermissionResult
 import kotlinx.parcelize.Parcelize
 
-class PermissionRequestCompose(
+public class PermissionRequestCompose(
   private val context: Activity,
   private val permissions: Array<String>,
   private val callback: PermissionCallback,
@@ -61,7 +61,7 @@ class PermissionRequestCompose(
     ManagedActivityResultLauncher<Unit, Map<String, @JvmSuppressWildcards Boolean>>
 
   @Composable
-  fun registerLauncher():
+  public fun registerLauncher():
     ManagedActivityResultLauncher<Unit, Map<String, @JvmSuppressWildcards Boolean>> {
     launcher =
       rememberLauncherForActivityResult(StoragePermissionContract()) { result ->
@@ -133,7 +133,7 @@ private fun handleMissingActivityHandler(context: Context) {
 }
 
 @Composable
-fun rememberLauncherForStoragePermission(
+public fun rememberLauncherForStoragePermission(
   onPermissionsResult: (isGranted: Boolean) -> Unit
 ): ManagedActivityResultLauncher<Unit, Map<String, @JvmSuppressWildcards Boolean>> {
   val context = LocalActivity.current!!
@@ -172,7 +172,7 @@ fun rememberLauncherForStoragePermission(
   return request.registerLauncher()
 }
 
-class StorageAccessLauncher
+public class StorageAccessLauncher
 internal constructor(
   private val context: Context,
   internal var initialPath: FileFullPath?,
@@ -183,7 +183,7 @@ internal constructor(
   internal lateinit var launcher:
     ManagedActivityResultLauncher<RequestStorageAccessContract.Options, RequestStorageAccessResult>
 
-  fun launch() {
+  public fun launch() {
     try {
       launcher.launch(RequestStorageAccessContract.Options(initialPath))
     } catch (_: ActivityNotFoundException) {
@@ -201,7 +201,7 @@ internal data class StorageAccessDialogData(
 ) : Parcelable
 
 @Composable
-fun rememberLauncherForStorageAccess(
+public fun rememberLauncherForStorageAccess(
   expectedStorageType: StorageType = StorageType.UNKNOWN,
   expectedBasePath: String = "",
   initialPath: FileFullPath? = null,
@@ -326,7 +326,7 @@ fun rememberLauncherForStorageAccess(
   return accessLauncher
 }
 
-class FilePickerLauncher
+public class FilePickerLauncher
 internal constructor(
   private val context: Context,
   private val allowMultiple: Boolean = false,
@@ -337,7 +337,7 @@ internal constructor(
   internal lateinit var launcher:
     ManagedActivityResultLauncher<OpenFilePickerContract.Options, FilePickerResult>
 
-  fun launch() {
+  public fun launch() {
     try {
       launcher.launch(OpenFilePickerContract.Options(allowMultiple, initialPath, filterMimeTypes))
     } catch (_: ActivityNotFoundException) {
@@ -347,7 +347,7 @@ internal constructor(
 }
 
 @Composable
-fun rememberLauncherForFilePicker(
+public fun rememberLauncherForFilePicker(
   allowMultiple: Boolean = false,
   initialPath: FileFullPath? = null,
   filterMimeTypes: Set<String> = emptySet(),
@@ -388,7 +388,7 @@ fun rememberLauncherForFilePicker(
   return filePickerLauncher
 }
 
-class FileCreationLauncher
+public class FileCreationLauncher
 internal constructor(
   private val context: Context,
   private val mimeType: String,
@@ -399,7 +399,7 @@ internal constructor(
   internal lateinit var launcher:
     ManagedActivityResultLauncher<FileCreationContract.Options, FileCreationResult>
 
-  fun launch() {
+  public fun launch() {
     try {
       launcher.launch(FileCreationContract.Options(mimeType, fileName, initialPath))
     } catch (_: ActivityNotFoundException) {
@@ -409,7 +409,7 @@ internal constructor(
 }
 
 @Composable
-fun rememberLauncherForFileCreation(
+public fun rememberLauncherForFileCreation(
   mimeType: String,
   fileName: String? = null,
   initialPath: FileFullPath? = null,
@@ -447,7 +447,7 @@ fun rememberLauncherForFileCreation(
   return fileCreationLauncher
 }
 
-class FolderPickerLauncher
+public class FolderPickerLauncher
 internal constructor(
   private val context: Context,
   private val initialPath: FileFullPath? = null,
@@ -458,7 +458,7 @@ internal constructor(
   internal lateinit var launcher:
     ManagedActivityResultLauncher<OpenFolderPickerContract.Options, FolderPickerResult>
 
-  fun launch() {
+  public fun launch() {
     try {
       launcher.launch(OpenFolderPickerContract.Options(initialPath))
     } catch (_: ActivityNotFoundException) {
@@ -470,7 +470,7 @@ internal constructor(
 }
 
 @Composable
-fun rememberLauncherForFolderPicker(
+public fun rememberLauncherForFolderPicker(
   initialPath: FileFullPath? = null,
   onFolderPicked: (folder: DocumentFile) -> Unit,
 ): FolderPickerLauncher {

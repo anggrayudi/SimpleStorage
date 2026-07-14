@@ -11,17 +11,17 @@ import com.anggrayudi.storage.file.StorageType
  * @author Anggrayudi H
  */
 @Deprecated("Superseded in v3 by StorageAccessManager.pickFolder(), which returns a FolderPickerResult instead of using callbacks. See MIGRATION.md.")
-interface FolderPickerCallback {
+public interface FolderPickerCallback {
 
-  fun onCanceledByUser(requestCode: Int) {
+  public fun onCanceledByUser(requestCode: Int) {
     // default implementation
   }
 
-  fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
+  public fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
     // default implementation
   }
 
-  fun onStoragePermissionDenied(requestCode: Int)
+  public fun onStoragePermissionDenied(requestCode: Int)
 
   /**
    * Called when storage permissions are granted, but
@@ -31,12 +31,12 @@ interface FolderPickerCallback {
    * @param storageType `null` if `folder`'s authority is not
    *   [DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY]
    */
-  fun onStorageAccessDenied(
+  public fun onStorageAccessDenied(
     requestCode: Int,
     folder: DocumentFile?,
     storageType: StorageType,
     storageId: String,
   )
 
-  fun onFolderSelected(requestCode: Int, folder: DocumentFile)
+  public fun onFolderSelected(requestCode: Int, folder: DocumentFile)
 }

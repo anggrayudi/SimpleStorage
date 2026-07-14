@@ -119,7 +119,7 @@ internal fun intentToDocumentFiles(context: Context, intent: Intent?): List<Docu
 }
 
 /** This contract may throws [ActivityNotFoundException] or [StoragePermissionDeniedException]. */
-class OpenFolderPickerContract(context: Context) :
+public class OpenFolderPickerContract(context: Context) :
   ActivityResultContract<OpenFolderPickerContract.Options, FolderPickerResult>() {
 
   private val appContext = context.applicationContext
@@ -174,15 +174,15 @@ class OpenFolderPickerContract(context: Context) :
     }
   }
 
-  class Options
+  public class Options
   @JvmOverloads
   constructor(
-    val initialPath: FileFullPath? = null
+    public val initialPath: FileFullPath? = null
   )
 }
 
 /** This contract may throws [ActivityNotFoundException] */
-class OpenFilePickerContract(context: Context) :
+public class OpenFilePickerContract(context: Context) :
   ActivityResultContract<OpenFilePickerContract.Options, FilePickerResult>() {
 
   private val appContext = context.applicationContext
@@ -213,17 +213,17 @@ class OpenFilePickerContract(context: Context) :
     }
   }
 
-  class Options
+  public class Options
   @JvmOverloads
   constructor(
-    val allowMultiple: Boolean = false,
-    val initialPath: FileFullPath? = null,
-    val filterMimeTypes: Set<String> = emptySet(),
+    public val allowMultiple: Boolean = false,
+    public val initialPath: FileFullPath? = null,
+    public val filterMimeTypes: Set<String> = emptySet(),
   )
 }
 
 /** Show interactive UI to create a file. This contract may throws [ActivityNotFoundException] */
-class FileCreationContract(context: Context) :
+public class FileCreationContract(context: Context) :
   ActivityResultContract<FileCreationContract.Options, FileCreationResult>() {
 
   private val appContext = context.applicationContext
@@ -245,12 +245,12 @@ class FileCreationContract(context: Context) :
     return FileCreationResult.Created(file)
   }
 
-  class Options
+  public class Options
   @JvmOverloads
   constructor(
-    val mimeType: String,
-    val fileName: String? = null,
-    val initialPath: FileFullPath? = null,
+    public val mimeType: String,
+    public val fileName: String? = null,
+    public val initialPath: FileFullPath? = null,
   )
 }
 
@@ -259,10 +259,10 @@ class FileCreationContract(context: Context) :
  * `android.permission.WRITE_EXTERNAL_STORAGE`. It only takes effect on API 28-, because API 29+ has
  * scoped storage.
  */
-class StoragePermissionContract() :
+public class StoragePermissionContract() :
   ActivityResultContract<Unit, Map<String, @JvmSuppressWildcards Boolean>>() {
 
-  fun getPermissions() =
+  public fun getPermissions(): Array<String> =
     arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
 
   override fun createIntent(context: Context, input: Unit): Intent {
@@ -302,22 +302,22 @@ class StoragePermissionContract() :
  * root path. This contract may throws [ActivityNotFoundException] or
  * [StoragePermissionDeniedException].
  */
-class RequestStorageAccessContract(
+public class RequestStorageAccessContract(
   context: Context,
   /**
    * For example, if you set [StorageType.SD_CARD] but the user selects [StorageType.EXTERNAL], then
    * trigger [StorageAccessCallback.onRootPathNotSelected]. Set to [StorageType.UNKNOWN] to accept
    * any storage type.
    */
-  var expectedStorageType: StorageType = StorageType.UNKNOWN,
+  public var expectedStorageType: StorageType = StorageType.UNKNOWN,
   /** Applicable for API 30+ only, because Android 11 does not allow selecting the root path. */
-  var expectedBasePath: String = "",
+  public var expectedBasePath: String = "",
 ) : ActivityResultContract<RequestStorageAccessContract.Options, RequestStorageAccessResult>() {
 
-  class Options
+  public class Options
   @JvmOverloads
   constructor(
-    val initialPath: FileFullPath? = null
+    public val initialPath: FileFullPath? = null
   )
 
   private val appContext = context.applicationContext

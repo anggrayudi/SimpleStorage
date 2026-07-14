@@ -15,9 +15,9 @@ import androidx.documentfile.provider.DocumentFile
  *
  * @author Anggrayudi H
  */
-fun Context.getAppDirectory(type: String? = null) = "${getExternalFilesDir(type)}"
+public fun Context.getAppDirectory(type: String? = null): String = "${getExternalFilesDir(type)}"
 
-fun Context.startActivitySafely(intent: Intent) {
+public fun Context.startActivitySafely(intent: Intent) {
   try {
     startActivity(intent)
   } catch (_: ActivityNotFoundException) {
@@ -25,7 +25,7 @@ fun Context.startActivitySafely(intent: Intent) {
   }
 }
 
-fun Activity.startActivityForResultSafely(requestCode: Int, intent: Intent) {
+public fun Activity.startActivityForResultSafely(requestCode: Int, intent: Intent) {
   try {
     startActivityForResult(intent, requestCode)
   } catch (_: ActivityNotFoundException) {
@@ -33,7 +33,7 @@ fun Activity.startActivityForResultSafely(requestCode: Int, intent: Intent) {
   }
 }
 
-fun Context.unregisterReceiverSafely(receiver: BroadcastReceiver?) {
+public fun Context.unregisterReceiverSafely(receiver: BroadcastReceiver?) {
   try {
     unregisterReceiver(receiver ?: return)
   } catch (_: IllegalArgumentException) {
@@ -41,14 +41,14 @@ fun Context.unregisterReceiverSafely(receiver: BroadcastReceiver?) {
   }
 }
 
-fun Context.fromTreeUri(fileUri: Uri) =
+public fun Context.fromTreeUri(fileUri: Uri): DocumentFile? =
   try {
     DocumentFile.fromTreeUri(this, fileUri)
   } catch (_: Exception) {
     null
   }
 
-fun Context.fromSingleUri(fileUri: Uri) =
+public fun Context.fromSingleUri(fileUri: Uri): DocumentFile? =
   try {
     DocumentFile.fromSingleUri(this, fileUri)
   } catch (_: Exception) {

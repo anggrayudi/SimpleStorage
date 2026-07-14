@@ -7,6 +7,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.annotation.WorkerThread
+import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.StorageId.PRIMARY
 import com.anggrayudi.storage.file.getStorageId
@@ -20,7 +21,7 @@ import java.io.*
  */
 
 /** If given [Uri] with path `/tree/primary:Downloads/MyVideo.mp4`, then return `primary`. */
-fun Uri.getStorageId(context: Context): String {
+public fun Uri.getStorageId(context: Context): String {
   val path = path.orEmpty()
   return if (isRawFile) {
     File(path).getStorageId(context)
@@ -32,37 +33,37 @@ fun Uri.getStorageId(context: Context): String {
     }
 }
 
-val Uri.isTreeDocumentFile: Boolean
+public val Uri.isTreeDocumentFile: Boolean
   get() = path?.startsWith("/tree/") == true
 
-val Uri.isExternalStorageDocument: Boolean
+public val Uri.isExternalStorageDocument: Boolean
   get() = authority == DocumentFileCompat.EXTERNAL_STORAGE_AUTHORITY
 
-val Uri.isDownloadsDocument: Boolean
+public val Uri.isDownloadsDocument: Boolean
   get() = authority == DocumentFileCompat.DOWNLOADS_FOLDER_AUTHORITY
 
 /** For URI [DocumentFileCompat.DOCUMENTS_TREE_URI] */
-val Uri.isDocumentsDocument: Boolean
+public val Uri.isDocumentsDocument: Boolean
   get() =
     isExternalStorageDocument &&
       path?.let { it.startsWith("/tree/home:") || it.startsWith("/document/home:") } == true
 
-val Uri.isMediaDocument: Boolean
+public val Uri.isMediaDocument: Boolean
   get() = authority == DocumentFileCompat.MEDIA_FOLDER_AUTHORITY
 
-val Uri.isRawFile: Boolean
+public val Uri.isRawFile: Boolean
   get() = scheme == ContentResolver.SCHEME_FILE
 
-val Uri.isMediaFile: Boolean
+public val Uri.isMediaFile: Boolean
   get() = authority == MediaStore.AUTHORITY
 
-fun Uri.toMediaFile(context: Context) = if (isMediaFile) MediaFile(context, this) else null
+public fun Uri.toMediaFile(context: Context): MediaFile? = if (isMediaFile) MediaFile(context, this) else null
 
-fun Uri.toDocumentFile(context: Context) = DocumentFileCompat.fromUri(context, this)
+public fun Uri.toDocumentFile(context: Context): DocumentFile? = DocumentFileCompat.fromUri(context, this)
 
 @JvmOverloads
 @WorkerThread
-fun Uri.openOutputStream(context: Context, append: Boolean = true): OutputStream? {
+public fun Uri.openOutputStream(context: Context, append: Boolean = true): OutputStream? {
   return try {
     if (isRawFile) {
       FileOutputStream(File(path ?: return null), append)
@@ -78,7 +79,7 @@ fun Uri.openOutputStream(context: Context, append: Boolean = true): OutputStream
 }
 
 @WorkerThread
-fun Uri.openInputStream(context: Context): InputStream? {
+public fun Uri.openInputStream(context: Context): InputStream? {
   return try {
     if (isRawFile) {
       // handle file from external storage

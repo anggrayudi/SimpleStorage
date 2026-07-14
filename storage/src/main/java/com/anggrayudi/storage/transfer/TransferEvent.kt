@@ -9,16 +9,16 @@ import com.anggrayudi.storage.StorageFile
  *
  * @author Anggrayudi H
  */
-sealed interface TransferEvent {
+public sealed interface TransferEvent {
 
   /** The operation moved to a new [TransferPhase]. */
-  data class PhaseChanged(val phase: TransferPhase) : TransferEvent
+  public data class PhaseChanged(val phase: TransferPhase) : TransferEvent
 
   /**
    * @param percent 0..100
    * @param bytesPerSecond current write speed in bytes per second
    */
-  data class Progress(
+  public data class Progress(
     val percent: Float,
     val bytesTransferred: Long,
     val bytesPerSecond: Long,
@@ -27,10 +27,10 @@ sealed interface TransferEvent {
   ) : TransferEvent
 
   /** Terminal event: the operation finished with [result]. */
-  data class Completed<T>(val result: TransferResult<T>) : TransferEvent
+  public data class Completed<T>(val result: TransferResult<T>) : TransferEvent
 }
 
-enum class TransferPhase {
+public enum class TransferPhase {
   VALIDATING,
   PREPARING,
   COUNTING_FILES,
@@ -39,7 +39,7 @@ enum class TransferPhase {
   DELETING_SOURCE_FILES,
 }
 
-enum class TransferErrorCode {
+public enum class TransferErrorCode {
   STORAGE_PERMISSION_DENIED,
   CANNOT_CREATE_FILE_IN_TARGET,
   SOURCE_NOT_FOUND,
@@ -55,7 +55,7 @@ enum class TransferErrorCode {
 }
 
 /** @param filesSkipped files left alone because the conflict resolver chose [ConflictResolution.SKIP] */
-data class TransferStats(
+public data class TransferStats(
   val totalFiles: Int = 0,
   val filesTransferred: Int = 0,
   val bytesTransferred: Long = 0,
@@ -63,9 +63,9 @@ data class TransferStats(
 )
 
 /** Terminal outcome of a transfer operation. */
-sealed interface TransferResult<out T> {
+public sealed interface TransferResult<out T> {
 
-  data class Success<T>(val result: T, val stats: TransferStats = TransferStats()) :
+  public data class Success<T>(val result: T, val stats: TransferStats = TransferStats()) :
     TransferResult<T>
 
   /**
@@ -75,13 +75,13 @@ sealed interface TransferResult<out T> {
    *
    * @param existingTarget what already occupies the destination, when known
    */
-  data class Skipped(val existingTarget: StorageFile?) : TransferResult<Nothing>
+  public data class Skipped(val existingTarget: StorageFile?) : TransferResult<Nothing>
 
   /**
    * @param cause the exception that triggered this failure, if any
    * @param partialStats what had been transferred before the failure, if anything
    */
-  data class Failure(
+  public data class Failure(
     val errorCode: TransferErrorCode,
     val message: String? = null,
     val cause: Throwable? = null,
@@ -89,12 +89,12 @@ sealed interface TransferResult<out T> {
   ) : TransferResult<Nothing>
 }
 
-val TransferResult<*>.isSuccess: Boolean
+public val TransferResult<*>.isSuccess: Boolean
   get() = this is TransferResult.Success
 
-val TransferResult<*>.isSkipped: Boolean
+public val TransferResult<*>.isSkipped: Boolean
   get() = this is TransferResult.Skipped
 
-fun <T> TransferResult<T>.getOrNull(): T? = (this as? TransferResult.Success<T>)?.result
+public fun <T> TransferResult<T>.getOrNull(): T? = (this as? TransferResult.Success<T>)?.result
 
-fun TransferResult<*>.failureOrNull(): TransferResult.Failure? = this as? TransferResult.Failure
+public fun TransferResult<*>.failureOrNull(): TransferResult.Failure? = this as? TransferResult.Failure

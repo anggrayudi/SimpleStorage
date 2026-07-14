@@ -33,18 +33,18 @@ import java.io.File
  *
  * @author Anggrayudi H
  */
-class FileFullPath : Parcelable {
+public class FileFullPath : Parcelable {
 
-  val storageId: String
-  val basePath: String
-  lateinit var absolutePath: String
+  public val storageId: String
+  public val basePath: String
+  public lateinit var absolutePath: String
     private set
 
-  lateinit var simplePath: String
+  public lateinit var simplePath: String
     private set
 
   /** @param fullPath can be simple path or absolute path */
-  constructor(context: Context, fullPath: String) {
+  public constructor(context: Context, fullPath: String) {
     if (fullPath.startsWith('/')) {
       when {
         fullPath.startsWith(SimpleStorage.externalStoragePath) -> {
@@ -82,14 +82,14 @@ class FileFullPath : Parcelable {
     }
   }
 
-  constructor(context: Context, storageId: String, basePath: String) {
+  public constructor(context: Context, storageId: String, basePath: String) {
     this.storageId = storageId
     this.basePath = basePath.trimFileSeparator()
     buildBaseAndAbsolutePaths(context)
   }
 
   @RequiresApi(30)
-  constructor(context: Context, storageType: StorageType, basePath: String = "") {
+  public constructor(context: Context, storageType: StorageType, basePath: String = "") {
     this.basePath = basePath.trimFileSeparator()
     val sm = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
     storageId =
@@ -103,7 +103,7 @@ class FileFullPath : Parcelable {
     buildBaseAndAbsolutePaths(context)
   }
 
-  constructor(context: Context, file: File) : this(context, file.path.orEmpty())
+  public constructor(context: Context, file: File) : this(context, file.path.orEmpty())
 
   private constructor(
     storageId: String,
@@ -131,19 +131,19 @@ class FileFullPath : Parcelable {
     simplePath = if (storageId.isEmpty()) "" else "$storageId:$basePath"
   }
 
-  val uri: Uri?
+  public val uri: Uri?
     get() =
       if (storageId.isEmpty()) null else DocumentFileCompat.createDocumentUri(storageId, basePath)
 
-  fun toDocumentUri(context: Context): Uri? {
+  public fun toDocumentUri(context: Context): Uri? {
     return context.fromTreeUri(uri ?: return null)?.uri
   }
 
-  val storageType: StorageType
+  public val storageType: StorageType
     get() = StorageType.fromStorageId(storageId)
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
-  fun checkIfStorageIdIsAccessibleInSafSelector() {
+  public fun checkIfStorageIdIsAccessibleInSafSelector() {
     if (storageId.isEmpty()) {
       throw IllegalArgumentException("Empty storage ID")
     }
@@ -163,7 +163,7 @@ class FileFullPath : Parcelable {
 
   override fun describeContents(): Int = 0
 
-  companion object CREATOR : Parcelable.Creator<FileFullPath> {
+  public companion object CREATOR : Parcelable.Creator<FileFullPath> {
     override fun createFromParcel(parcel: Parcel): FileFullPath {
       val storageId = parcel.readString().orEmpty()
       val basePath = parcel.readString().orEmpty()

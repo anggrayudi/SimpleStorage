@@ -5,21 +5,21 @@ package com.anggrayudi.storage.permission
  *
  * @author Anggrayudi H
  */
-interface PermissionCallback {
+public interface PermissionCallback {
 
-  fun onDisplayConsentDialog(request: PermissionRequest) {
+  public fun onDisplayConsentDialog(request: PermissionRequest) {
     request.continueToPermissionRequest()
   }
 
   /** @param fromSystemDialog true if users agreed/denied the permission from the system dialog. */
-  fun onPermissionsChecked(result: PermissionResult, fromSystemDialog: Boolean)
+  public fun onPermissionsChecked(result: PermissionResult, fromSystemDialog: Boolean)
 
-  fun onShouldRedirectToSystemSettings(blockedPermissions: List<PermissionReport>) {
+  public fun onShouldRedirectToSystemSettings(blockedPermissions: List<PermissionReport>) {
     // default implementation
   }
 
   /** Triggered when you request another permission when a permission request dialog is showing. */
-  fun onPermissionRequestInterrupted(permissions: Array<String>) {
+  public fun onPermissionRequestInterrupted(permissions: Array<String>) {
     // default implementation
   }
 }

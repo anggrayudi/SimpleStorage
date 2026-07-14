@@ -16,13 +16,13 @@ import com.anggrayudi.storage.StorageFile
  *
  * @author Anggrayudi H
  */
-class MediaPickerLauncher
+public class MediaPickerLauncher
 internal constructor(
   private val single: ManagedActivityResultLauncher<PickVisualMediaRequest, Uri?>?,
   private val multiple: ManagedActivityResultLauncher<PickVisualMediaRequest, List<Uri>>?,
 ) {
 
-  fun launch(
+  public fun launch(
     type: ActivityResultContracts.PickVisualMedia.VisualMediaType =
       ActivityResultContracts.PickVisualMedia.ImageAndVideo
   ) {
@@ -39,7 +39,7 @@ internal constructor(
  *   across recompositions.
  */
 @Composable
-fun rememberLauncherForMediaPicker(
+public fun rememberLauncherForMediaPicker(
   maxItems: Int = 1,
   onMediaPicked: (List<StorageFile>) -> Unit,
 ): MediaPickerLauncher {

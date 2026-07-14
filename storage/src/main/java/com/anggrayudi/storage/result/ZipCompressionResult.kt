@@ -7,34 +7,34 @@ import androidx.documentfile.provider.DocumentFile
  *
  * @author Anggrayudi Hardiannico A.
  */
-sealed class ZipCompressionResult {
-  data object CountingFiles : ZipCompressionResult()
+public sealed class ZipCompressionResult {
+  public data object CountingFiles : ZipCompressionResult()
 
-  data class Compressing(
+  public data class Compressing(
     val progress: Float,
     val bytesCompressed: Long,
     val writeSpeed: Int,
     val fileCount: Int,
   ) : ZipCompressionResult()
 
-  data class Completed(
+  public data class Completed(
     val zipFile: DocumentFile,
     val bytesCompressed: Long,
     val totalFilesCompressed: Int,
     val compressionRate: Float,
   ) : ZipCompressionResult()
 
-  data object DeletingEntryFiles : ZipCompressionResult()
+  public data object DeletingEntryFiles : ZipCompressionResult()
 
   /** @param cause the exception that triggered this error, if any */
-  data class Error(
+  public data class Error(
     val errorCode: ZipCompressionErrorCode,
     val message: String? = null,
     val cause: Throwable? = null,
   ) : ZipCompressionResult()
 }
 
-enum class ZipCompressionErrorCode {
+public enum class ZipCompressionErrorCode {
   STORAGE_PERMISSION_DENIED,
   CANNOT_CREATE_FILE_IN_TARGET,
   MISSING_ENTRY_FILE,

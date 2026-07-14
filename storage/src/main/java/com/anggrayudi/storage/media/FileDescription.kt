@@ -7,10 +7,10 @@ import com.anggrayudi.storage.file.MimeType
  *
  * @author Anggrayudi H
  */
-class FileDescription @JvmOverloads constructor(var name: String, var subFolder: String = "") {
+public class FileDescription @JvmOverloads constructor(public var name: String, public var subFolder: String = "") {
   private var _mimeType: String? = MimeType.BINARY_FILE
 
-  val mimeType: String
+  public val mimeType: String
     get() {
       var type = _mimeType
       if (
@@ -23,10 +23,10 @@ class FileDescription @JvmOverloads constructor(var name: String, var subFolder:
       return type
     }
 
-  constructor(name: String, subFolder: String, mimeType: String?) : this(name, subFolder) {
+  public constructor(name: String, subFolder: String, mimeType: String?) : this(name, subFolder) {
     _mimeType = mimeType?.takeIf { !it.contains("*") }
   }
 
-  val fullName: String
+  public val fullName: String
     get() = MimeType.getFullFileName(name, mimeType)
 }

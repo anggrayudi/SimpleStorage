@@ -8,7 +8,7 @@ import java.io.File
  *
  * @author Anggrayudi H
  */
-enum class PublicDirectory(val folderName: String) {
+public enum class PublicDirectory(public val folderName: String) {
 
   /** @see DocumentFileCompat.fromPublicFolder */
   DOWNLOADS(Environment.DIRECTORY_DOWNLOADS),
@@ -76,9 +76,9 @@ enum class PublicDirectory(val folderName: String) {
    */
   DOCUMENTS(Environment.DIRECTORY_DOCUMENTS);
 
-  val file: File
+  public val file: File
     get() = Environment.getExternalStoragePublicDirectory(folderName)
 
-  val absolutePath: String
+  public val absolutePath: String
     get() = file.absolutePath
 }

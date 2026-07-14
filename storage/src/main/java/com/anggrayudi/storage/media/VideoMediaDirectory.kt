@@ -7,7 +7,7 @@ import android.os.Environment
  *
  * @author Anggrayudi H
  */
-enum class VideoMediaDirectory(val folderName: String) {
+public enum class VideoMediaDirectory(public val folderName: String) {
   MOVIES(Environment.DIRECTORY_MOVIES),
   DCIM(Environment.DIRECTORY_DCIM),
 }

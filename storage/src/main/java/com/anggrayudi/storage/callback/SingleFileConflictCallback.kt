@@ -14,10 +14,10 @@ import kotlinx.coroutines.GlobalScope
  *
  * @author Anggrayudi H
  */
-abstract class SingleFileConflictCallback<T>
+public abstract class SingleFileConflictCallback<T>
 @OptIn(DelicateCoroutinesApi::class)
 @JvmOverloads
-constructor(var uiScope: CoroutineScope = GlobalScope) {
+constructor(public var uiScope: CoroutineScope = GlobalScope) {
 
   /**
    * Do not call `super` when you override this function.
@@ -31,18 +31,18 @@ constructor(var uiScope: CoroutineScope = GlobalScope) {
    * @param destinationFile can be [DocumentFile] or [java.io.File]
    */
   @UiThread
-  open fun onFileConflict(destinationFile: T, action: FileConflictAction) {
+  public open fun onFileConflict(destinationFile: T, action: FileConflictAction) {
     action.confirmResolution(ConflictResolution.CREATE_NEW)
   }
 
-  class FileConflictAction(private val continuation: CancellableContinuation<ConflictResolution>) {
+  public class FileConflictAction(private val continuation: CancellableContinuation<ConflictResolution>) {
 
-    fun confirmResolution(resolution: ConflictResolution) {
+    public fun confirmResolution(resolution: ConflictResolution) {
       continuation.resumeWith(Result.success(resolution))
     }
   }
 
-  enum class ConflictResolution {
+  public enum class ConflictResolution {
     /** Delete the file in destination if existed, then start copy/move. */
     REPLACE,
 
@@ -53,7 +53,7 @@ constructor(var uiScope: CoroutineScope = GlobalScope) {
     SKIP;
 
     @RestrictTo(RestrictTo.Scope.LIBRARY)
-    fun toCreateMode(allowReuseFile: Boolean = false) =
+    public fun toCreateMode(allowReuseFile: Boolean = false): CreateMode =
       when (this) {
         REPLACE -> CreateMode.REPLACE
         CREATE_NEW -> CreateMode.CREATE_NEW

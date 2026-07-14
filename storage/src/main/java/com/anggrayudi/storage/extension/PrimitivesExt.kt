@@ -5,6 +5,6 @@ package com.anggrayudi.storage.extension
  *
  * @author Anggrayudi H
  */
-fun Int?.toBoolean() = this != null && this > 0
+public fun Int?.toBoolean(): Boolean = this != null && this > 0
 
-fun Boolean?.toInt() = if (this == true) 1 else 0
+public fun Boolean?.toInt(): Int = if (this == true) 1 else 0
