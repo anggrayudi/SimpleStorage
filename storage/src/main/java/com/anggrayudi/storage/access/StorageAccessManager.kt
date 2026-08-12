@@ -120,8 +120,10 @@ public class StorageAccessManager(activity: ComponentActivity) {
       creationContinuation = null
     }
 
+  private val permissionContract = StoragePermissionContract()
+
   private val permissionLauncher =
-    activity.registerForActivityResult(StoragePermissionContract()) { result ->
+    activity.registerForActivityResult(permissionContract) { result ->
       permissionContinuation?.resume(result)
       permissionContinuation = null
     }
@@ -263,6 +265,9 @@ public class StorageAccessManager(activity: ComponentActivity) {
 
   /** Requests READ/WRITE_EXTERNAL_STORAGE. Only meaningful on API 26–29; `true` elsewhere. */
   public suspend fun requestStoragePermission(): Boolean {
+    // Nothing left to ask for on API 33+, and launching anyway means a dialog the platform
+    // silently denies, which used to make this report failure on every modern device.
+    if (permissionContract.getPermissions().isEmpty()) return true
     val result =
       try {
         awaitResult<Unit, Map<String, Boolean>>(permissionLauncher, Unit) {

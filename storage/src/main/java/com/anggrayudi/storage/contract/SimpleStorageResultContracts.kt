@@ -262,8 +262,23 @@ public class FileCreationContract(context: Context) :
 public class StoragePermissionContract() :
   ActivityResultContract<Unit, Map<String, @JvmSuppressWildcards Boolean>>() {
 
+  /**
+   * What is actually worth asking for on this API level. Empty means the request would be a no-op:
+   * from API 33 both legacy permissions are ignored by the platform, and media access goes through
+   * the `READ_MEDIA_*` permissions an app declares for itself.
+   */
   public fun getPermissions(): Array<String> =
-    arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
+    when {
+      Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> emptyArray()
+      // Scoped storage ignores WRITE_EXTERNAL_STORAGE, but READ still governs other apps' media.
+      Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
+        arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+      else ->
+        arrayOf(
+          Manifest.permission.WRITE_EXTERNAL_STORAGE,
+          Manifest.permission.READ_EXTERNAL_STORAGE,
+        )
+    }
 
   override fun createIntent(context: Context, input: Unit): Intent {
     return Intent(ACTION_REQUEST_PERMISSIONS).putExtra(EXTRA_PERMISSIONS, getPermissions())

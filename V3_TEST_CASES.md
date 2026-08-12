@@ -170,6 +170,41 @@ multi-file engine's manual REPLACE handling behave correctly for CREATE_NEW reso
 | TC-83 | P1 | volumeMountEvents emits on remount | `VolumeMountEventsTest.tc83_volumeMountEventsEmitsOnRemount`: collect the flow, then `sm unmount public:7,433` + `sm mount public:7,433` via `UiAutomation.executeShellCommand` | flow emits a `StorageVolume` with `uuid == 4145-0BEA` within the timeout | **PASS** — emulator-5556 (API 36). Logcat: unmount at 04:11:49.9, mount at 04:11:53.14, `received MEDIA_MOUNTED for uuid=4145-0BEA description=Virtual SD card state=mounted` at 04:11:53.147 (~5 ms after the mount command). No side effects: the volume stayed `mounted` afterwards and the process was not killed (it held no open files on the volume); no re-run of other groups was needed. |
 | TC-84 | P2 | Label-fallback re-grant via SAF | `VolumeLabelFallbackTest.tc84_labelFallbackRegrantsAndUpdatesBookmark`: bookmark with wrong `storageId` (`DEADBEEFDEADBEEF`) but the real label ("Virtual SD card"), `basePath=Documents`; UiAutomator clicks "Use this folder" → "Allow" | `Granted` with **updated** `bookmark.storageId` == real UUID | **PASS** — emulator-5556 (API 36). Logcat: `TC-84: label fallback re-granted. old id=DEADBEEFDEADBEEF new id=4145-0BEA folder=/storage/4145-0BEA/Documents`. That the SAF dialog genuinely appeared is proven by ActivityTaskManager: `START … act=android.intent.action.OPEN_DOCUMENT_TREE … com.google.android.documentsui/….PickActivity … from uid 10227 (com.anggrayudi.storage.test)`. The persisted grant is released again in `@After` so later runs start clean. |
 
+## Group 10 — StorageAccessManager, interactive (`StorageAccessUiTest`)
+
+> Small_Phone_API_36 (API 36), 8/8 green on three consecutive runs. Each test starts the suspend
+> call on Main, drives the system UI with UiAutomator from the instrumentation thread, then awaits
+> the result; a missing button dumps the window hierarchy instead of just timing out.
+>
+> **Environment prerequisites**, learned the hard way — every one of these produced a confusing
+> "button not found" before it was handled:
+> - **The device must be unlocked.** Behind a secure keyguard the host activity never reaches the
+>   foreground and every picker fails. `setUp` now fails fast with that message instead.
+> - **The screen must stay on** (`adb shell svc power stayon true`, generous `screen_off_timeout`),
+>   or the device re-locks mid-run.
+> - `setUp` runs `pm clear com.google.android.documentsui`: DocumentsUI remembers its last folder
+>   across launches, which otherwise leaks one test's navigation into the next and makes results
+>   depend on run order.
+
+| ID | Pri | Case | Steps | Expected | Status |
+|----|-----|------|-------|----------|--------|
+| TC-90 | P0 | `ensureAccess` on a raw-accessible path | app-specific external dir → `ensureAccess` | `Granted`, writable, and **no** SAF grant taken | **PASS** |
+| TC-91 | P0 | `pickFolder` grants a real tree | open at `primary:Documents`, tap "Use this folder" → "Allow" | `Picked`, folder named Documents and readable | **PASS**. The initial path matters: picking the volume root leaves DocumentsUI showing "Can't use this folder" |
+| TC-92 | P1 | `pickFolder` canceled | open the picker, press Back | `CanceledByUser` | **PASS** |
+| TC-93 | P0 | `createFile` through SAF | `createFile("text/plain", name)`, tap "Save" | `Created` with the requested name | **PASS** |
+| TC-94 | P0 | `pickFiles` returns the selection | seed a file in Downloads through MediaStore, open at `primary:Download`, scroll to it and tap | `Picked` with exactly that file | **PASS**. Seeding must go through MediaStore — a file written straight to the filesystem is not in MediaProvider's database, so DocumentsUI never lists it |
+| TC-95 | P0 | `requestStoragePermission` is a no-op on modern API | call it on API 36 | `true`, no dialog | **PASS after a library fix** — see below |
+| TC-96 | P1 | `pickMedia` returns the picked image | seed an image, open the Photo Picker, tap the thumbnail, tap "Done" | non-empty list, readable | **PASS** |
+| TC-97 | P1 | `pickMedia` canceled | open the Photo Picker, press Back | empty list, no hang | **PASS** |
+
+Bug found by TC-95: `requestStoragePermission()` returned **false on every device from API 33**,
+after showing a permission dialog the platform silently denies. `StoragePermissionContract` always
+asked for `WRITE_EXTERNAL_STORAGE` + `READ_EXTERNAL_STORAGE`; from API 30 the write permission can
+never be granted, and from API 33 both are ignored entirely, so `result.values.all { it }` was
+always false. The contract now asks for what the API level can actually grant — nothing on API 33+,
+read-only on 30–32, both below that — and the manager returns `true` when there is nothing to ask
+for. This contradicted both the KDoc ("`true` elsewhere") and `V3_PLAN.md` §6.
+
 ## Library bugs found during this pass
 
 ### Confirmed and fixed: folder-merge conflict resolution silently reports failure despite full success
