@@ -98,7 +98,7 @@ with it in 4.0. They now live on `DocumentFileCompat`, and the old names delegat
 | `SingleFileResult` / `SingleFolderResult` / `MultipleFilesResult` / `ZipCompressionResult` / `ZipDecompressionResult` | `TransferEvent` (`PhaseChanged`, `Progress`, `Completed`) |
 | `...Result.Completed(result: Any)` + casting | `TransferResult.Success<StorageFile>` — typed |
 | `...Result.Error(errorCode, message, cause)` | `TransferResult.Failure(errorCode, message, cause, partialStats)` |
-| — (skipping silently closed the flow) | `TransferResult.Skipped(existingTarget)` for top-level skips; `TransferStats.filesSkipped` for per-file skips in merges (since 3.0.0-beta02) |
+| — (skipping silently closed the flow) | `TransferResult.Skipped(existingTarget)` for top-level skips; `TransferStats.filesSkipped` for per-file skips in merges |
 | `writeSpeed: Int` (bytes per update interval) | `Progress.bytesPerSecond: Long` |
 
 ### Conflict handling
