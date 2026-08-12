@@ -654,7 +654,7 @@ public class MediaFile(context: Context, public val uri: Uri) {
       // using timer on small file is useless. We set minimum 10MB.
       if (updateInterval > 0 && srcSize > 10 * FileSize.MB) {
         timer =
-          startCoroutineTimer(repeatMillis = updateInterval) {
+          startCoroutineTimer(delayMillis = updateInterval, repeatMillis = updateInterval) {
             scope.trySend(
               SingleFileResult.InProgress(bytesMoved * 100f / srcSize, bytesMoved, writeSpeed)
             )

@@ -33,7 +33,7 @@ Notes for the implementer:
 | TC-12 | P1 | copyTo folder recursive | Tree: 3 levels, 4 files, 1 empty folder. Copy with default spec (`skipEmptyFiles=true`) | Success; all 4 files present with identical content; document whether the empty folder is skipped | **PASS** — `TransferHappyPathTest.tc12_copyToFolderRecursive`; all 4 checksums matched. Observed: the empty folder (`subA/emptyFolder`) was **not** created in the target — `skipEmptyFiles=true` skips empty folders too, not just zero-length files (verified via on-device `File.list()`, logged "empty folder present in copy target = false"). |
 | TC-13 | P1 | zip → unzip round-trip | Zip the TC-12 tree to `archive.zip`; unzip to a fresh folder | Both Success; extracted checksums match originals; `TransferStats.filesTransferred=4` | **PASS** — `TransferHappyPathTest.tc13_zipUnzipRoundTrip`; `stats.filesTransferred == 4` confirmed, all checksums matched. |
 | TC-14 | P1 | Invalid target | `copyTo` where target is a FILE, not folder | `Failure(INVALID_TARGET)` | **PASS** — `TransferHappyPathTest.tc14_invalidTarget`. |
-| TC-15 | P1 | Progress events | Copy a ~20 MB random file with `updateInterval=100`, collect `onProgress` | At least one `Progress` with `0 < percent <= 100` and `bytesPerSecond > 0`; document if engine thresholds suppress it | **PASS** — `TransferHappyPathTest.tc15_progressEvents`. Observed: exactly 1 progress event fired (`percent=0.234375, bytesTransferred=49152, bytesPerSecond=491520`) before completion — the emulator's virtual disk is fast enough that a 20 MB copy leaves only a narrow window for the 100ms timer, but it fired with valid values every run. |
+| TC-15 | P1 | Progress events | Two parts. (a) Copy a ~20 MB file with `updateInterval=60_000`, so the copy ends long before the first tick is due. (b) Copy it again with `updateInterval=10`, collect `onProgress`, and measure elapsed time | (a) no `Progress` at all; (b) every event has `0 <= percent <= 100`, non-negative bytes and speed, non-decreasing `bytesTransferred`, and — when the copy ran longer than 2 intervals — at least one event with `percent > 0` and `bytesPerSecond > 0` | **PASS** — `TransferHappyPathTest.tc15_progressEvents`, Small_Phone_API_36 (API 36), 10/10 consecutive runs green, existence assertion never skipped. Copies took 33–167 ms and produced 2–11 events, e.g. `20 MB copy took 46ms at updateInterval=10ms, 3 progress events: [percent=42.1 bytes=8839168 bps=883916800, percent=72.0 …, percent=91.4 …]`. |
 
 ## Group 3 — Conflict resolution (the critical gap: suspend→callback adapters)
 
@@ -109,12 +109,19 @@ Notes for the implementer:
 | TC-71 | P0 | End-to-end recognition of a real removable volume | `RemovableVolumeTest.tc71_endToEndRemovableVolumeRecognition`: find the SD app-specific dir via `getExternalFilesDirs` (index > 0, non-emulated; Assume-SKIP when absent), derive ID via `getStorageId`, check `isMountedVolumeId` + `StorageType.fromStorageId(context, id) == SD_CARD`, create a real file, resolve with `StorageFile.fromPath`, `copyTo` a sibling folder on the same volume | ID == `/storage/` segment, mounted-volume check true, classified SD_CARD, file resolves with correct name/length and `path.storageId == id`, copy succeeds | **PASS** — emulator-5556 (API 36). Logcat evidence: `TC-71: volumeId=4145-0BEA dir=/storage/4145-0BEA/Android/data/com.anggrayudi.storage.test/files source=tc71_….txt(43b) resolved.path=4145-0BEA:Android/data/…/files/tc71_….txt copied=…(43b) targetListing=[tc71_….txt]`. Not skipped (XML `skipped="0"`), so the removable-volume path genuinely executed. Free-space reporting on the virtual volume was sane (df: ~510 MB available), so the default `checkAvailableSpace=true` stayed on. |
 | TC-72 | P0 | Regex fallback classifies an unmounted NTFS ID | `RemovableVolumeTest.tc72_unmountedVolumeIdRegexFallback`: `isMountedVolumeId(context, "A0E69251E6922814")` and `StorageType.fromStorageId(context, "A0E69251E6922814")` | `false` (no such volume mounted) and `SD_CARD` — proving the regex fallback, not the mount check, does the classifying | **PASS** — emulator-5556 (API 36). Documents that a 16-hex NTFS serial is classified SD_CARD purely by `SD_CARD_STORAGE_ID_REGEX` while the volume is absent. |
 
-Note on TC-15 during this pass: on this much faster virtual disk the 20 MB copy once finished
-before the progress timer produced a non-zero event
-(`Progress(percent=0.0, bytesTransferred=0, bytesPerSecond=0)`) and the assertion failed; the
-immediate re-run and the final full-suite run both passed
-(`percent=0.976…, bytesPerSecond=2048000`). Timing flake of the existing test on very fast
-devices, not a regression — the storage-ID commits do not touch the transfer engine.
+Note on TC-15: the original flake was not a test-tolerance problem. Every progress timer was
+started with `startCoroutineTimer(repeatMillis = updateInterval)`, whose `delayMillis` defaults to
+0, so the first tick fired before a single byte was written and reported
+`Progress(percent=0, bytesTransferred=0, bytesPerSecond=0)`. On a fast disk a 20 MB copy finishes
+inside one 100 ms interval, so that useless event was the only one the collector ever saw, and the
+test passed only when the tick happened to be scheduled a few microseconds late.
+
+Fixed in the engine: all 11 timer sites now pass `delayMillis = updateInterval`, so the first event
+carries measured numbers and a transfer shorter than one interval reports no progress at all. Both
+halves of the rewritten test were proved able to fail on this device: restoring the immediate tick
+fails part (a) with `must not report progress, got [Progress(percent=1.40625, …)]`, and disabling
+progress emission fails part (b) with `copy ran 52ms at a 10ms interval but reported no measured
+progress, got []`.
 
 ## Group 9 — VolumeBookmark (experimental, slice 2)
 

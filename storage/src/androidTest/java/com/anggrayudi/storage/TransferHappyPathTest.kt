@@ -1,6 +1,8 @@
 package com.anggrayudi.storage
 
+import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.anggrayudi.storage.transfer.TransferEvent
 import com.anggrayudi.storage.transfer.TransferErrorCode
 import com.anggrayudi.storage.transfer.TransferResult
 import com.anggrayudi.storage.transfer.getOrNull
@@ -148,28 +150,69 @@ class TransferHappyPathTest {
   @Test
   fun tc15_progressEvents() = runBlocking {
     val source = File(playground, "source").apply { mkdirs() }
-    val target = File(playground, "target").apply { mkdirs() }
     val bigFile = File(source, "big.bin").apply { writeRandomBytes(20 * 1024 * 1024) }
 
-    val progressEvents = mutableListOf<com.anggrayudi.storage.transfer.TransferEvent.Progress>()
+    // Part 1 is deterministic: a copy that finishes long before the first interval elapses must
+    // report nothing. The engine used to fire an immediate Progress(0, 0, 0) before the first
+    // byte, which showed up here as exactly one event no matter how long the interval was.
+    val slowTarget = File(playground, "target-slow").apply { mkdirs() }
+    val untimedEvents = mutableListOf<TransferEvent.Progress>()
+    val untimedResult =
+      storageFile(bigFile).copyTo(storageFile(slowTarget)) {
+        updateInterval = 60_000
+        onProgress { untimedEvents.add(it) }
+      }
+
+    assertTrue("expected success but was $untimedResult", untimedResult.isSuccess)
+    assertEquals(bigFile.md5(), File(slowTarget, "big.bin").md5())
+    assertTrue(
+      "a copy shorter than the 60s interval must not report progress, got $untimedEvents",
+      untimedEvents.isEmpty(),
+    )
+
+    // Part 2 watches the real stream. How many events arrive depends on the disk, so only their
+    // shape is asserted unconditionally; their existence is asserted when the copy actually ran
+    // long enough for a tick to be due.
+    val target = File(playground, "target").apply { mkdirs() }
+    val interval = 10L
+    val events = mutableListOf<TransferEvent.Progress>()
+    val startedAt = SystemClock.elapsedRealtime()
     val result =
       storageFile(bigFile).copyTo(storageFile(target)) {
-        updateInterval = 100
-        onProgress { progressEvents.add(it) }
+        updateInterval = interval
+        onProgress { events.add(it) }
       }
+    val elapsed = SystemClock.elapsedRealtime() - startedAt
 
     assertTrue("expected success but was $result", result.isSuccess)
     assertEquals(bigFile.md5(), File(target, "big.bin").md5())
-
-    val validProgress = progressEvents.filter { it.percent > 0f && it.percent <= 100f && it.bytesPerSecond > 0 }
     println(
-      "TC-15: captured ${progressEvents.size} progress events, " +
-        "${validProgress.size} satisfy 0<percent<=100 && bytesPerSecond>0: $progressEvents"
+      "TC-15: 20 MB copy took ${elapsed}ms at updateInterval=${interval}ms, " +
+        "${events.size} progress events: $events"
     )
-    assertTrue(
-      "expected at least one Progress with 0<percent<=100 and bytesPerSecond>0, " +
-        "got $progressEvents",
-      validProgress.isNotEmpty(),
-    )
+
+    events.forEachIndexed { i, event ->
+      assertTrue(
+        "event $i: percent=${event.percent} outside 0..100 in $events",
+        event.percent in 0f..100f,
+      )
+      assertTrue("event $i: negative bytesTransferred in $events", event.bytesTransferred >= 0)
+      assertTrue("event $i: negative bytesPerSecond in $events", event.bytesPerSecond >= 0)
+    }
+    val transferred = events.map { it.bytesTransferred }
+    assertEquals("bytesTransferred went backwards in $events", transferred.sorted(), transferred)
+
+    if (elapsed > 2 * interval) {
+      assertTrue(
+        "copy ran ${elapsed}ms at a ${interval}ms interval but reported no measured progress, " +
+          "got $events",
+        events.any { it.percent > 0f && it.bytesPerSecond > 0 },
+      )
+    } else {
+      println(
+        "TC-15: copy finished in ${elapsed}ms, too fast for a tick to be due - " +
+          "skipped the existence assertion"
+      )
+    }
   }
 }

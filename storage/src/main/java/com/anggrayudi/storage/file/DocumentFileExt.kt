@@ -213,7 +213,7 @@ public fun DocumentFile.getProperties(
         val timer =
           if (updateInterval < 1) null
           else
-            startCoroutineTimer(repeatMillis = updateInterval) {
+            startCoroutineTimer(delayMillis = updateInterval, repeatMillis = updateInterval) {
               trySend(FilePropertiesResult.Updating(properties))
             }
         walkFileTreeForInfo(properties, this)
@@ -1078,7 +1078,7 @@ public fun DocumentFile.search(
       val timer =
         if (updateInterval < 1) null
         else
-          startCoroutineTimer(repeatMillis = updateInterval) {
+          startCoroutineTimer(delayMillis = updateInterval, repeatMillis = updateInterval) {
             trySend(synchronized(fileTree) { fileTree.toList() })
           }
       if (mimeTypes.isNullOrEmpty() || mimeTypes.any { it == MimeType.UNKNOWN }) {
@@ -1113,7 +1113,7 @@ public fun DocumentFile.search(
       val timer =
         if (updateInterval < 1) null
         else
-          startCoroutineTimer(repeatMillis = updateInterval) {
+          startCoroutineTimer(delayMillis = updateInterval, repeatMillis = updateInterval) {
             trySend(synchronized(fileTree) { fileTree.toList() })
           }
       sequence.forEach {
@@ -1485,7 +1485,7 @@ public fun List<DocumentFile>.compressToZip(
     // using timer on small file is useless. We set minimum 10MB.
     if (updateInterval > 0 && actualFilesSize > 10 * FileSize.MB) {
       timer =
-        startCoroutineTimer(repeatMillis = updateInterval) {
+        startCoroutineTimer(delayMillis = updateInterval, repeatMillis = updateInterval) {
           trySend(
             ZipCompressionResult.Compressing(
               bytesCompressed * 100f / actualFilesSize,
@@ -1634,7 +1634,7 @@ public fun DocumentFile.decompressZip(
     // using timer on small file is useless. We set minimum 10MB.
     if (updateInterval > 0 && zipSize > 10 * FileSize.MB) {
       timer =
-        startCoroutineTimer(repeatMillis = updateInterval) {
+        startCoroutineTimer(delayMillis = updateInterval, repeatMillis = updateInterval) {
           trySend(
             ZipDecompressionResult.Decompressing(
               bytesDecompressed,
@@ -1923,7 +1923,7 @@ private fun List<DocumentFile>.copyTo(
   val startTimer: (Boolean) -> Unit = { start ->
     if (start && updateInterval > 0) {
       timer =
-        startCoroutineTimer(repeatMillis = updateInterval) {
+        startCoroutineTimer(delayMillis = updateInterval, repeatMillis = updateInterval) {
           trySend(
             MultipleFilesResult.InProgress(
               bytesMoved * 100f / totalSizeToCopy,
@@ -2473,7 +2473,7 @@ private fun DocumentFile.copyFolderTo(
   val startTimer: (Boolean) -> Unit = { start ->
     if (start && updateInterval > 0) {
       timer =
-        startCoroutineTimer(repeatMillis = updateInterval) {
+        startCoroutineTimer(delayMillis = updateInterval, repeatMillis = updateInterval) {
           trySend(
             SingleFolderResult.InProgress(
               bytesMoved * 100f / totalSizeToCopy,
@@ -2983,7 +2983,7 @@ private fun DocumentFile.copyFileStream(
     // using timer on small file is useless. We set minimum 10MB.
     if (updateInterval > 0 && srcSize > 10 * FileSize.MB) {
       timer =
-        startCoroutineTimer(repeatMillis = updateInterval) {
+        startCoroutineTimer(delayMillis = updateInterval, repeatMillis = updateInterval) {
           scope.trySend(
             SingleFileResult.InProgress(bytesMoved * 100f / srcSize, bytesMoved, writeSpeed)
           )

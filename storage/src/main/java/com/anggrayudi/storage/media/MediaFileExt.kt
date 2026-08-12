@@ -89,7 +89,7 @@ public fun List<MediaFile>.compressToZip(
     var fileCompressedCount = 0
     if (updateInterval > 0) {
       timer =
-        startCoroutineTimer(repeatMillis = updateInterval) {
+        startCoroutineTimer(delayMillis = updateInterval, repeatMillis = updateInterval) {
           trySend(
             ZipCompressionResult.Compressing(0f, bytesCompressed, writeSpeed, fileCompressedCount)
           )
@@ -199,7 +199,7 @@ public fun MediaFile.decompressZip(
     var writeSpeed = 0
     if (updateInterval > 0) {
       timer =
-        startCoroutineTimer(repeatMillis = updateInterval) {
+        startCoroutineTimer(delayMillis = updateInterval, repeatMillis = updateInterval) {
           trySend(
             ZipDecompressionResult.Decompressing(
               bytesDecompressed,

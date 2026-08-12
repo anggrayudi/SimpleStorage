@@ -69,6 +69,10 @@ lifecycleScope.launch {                       // main-safe: call from any dispat
 }
 ```
 
+The first progress event arrives one `updateInterval` after the transfer starts, so every event
+carries measured numbers — and a transfer that finishes within one interval reports no progress at
+all, just its result.
+
 `moveTo` has the same shape. Folders are detected automatically — `copyTo` on a directory copies
 recursively. All options live in the [`TransferSpec`](storage/src/main/java/com/anggrayudi/storage/transfer/TransferSpec.kt)
 block: `updateInterval`, `checkAvailableSpace`, `skipEmptyFiles` (note: also skips empty
