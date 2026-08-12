@@ -929,9 +929,12 @@ public fun DocumentFile.makeFolder(
   val directorySequence =
     DocumentFileCompat.getDirectorySequence(name.removeForbiddenCharsFromFilename()).toMutableList()
   val folderNameLevel1 = directorySequence.removeFirstOrNull() ?: return null
+  // `?: this`, not `?: return null` — the rewrite recognises a fixed set of Downloads path
+  // shapes, and a granted tree outside that set is writable as it stands. Bailing out there
+  // refused to create a folder in a Downloads tree the user had just picked.
   var currentDirectory =
     if (isDownloadsDocument && isTreeDocumentFile)
-      (toWritableDownloadsDocumentFile(context) ?: return null)
+      (toWritableDownloadsDocumentFile(context) ?: this)
     else this
   val folderLevel1 = currentDirectory.child(context, folderNameLevel1)
 
@@ -969,7 +972,14 @@ public fun DocumentFile.makeFolder(
   return currentDirectory
 }
 
-/** Use this function if you cannot create or read file/folder in downloads directory. */
+/**
+ * Use this function if you cannot create or read file/folder in downloads directory.
+ *
+ * Returns `null` when no rewrite applies — the URI is not a Downloads document, or its path is
+ * not one of the shapes this knows how to make writable. That is not the same as "unusable": a
+ * granted tree URI outside those shapes is already writable, so callers should fall back to the
+ * receiver (`?: this`) rather than treating `null` as failure.
+ */
 @WorkerThread
 public fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): DocumentFile? {
   return if (isDownloadsDocument) {

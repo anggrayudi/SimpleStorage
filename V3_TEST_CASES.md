@@ -296,6 +296,7 @@ granted volumes on every API level.
 | TC-95 | P0 | `requestStoragePermission` is a no-op on modern API | call it on API 36 | `true`, no dialog | **PASS after a library fix** — see below |
 | TC-96 | P1 | `pickMedia` returns the picked image | seed an image, open the Photo Picker, tap the thumbnail, tap "Done" | non-empty list, readable | **PASS** |
 | TC-97 | P1 | `pickMedia` canceled | open the Photo Picker, press Back | empty list, no hang | **PASS** |
+| TC-98 | P0 | Folder picked at the Downloads root stays usable | `pickFolder` opened at Downloads, tap "USE THIS FOLDER" on the root itself; feed the returned tree URI to `StorageFile.from` and write a file into it | resolves to a writable folder and the write succeeds | **regression case** — the tree URI a picker hands back at the Downloads root matches none of `toWritableDownloadsDocumentFile`'s known path shapes, and `fromUri` used to turn that `null` into "no such folder" |
 
 Bug found by TC-95: `requestStoragePermission()` returned **false on every device from API 33**,
 after showing a permission dialog the platform silently denies. `StoragePermissionContract` always

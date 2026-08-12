@@ -147,6 +147,11 @@ public object DocumentFileCompat {
     return basePath.trimFileSeparator().removeForbiddenCharsFromFilename()
   }
 
+  /**
+   * Annotated for its worst case, which the call site cannot see: a tree URI on the Downloads
+   * provider queries the content resolver here, while a single-document URI is only wrapped.
+   */
+  @WorkerThread
   @JvmStatic
   public fun fromUri(context: Context, uri: Uri): DocumentFile? {
     return when {
@@ -154,7 +159,13 @@ public object DocumentFileCompat {
         File(uri.path ?: return null).run { if (canRead()) DocumentFile.fromFile(this) else null }
       uri.isTreeDocumentFile ->
         context.fromTreeUri(uri)?.run {
-          if (isDownloadsDocument) toWritableDownloadsDocumentFile(context) else this
+          // Falling back to the tree itself matters: the rewrite only knows a fixed set of
+          // Downloads path shapes, and a tree URI outside that set — the plain
+          // `content://com.android.providers.downloads.documents/tree/downloads` a folder picker
+          // opened at Downloads hands back — is already writable through its persisted grant.
+          // Without the elvis it resolved to null, reporting a folder the user had just granted
+          // as one that does not exist.
+          if (isDownloadsDocument) toWritableDownloadsDocumentFile(context) ?: this else this
         }
       else -> context.fromSingleUri(uri)
     }
