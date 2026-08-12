@@ -353,19 +353,27 @@ comment worth keeping, and how the test suites are run.
 
 ## Other SimpleStorage Usage Examples
 
-SimpleStorage is used in these open source projects.
-Check how these repositories use it:
+Open source projects that depend on this library — a good place to see it used in anger:
 
-* [Snapdrop](https://github.com/fm-sys/snapdrop-android)
-* [MaterialPreference](https://github.com/anggrayudi/MaterialPreference)
-* [Super Productivity](https://github.com/johannesjo/super-productivity-android)
-* [Shared Storage for Flutter](https://pub.dev/packages/shared_storage)
-* [Nextcloud Cookbook](https://codeberg.org/MicMun/nextcloud-cookbook)
-* [Audiobookshelf](https://github.com/advplyr/audiobookshelf-app)
+* [Super Productivity](https://github.com/super-productivity/super-productivity) — advanced todo list with time tracking
+* [YTDLnis](https://github.com/deniscerri/ytdlnis) — audio/video downloader built on yt-dlp
+* [Neo Store](https://github.com/NeoApplications/Neo-Store) — F-Droid client
+* [Thanox](https://github.com/Tornaco/Thanox) — app management and privacy toolkit
+* [Audiobookshelf](https://github.com/advplyr/audiobookshelf-app) — audiobook and podcast client
+* [OSS Document Scanner](https://github.com/ossappscollective/OSS-DocumentScanner) — document scanning app
+* [Inure](https://github.com/Hamza417/Inure) — Android app manager
+* [MEGA](https://github.com/meganz/android) — MEGA's official Android app
+* [Book's Story](https://github.com/Acclorite/book-story) — Material You eBook reader
+* [PairDrop](https://github.com/fm-sys/pairdrop-android) — local file sharing, formerly Snapdrop
+* [PhotonCamera](https://github.com/eszdman/PhotonCamera) — computational photography camera
+* [Nextcloud Cookbook](https://codeberg.org/MicMun/nextcloud-cookbook) — recipe client for Nextcloud
+* [Shared Storage for Flutter](https://pub.dev/packages/shared_storage) — SAF bindings for Flutter
+
+Using SimpleStorage in your project? Open a pull request and add it here.
 
 ## License
 
-    Copyright © 2020-2025 Anggrayudi Hardiannico A.
+    Copyright © 2020-2026 Anggrayudi Hardiannico A.
  
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
