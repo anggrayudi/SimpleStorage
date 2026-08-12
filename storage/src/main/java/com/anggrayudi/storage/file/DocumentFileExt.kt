@@ -1755,6 +1755,14 @@ public fun DocumentFile.decompressZip(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
+@Deprecated(
+  "Superseded in v3 by List<StorageFile>.moveTo() (suspend) or moveToAsFlow(). See MIGRATION.md.",
+  ReplaceWith(
+    "map { it.toStorageFile(context) }.moveToAsFlow(targetParentFolder.toStorageFile(context))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.moveToAsFlow",
+  ),
+)
 public fun List<DocumentFile>.moveTo(
   context: Context,
   targetParentFolder: DocumentFile,
@@ -1778,6 +1786,14 @@ public fun List<DocumentFile>.moveTo(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
+@Deprecated(
+  "Superseded in v3 by List<StorageFile>.copyTo() (suspend) or copyToAsFlow(). See MIGRATION.md.",
+  ReplaceWith(
+    "map { it.toStorageFile(context) }.copyToAsFlow(targetParentFolder.toStorageFile(context))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.copyToAsFlow",
+  ),
+)
 public fun List<DocumentFile>.copyTo(
   context: Context,
   targetParentFolder: DocumentFile,
@@ -3411,6 +3427,9 @@ private fun DocumentFile.copyFileToMedia(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
+@Deprecated(
+  "Superseded in v3: create the entry with MediaStoreCompat.createDownload(context, fileDescription), then StorageFile.copyToFile(entry.toStorageFile(context)). No ReplaceWith because the entry has to be created and null-checked first. See MIGRATION.md.",
+)
 @JvmOverloads
 public fun DocumentFile.copyFileToDownloadMedia(
   context: Context,
@@ -3439,6 +3458,9 @@ public fun DocumentFile.copyFileToDownloadMedia(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
+@Deprecated(
+  "Superseded in v3: create the entry with MediaStoreCompat.createImage(context, fileDescription), then StorageFile.copyToFile(entry.toStorageFile(context)). No ReplaceWith because the entry has to be created and null-checked first. See MIGRATION.md.",
+)
 @JvmOverloads
 public fun DocumentFile.copyFileToPictureMedia(
   context: Context,
@@ -3467,6 +3489,9 @@ public fun DocumentFile.copyFileToPictureMedia(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
+@Deprecated(
+  "Superseded in v3: create the entry with MediaStoreCompat.createDownload(context, fileDescription), then StorageFile.moveToFile(entry.toStorageFile(context)). No ReplaceWith because the entry has to be created and null-checked first. See MIGRATION.md.",
+)
 @JvmOverloads
 public fun DocumentFile.moveFileToDownloadMedia(
   context: Context,
@@ -3495,6 +3520,9 @@ public fun DocumentFile.moveFileToDownloadMedia(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
+@Deprecated(
+  "Superseded in v3: create the entry with MediaStoreCompat.createImage(context, fileDescription), then StorageFile.moveToFile(entry.toStorageFile(context)). No ReplaceWith because the entry has to be created and null-checked first. See MIGRATION.md.",
+)
 @JvmOverloads
 public fun DocumentFile.moveFileToPictureMedia(
   context: Context,
@@ -3525,6 +3553,14 @@ public fun DocumentFile.moveFileToPictureMedia(
  *
  * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
  */
+@Deprecated(
+  "Superseded in v3 by StorageFile.moveToFile() (suspend) or moveToFileAsFlow(). See MIGRATION.md.",
+  ReplaceWith(
+    "toStorageFile(context).moveToFileAsFlow(targetFile.toStorageFile(context))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.moveToFileAsFlow",
+  ),
+)
 public fun DocumentFile.moveFileTo(
   context: Context,
   targetFile: MediaFile,
@@ -3542,6 +3578,14 @@ public fun DocumentFile.moveFileTo(
  *
  * @param targetFile create it with [MediaStoreCompat], e.g. [MediaStoreCompat.createDownload]
  */
+@Deprecated(
+  "Superseded in v3 by StorageFile.copyToFile() (suspend) or copyToFileAsFlow(). See MIGRATION.md.",
+  ReplaceWith(
+    "toStorageFile(context).copyToFileAsFlow(targetFile.toStorageFile(context))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.copyToFileAsFlow",
+  ),
+)
 public fun DocumentFile.copyFileTo(
   context: Context,
   targetFile: MediaFile,
