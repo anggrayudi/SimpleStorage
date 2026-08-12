@@ -38,9 +38,16 @@ android {
     compilerOptions {
       jvmTarget = JvmTarget.JVM_11
       // Support @JvmDefault
-      freeCompilerArgs =
-        listOf("-Xjvm-default=all", "-opt-in=kotlin.RequiresOptIn", "-Xexplicit-api=warning")
+      freeCompilerArgs = listOf("-Xjvm-default=all", "-opt-in=kotlin.RequiresOptIn")
     }
+  }
+}
+
+// Explicit API mode guards the published surface only; test sources have no consumers and would
+// otherwise need a visibility modifier on every test class.
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
+  if (!name.contains("Test")) {
+    compilerOptions.freeCompilerArgs.add("-Xexplicit-api=strict")
   }
 }
 
@@ -71,6 +78,6 @@ dependencies {
 }
 
 afterEvaluate {
-    tasks.findByName("generateReleaseBuildConfig")?.enabled = false
-    tasks.findByName("generateDebugBuildConfig")?.enabled = false
+  tasks.findByName("generateReleaseBuildConfig")?.enabled = false
+  tasks.findByName("generateDebugBuildConfig")?.enabled = false
 }

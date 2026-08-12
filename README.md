@@ -73,7 +73,8 @@ abstraction over `DocumentFile`/`MediaFile`/`java.io.File`, one-shot suspend ope
 (`copyTo`, `moveTo`, `zipTo`, `unzipTo`) with a unified `TransferResult`, suspend-lambda conflict
 resolution, and [`StorageAccessManager`](storage/src/main/java/com/anggrayudi/storage/access/StorageAccessManager.kt)
 replacing `SimpleStorageHelper`. It targets Android 17 (API 37) with minSdk 26. The 2.x API keeps
-working during the 3.x cycle.
+working during the 3.x cycle, but 2.x is closed for maintenance: no bugfix releases will be cut
+from the 2.x branch, so fixes land in 3.x only. Everyone is encouraged to move to v3.
 
 **→ [v3 usage guide (README-v3.md)](README-v3.md)** · [migration guide](MIGRATION.md)
 

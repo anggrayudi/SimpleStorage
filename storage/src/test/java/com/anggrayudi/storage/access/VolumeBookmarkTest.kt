@@ -1,6 +1,5 @@
 package com.anggrayudi.storage.access
 
-import com.anggrayudi.storage.ExperimentalSimpleStorageApi
 import com.anggrayudi.storage.StoragePath
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -10,7 +9,6 @@ import org.junit.Test
  *
  * @author Anggrayudi H
  */
-@OptIn(ExperimentalSimpleStorageApi::class)
 class VolumeBookmarkTest {
 
   @Test

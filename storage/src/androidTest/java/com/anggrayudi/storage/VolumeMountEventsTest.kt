@@ -29,14 +29,13 @@ import org.junit.runner.RunWith
  * Group 9 - VolumeBookmark, experimental: TC-83 (V3_TEST_CASES.md).
  *
  * Verifies [com.anggrayudi.storage.access.StorageAccessManager.volumeMountEvents] emits the
- * [StorageVolume] when a removable volume is remounted. The unmount/mount cycle is driven
- * on-device through `UiAutomation.executeShellCommand` (shell uid may call `sm`).
+ * [StorageVolume] when a removable volume is remounted. The unmount/mount cycle is driven on-device
+ * through `UiAutomation.executeShellCommand` (shell uid may call `sm`).
  *
  * KEEP THIS CLASS OUT OF THE MAIN SUITE RUN: the unmount cycle can kill processes holding open
- * files on the volume, so it must run in its own instrumentation invocation AFTER all other
- * groups (see the Group 9 notes in V3_TEST_CASES.md).
+ * files on the volume, so it must run in its own instrumentation invocation AFTER all other groups
+ * (see the Group 9 notes in V3_TEST_CASES.md).
  */
-@OptIn(ExperimentalSimpleStorageApi::class)
 @RunWith(AndroidJUnit4::class)
 class VolumeMountEventsTest {
 

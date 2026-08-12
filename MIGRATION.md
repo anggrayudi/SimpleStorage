@@ -118,3 +118,7 @@ Existing `rememberLauncherFor*` composables are unchanged. New in 3.0:
 | 3.0.0-alpha | `SimpleStorage`, `SimpleStorageHelper`, and the picker/access callback interfaces are `@Deprecated` |
 | 3.0.0-rc | `DocumentFile`/`MediaFile` operation extensions become `@Deprecated`, delegating to the v3 engine |
 | 4.0 | Deprecated 2.x API is removed |
+
+**Support policy:** the 2.x branch receives no further releases — not even critical bugfixes.
+Everything ships in 3.x, where the deprecated 2.x API keeps compiling and delegates to the v3
+engine, so upgrading to 3.x is the way to get a fix and you can migrate call sites afterwards.

@@ -13,8 +13,8 @@ import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -33,7 +33,6 @@ import org.junit.runner.RunWith
  * [StorageAccessManager] must be constructed before its host activity is started, so every test
  * launches [BookmarkTestActivity] (which builds the manager in `onCreate`) via [ActivityScenario].
  */
-@OptIn(ExperimentalSimpleStorageApi::class)
 @RunWith(AndroidJUnit4::class)
 class VolumeBookmarkTest {
 
@@ -42,9 +41,12 @@ class VolumeBookmarkTest {
   private var playground: File? = null
 
   private val sdCardDir: File? by lazy {
-    context.getExternalFilesDirs(null).filterNotNull().withIndex().firstOrNull { (index, dir) ->
-      index > 0 && !dir.path.startsWith("/storage/emulated")
-    }?.value
+    context
+      .getExternalFilesDirs(null)
+      .filterNotNull()
+      .withIndex()
+      .firstOrNull { (index, dir) -> index > 0 && !dir.path.startsWith("/storage/emulated") }
+      ?.value
   }
 
   @Before
@@ -122,7 +124,11 @@ class VolumeBookmarkTest {
 
     val granted = result as? BookmarkResult.Granted
     assertNotNull("expected Granted but was $result", granted)
-    assertEquals("bookmark must come back unchanged on the happy path", bookmark, granted!!.bookmark)
+    assertEquals(
+      "bookmark must come back unchanged on the happy path",
+      bookmark,
+      granted!!.bookmark,
+    )
     assertEquals(dir.absolutePath, granted.folder.absolutePath)
     assertTrue("granted folder must be readable", granted.folder.canRead)
 
@@ -139,7 +145,11 @@ class VolumeBookmarkTest {
   fun tc82_resolveBookmarkVolumeAbsent() {
     val manager = manager()
     val fabricated =
-      VolumeBookmark(volumeLabel = "NoSuchDrive", storageId = "A0E69251E6922814", basePath = "Movies")
+      VolumeBookmark(
+        volumeLabel = "NoSuchDrive",
+        storageId = "A0E69251E6922814",
+        basePath = "Movies",
+      )
 
     var result: BookmarkResult? = null
     val latch = CountDownLatch(1)

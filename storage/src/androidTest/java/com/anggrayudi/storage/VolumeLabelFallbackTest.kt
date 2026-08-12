@@ -36,10 +36,9 @@ import org.junit.runner.RunWith
  * matches a mounted volume must trigger one SAF re-grant and come back Granted with an UPDATED
  * storageId. The SAF dialog is driven with UiAutomator.
  *
- * RUN THIS CLASS LAST AND ALONE: it opens system UI (DocumentsUI) on the device and depends on
- * the removable volume from the earlier groups (see the Group 9 notes in V3_TEST_CASES.md).
+ * RUN THIS CLASS LAST AND ALONE: it opens system UI (DocumentsUI) on the device and depends on the
+ * removable volume from the earlier groups (see the Group 9 notes in V3_TEST_CASES.md).
  */
-@OptIn(ExperimentalSimpleStorageApi::class)
 @RunWith(AndroidJUnit4::class)
 class VolumeLabelFallbackTest {
 
@@ -79,7 +78,10 @@ class VolumeLabelFallbackTest {
     assumeTrue("No mounted removable volume - skipping TC-84", removable != null)
     val realUuid = removable!!.uuid!!
     val realLabel = removable.getDescription(context)
-    assumeTrue("volume has no description/label - fallback not testable", !realLabel.isNullOrBlank())
+    assumeTrue(
+      "volume has no description/label - fallback not testable",
+      !realLabel.isNullOrBlank(),
+    )
 
     lateinit var manager: com.anggrayudi.storage.access.StorageAccessManager
     scenario.onActivity { manager = it.storageAccess }
@@ -87,7 +89,11 @@ class VolumeLabelFallbackTest {
     // "Documents" exists on the freshly formatted volume (vold creates the standard dirs), and it
     // is NOT raw-accessible to this app, so resolution must go through the SAF grant.
     val staleBookmark =
-      VolumeBookmark(volumeLabel = realLabel!!, storageId = "DEADBEEFDEADBEEF", basePath = "Documents")
+      VolumeBookmark(
+        volumeLabel = realLabel!!,
+        storageId = "DEADBEEFDEADBEEF",
+        basePath = "Documents",
+      )
 
     val resultDeferred = CompletableDeferred<BookmarkResult>()
     val job =
@@ -127,10 +133,7 @@ class VolumeLabelFallbackTest {
     val timeout = 15_000L
     // DocumentsUI package differs across builds; match the grant button by text instead.
     val useThisFolder =
-      device.wait(
-        Until.findObject(By.text(compilePattern("use this folder"))),
-        timeout,
-      )
+      device.wait(Until.findObject(By.text(compilePattern("use this folder"))), timeout)
     if (useThisFolder == null) {
       dumpUi("TC-84: 'Use this folder' button not found")
       error("SAF UI: could not find the 'Use this folder' button within ${timeout}ms")

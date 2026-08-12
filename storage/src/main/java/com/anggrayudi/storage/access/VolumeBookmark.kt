@@ -1,6 +1,5 @@
 package com.anggrayudi.storage.access
 
-import com.anggrayudi.storage.ExperimentalSimpleStorageApi
 import com.anggrayudi.storage.StorageFile
 import com.anggrayudi.storage.StoragePath
 
@@ -22,7 +21,6 @@ import com.anggrayudi.storage.StoragePath
  * @param basePath path relative to the volume root that the app wants to reopen
  * @author Anggrayudi H
  */
-@ExperimentalSimpleStorageApi
 public data class VolumeBookmark(
   val volumeLabel: String,
   val storageId: String,
@@ -32,12 +30,11 @@ public data class VolumeBookmark(
 }
 
 /** The outcome of [StorageAccessManager.resolveBookmark]. */
-@ExperimentalSimpleStorageApi
 public sealed interface BookmarkResult {
 
   /**
-   * Access is available. [bookmark] may differ from the input when the volume was re-granted
-   * under a new ID — persist the updated value.
+   * Access is available. [bookmark] may differ from the input when the volume was re-granted under
+   * a new ID — persist the updated value.
    */
   public data class Granted(val folder: StorageFile, val bookmark: VolumeBookmark) : BookmarkResult
 

@@ -176,10 +176,10 @@ class MainActivity : AppCompatActivity() {
 Also available: `pickFiles(allowMultiple, filterMimeTypes)`, `createFile(mimeType, fileName)`,
 `requestStoragePermission()`.
 
-### Remembering removable volumes (experimental)
+### Remembering removable volumes
 
-Marked `@ExperimentalSimpleStorageApi` — opt in and expect changes. A `VolumeBookmark` remembers a
-location on an SD card or USB OTG drive and re-resolves it after replug:
+A `VolumeBookmark` remembers a location on an SD card or USB OTG drive and re-resolves it after
+replug:
 
 ```kotlin
 // After the user grants access once:

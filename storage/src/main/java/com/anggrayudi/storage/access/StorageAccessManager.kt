@@ -7,11 +7,10 @@ import android.os.Environment
 import android.os.storage.StorageManager
 import android.os.storage.StorageVolume
 import androidx.activity.ComponentActivity
-import androidx.annotation.RequiresApi
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import com.anggrayudi.storage.ExperimentalSimpleStorageApi
+import androidx.annotation.RequiresApi
 import com.anggrayudi.storage.StorageFile
 import com.anggrayudi.storage.StoragePath
 import com.anggrayudi.storage.contract.FileCreationContract
@@ -59,9 +58,9 @@ public sealed interface AccessResult {
 }
 
 /**
- * Suspend-first replacement for `SimpleStorageHelper`, built purely on
- * [ActivityResultContracts]: no request codes, no `onActivityResult`, no
- * `onSaveInstanceState` plumbing, and no built-in dialogs to fight with.
+ * Suspend-first replacement for `SimpleStorageHelper`, built purely on [ActivityResultContracts]:
+ * no request codes, no `onActivityResult`, no `onSaveInstanceState` plumbing, and no built-in
+ * dialogs to fight with.
  *
  * Create it during [ComponentActivity.onCreate] (launchers must be registered before the activity
  * is started), then call the suspend functions from any coroutine:
@@ -142,10 +141,9 @@ public class StorageAccessManager(activity: ComponentActivity) {
   public suspend fun ensureAccess(
     path: StoragePath,
     requiresWriteAccess: Boolean = true,
-  ): AccessResult =
-    mutex.withLock {
-      requestAccessLocked(path, requiresWriteAccess, retryAfterPermission = true)
-    }
+  ): AccessResult = mutex.withLock {
+    requestAccessLocked(path, requiresWriteAccess, retryAfterPermission = true)
+  }
 
   private suspend fun requestAccessLocked(
     path: StoragePath,
@@ -162,7 +160,12 @@ public class StorageAccessManager(activity: ComponentActivity) {
       )
     val result =
       try {
-        awaitResult<RequestStorageAccessContract.Options, RequestStorageAccessResult>(accessLauncher, options) { accessContinuation = it }
+        awaitResult<RequestStorageAccessContract.Options, RequestStorageAccessResult>(
+          accessLauncher,
+          options,
+        ) {
+          accessContinuation = it
+        }
       } catch (_: StoragePermissionDeniedException) {
         return if (retryAfterPermission && requestStoragePermission()) {
           requestAccessLocked(path, requiresWriteAccess, retryAfterPermission = false)
@@ -179,8 +182,7 @@ public class StorageAccessManager(activity: ComponentActivity) {
           AccessResult.Granted(it)
         } ?: AccessResult.WrongRootSelected(result.root.toStorageFile(appContext))
       }
-      is RequestStorageAccessResult.RootPathNotSelected ->
-        AccessResult.WrongRootSelected(null)
+      is RequestStorageAccessResult.RootPathNotSelected -> AccessResult.WrongRootSelected(null)
       is RequestStorageAccessResult.ExpectedStorageNotSelected ->
         AccessResult.WrongRootSelected(result.selectedFolder.toStorageFile(appContext))
       is RequestStorageAccessResult.StoragePermissionDenied ->
@@ -198,7 +200,9 @@ public class StorageAccessManager(activity: ComponentActivity) {
     mutex.withLock {
       val options = OpenFolderPickerContract.Options(initialPath?.toFileFullPath())
       try {
-        awaitResult<OpenFolderPickerContract.Options, FolderPickerResult>(folderLauncher, options) { folderContinuation = it }
+        awaitResult<OpenFolderPickerContract.Options, FolderPickerResult>(folderLauncher, options) {
+          folderContinuation = it
+        }
       } catch (_: ActivityNotFoundException) {
         FolderPickerResult.CanceledByUser
       }
@@ -209,31 +213,33 @@ public class StorageAccessManager(activity: ComponentActivity) {
     allowMultiple: Boolean = false,
     filterMimeTypes: Set<String> = emptySet(),
     initialPath: StoragePath? = null,
-  ): FilePickerResult =
-    mutex.withLock {
-      val options =
-        OpenFilePickerContract.Options(allowMultiple, initialPath?.toFileFullPath(), filterMimeTypes)
-      try {
-        awaitResult<OpenFilePickerContract.Options, FilePickerResult>(fileLauncher, options) { fileContinuation = it }
-      } catch (_: ActivityNotFoundException) {
-        FilePickerResult.CanceledByUser
+  ): FilePickerResult = mutex.withLock {
+    val options =
+      OpenFilePickerContract.Options(allowMultiple, initialPath?.toFileFullPath(), filterMimeTypes)
+    try {
+      awaitResult<OpenFilePickerContract.Options, FilePickerResult>(fileLauncher, options) {
+        fileContinuation = it
       }
+    } catch (_: ActivityNotFoundException) {
+      FilePickerResult.CanceledByUser
     }
+  }
 
   /** Lets the user place a new file via SAF and suspends until the user answers. */
   public suspend fun createFile(
     mimeType: String,
     fileName: String? = null,
     initialPath: StoragePath? = null,
-  ): FileCreationResult =
-    mutex.withLock {
-      val options = FileCreationContract.Options(mimeType, fileName, initialPath?.toFileFullPath())
-      try {
-        awaitResult<FileCreationContract.Options, FileCreationResult>(creationLauncher, options) { creationContinuation = it }
-      } catch (_: ActivityNotFoundException) {
-        FileCreationResult.CanceledByUser
+  ): FileCreationResult = mutex.withLock {
+    val options = FileCreationContract.Options(mimeType, fileName, initialPath?.toFileFullPath())
+    try {
+      awaitResult<FileCreationContract.Options, FileCreationResult>(creationLauncher, options) {
+        creationContinuation = it
       }
+    } catch (_: ActivityNotFoundException) {
+      FileCreationResult.CanceledByUser
     }
+  }
 
   /**
    * Opens the system Photo Picker ([ActivityResultContracts.PickVisualMedia]) — no permission and
@@ -242,23 +248,26 @@ public class StorageAccessManager(activity: ComponentActivity) {
   public suspend fun pickMedia(
     type: ActivityResultContracts.PickVisualMedia.VisualMediaType =
       ActivityResultContracts.PickVisualMedia.ImageAndVideo
-  ): List<StorageFile> =
-    mutex.withLock {
-      val request = PickVisualMediaRequest(type)
-      val uris =
-        try {
-          awaitResult<PickVisualMediaRequest, List<android.net.Uri>>(mediaLauncher, request) { mediaContinuation = it }
-        } catch (_: ActivityNotFoundException) {
-          emptyList()
+  ): List<StorageFile> = mutex.withLock {
+    val request = PickVisualMediaRequest(type)
+    val uris =
+      try {
+        awaitResult<PickVisualMediaRequest, List<android.net.Uri>>(mediaLauncher, request) {
+          mediaContinuation = it
         }
-      uris.mapNotNull { StorageFile.from(appContext, it) }
-    }
+      } catch (_: ActivityNotFoundException) {
+        emptyList()
+      }
+    uris.mapNotNull { StorageFile.from(appContext, it) }
+  }
 
   /** Requests READ/WRITE_EXTERNAL_STORAGE. Only meaningful on API 26–29; `true` elsewhere. */
   public suspend fun requestStoragePermission(): Boolean {
     val result =
       try {
-        awaitResult<Unit, Map<String, Boolean>>(permissionLauncher, Unit) { permissionContinuation = it }
+        awaitResult<Unit, Map<String, Boolean>>(permissionLauncher, Unit) {
+          permissionContinuation = it
+        }
       } catch (_: ActivityNotFoundException) {
         return false
       }
@@ -271,14 +280,13 @@ public class StorageAccessManager(activity: ComponentActivity) {
    * Re-resolves a [VolumeBookmark] created earlier with [createBookmark].
    *
    * Resolution order:
-   * 1. The bookmarked [VolumeBookmark.storageId] still resolves (mainline Android: filesystem
-   *    UUIDs are stable across replugs) → [BookmarkResult.Granted] with no user interaction.
+   * 1. The bookmarked [VolumeBookmark.storageId] still resolves (mainline Android: filesystem UUIDs
+   *    are stable across replugs) → [BookmarkResult.Granted] with no user interaction.
    * 2. The ID is mounted but the grant is gone, or a mounted volume carries the same
    *    [VolumeBookmark.volumeLabel] under a different ID → asks the user once via [ensureAccess]
    *    and returns [BookmarkResult.Granted] with an **updated** bookmark to persist.
    * 3. Nothing matches → [BookmarkResult.VolumeNotMounted].
    */
-  @ExperimentalSimpleStorageApi
   public suspend fun resolveBookmark(
     bookmark: VolumeBookmark,
     requiresWriteAccess: Boolean = true,
@@ -292,15 +300,14 @@ public class StorageAccessManager(activity: ComponentActivity) {
         DocumentFileCompat.isMountedVolumeId(appContext, bookmark.storageId) -> bookmark.storageId
         bookmark.volumeLabel.isNotBlank() ->
           storageManager.storageVolumes
-            .firstOrNull {
-              !it.isPrimary && it.getDescription(appContext) == bookmark.volumeLabel
-            }
+            .firstOrNull { !it.isPrimary && it.getDescription(appContext) == bookmark.volumeLabel }
             ?.uuid
         else -> null
       } ?: return BookmarkResult.VolumeNotMounted
 
-    return when (val access =
-      ensureAccess(StoragePath(candidateId, bookmark.basePath), requiresWriteAccess)) {
+    return when (
+      val access = ensureAccess(StoragePath(candidateId, bookmark.basePath), requiresWriteAccess)
+    ) {
       is AccessResult.Granted ->
         BookmarkResult.Granted(access.folder, bookmark.copy(storageId = candidateId))
       is AccessResult.WrongRootSelected -> BookmarkResult.WrongRootSelected(access.grantedRoot)
@@ -313,7 +320,6 @@ public class StorageAccessManager(activity: ComponentActivity) {
    * Builds a [VolumeBookmark] for [folder] so it can be re-resolved later with [resolveBookmark].
    * Returns `null` when the folder has no resolvable [StorageFile.path].
    */
-  @ExperimentalSimpleStorageApi
   public fun createBookmark(folder: StorageFile): VolumeBookmark? {
     val path = folder.path ?: return null
     val label =
@@ -325,11 +331,10 @@ public class StorageAccessManager(activity: ComponentActivity) {
   }
 
   /**
-   * Emits every [StorageVolume] that reaches the mounted state — e.g. a USB OTG drive being
-   * plugged in — for as long as the flow is collected. Pair it with [resolveBookmark] to reopen
-   * remembered locations automatically.
+   * Emits every [StorageVolume] that reaches the mounted state — e.g. a USB OTG drive being plugged
+   * in — for as long as the flow is collected. Pair it with [resolveBookmark] to reopen remembered
+   * locations automatically.
    */
-  @ExperimentalSimpleStorageApi
   @RequiresApi(Build.VERSION_CODES.R)
   public fun volumeMountEvents(): Flow<StorageVolume> = callbackFlow {
     val callback =
