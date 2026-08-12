@@ -139,6 +139,12 @@ Negative test: removing `conflictedFiles.clear()` again fails TC-28 and TC-30 wi
 `no Completed event; events=[Validating, Preparing, CountingFiles, Starting(...)]` while TC-29 stays
 green, so these tests do cover the defect rather than merely passing.
 
+Not covered by any test: the multi-file engine's REPLACE path now sets `success = false` when the
+target refuses to be deleted, instead of skipping the file while still reporting success. On raw
+files the case cannot occur — `delete()` and `makeFile()` both need write permission on the same
+parent folder, so they fail together — and reproducing it would take a stub `DocumentsProvider`
+that allows create but refuses delete. The branch is therefore reasoned about, not exercised.
+
 Checked and found sound in the same pass: `makeFile`'s default `CreateMode.CREATE_NEW` makes the
 multi-file engine's manual REPLACE handling behave correctly for CREATE_NEW resolutions, and
 `finalize()` exists in exactly two engines (folder and multi-file), both now clearing their list.

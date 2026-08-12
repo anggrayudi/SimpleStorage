@@ -2142,6 +2142,9 @@ private fun List<DocumentFile>.copyTo(
       conflict.solution == SingleFileConflictCallback.ConflictResolution.REPLACE &&
         conflict.target.let { !it.delete() || it.exists() }
     ) {
+      // REPLACE was requested but the target survived, so it still holds its old content. The
+      // batch goes on - the other files are fine - but the result must not claim success.
+      success = false
       continue
     }
 
