@@ -63,6 +63,8 @@ returns `null` (not `""`) when a physical path cannot be resolved. Escape hatche
 | `DocumentFile.moveFileTo(context, target, …)` | `StorageFile.moveTo(target) { }` | `moveToAsFlow(target)` |
 | `DocumentFile.copyFolderTo/moveFolderTo(…)` | same `copyTo`/`moveTo` — folders are detected | same |
 | `List<DocumentFile>.copyTo/moveTo(context, targetParentFolder, …)` | `List<StorageFile>.copyTo(folder) { }` → `TransferResult<List<StorageFile>>` | `copyToAsFlow(folder)` |
+| `DocumentFile.copyFileTo/moveFileTo(context, targetFile: MediaFile, …)` | `StorageFile.copyToFile(target) { }` | `copyToFileAsFlow(target)` |
+| `copyFileToDownloadMedia` / `copyFileToPictureMedia` (+ `move` twins) | `MediaStoreCompat.createDownload/createImage(...)`, then `copyToFile`/`moveToFile` | same |
 | `List<DocumentFile>.compressToZip(context, zip, …)` | `List<StorageFile>.zipTo(zipFile) { }` | `zipToAsFlow(zipFile)` |
 | `DocumentFile.decompressZip(context, folder, …)` | `StorageFile.unzipTo(folder) { }` | `unzipToAsFlow(folder)` |
 | `DocumentFile.makeFile(context, name, mimeType, mode)` | `StorageFile.createFile(name, mimeType, mode)` | — |
@@ -72,14 +74,6 @@ returns `null` (not `""`) when a physical path cannot be resolved. Escape hatche
 
 Options that used to be positional parameters (`updateInterval`, `skipEmptyFiles`,
 `fileDescription`, space checking) now live in the `TransferSpec` lambda.
-
-Two 2.x operations have **no v3 equivalent yet** and are therefore not deprecated — keep using
-them for now:
-
-| 2.x, still current | Why |
-|---|---|
-| `DocumentFile.copyFileTo/moveFileTo(context, targetFile: MediaFile, …)` | v3 transfers always target a **folder**, never an existing file |
-| `copyFileToDownloadMedia` / `copyFileToPictureMedia` and their `move` twins | same reason: these write into a MediaStore entry, not a folder |
 
 ### Results
 
@@ -127,7 +121,7 @@ Existing `rememberLauncherFor*` composables are unchanged. New in 3.0:
 | Phase | What happens |
 |---|---|
 | 3.0.0-alpha | `SimpleStorage`, `SimpleStorageHelper`, and the picker/access callback interfaces are `@Deprecated` |
-| 3.0.0-rc | `DocumentFile`/`MediaFile` operation extensions become `@Deprecated`, except the three above that v3 cannot express yet |
+| 3.0.0-rc | `DocumentFile`/`MediaFile` operation extensions become `@Deprecated` |
 | 4.0 | Deprecated 2.x API is removed |
 
 Deprecated does not mean reimplemented: v3 is a layer over the same engine those extensions

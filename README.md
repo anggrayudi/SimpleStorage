@@ -158,6 +158,14 @@ val result = listOf(photos, notes).copyTo(backupFolder) {
 val copied: List<StorageFile>? = result.getOrNull()
 ```
 
+When the destination is an existing file rather than a folder — a MediaStore entry, or a document
+you just created — use `copyToFile` / `moveToFile`, which replace its content:
+
+```kotlin
+val entry = MediaStoreCompat.createDownload(context, FileDescription("report.pdf"))!!
+file.copyToFile(entry.toStorageFile(context))
+```
+
 `moveTo` has the same shape. Folders are detected automatically — `copyTo` on a directory copies
 recursively. All options live in the [`TransferSpec`](storage/src/main/java/com/anggrayudi/storage/transfer/TransferSpec.kt)
 block: `updateInterval`, `checkAvailableSpace`, `skipEmptyFiles` (note: also skips empty

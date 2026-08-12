@@ -16,12 +16,14 @@ import com.anggrayudi.storage.file.copyFileTo
 import com.anggrayudi.storage.file.copyFolderTo
 import com.anggrayudi.storage.file.copyTo as copyDocumentsTo
 import com.anggrayudi.storage.file.decompressZip
+import com.anggrayudi.storage.file.findParent
 import com.anggrayudi.storage.file.defaultFileSizeChecker
 import com.anggrayudi.storage.file.deleteRecursively
 import com.anggrayudi.storage.file.moveFileTo
 import com.anggrayudi.storage.file.moveFolderTo
 import com.anggrayudi.storage.file.moveTo as moveDocumentsTo
 import com.anggrayudi.storage.file.search
+import com.anggrayudi.storage.media.FileDescription
 import com.anggrayudi.storage.media.MediaFile
 import com.anggrayudi.storage.media.decompressZip
 import com.anggrayudi.storage.result.FolderErrorCode
@@ -118,6 +120,33 @@ public suspend fun List<StorageFile>.moveTo(
   return spec.awaitList(moveToAsFlow(targetFolder, spec))
 }
 
+/**
+ * Copies this file **into an existing file**, replacing its content — a MediaStore entry made with
+ * `MediaStoreCompat.createDownload/createImage/...`, or a document made with
+ * [StorageFile.createFile]. Use [copyTo] when the destination is a folder.
+ *
+ * ```kotlin
+ * val entry = MediaStoreCompat.createDownload(context, FileDescription("report.pdf"))!!
+ * file.copyToFile(entry.toStorageFile(context))
+ * ```
+ */
+public suspend fun StorageFile.copyToFile(
+  targetFile: StorageFile,
+  configure: TransferSpec.() -> Unit = {},
+): TransferResult<StorageFile> {
+  val spec = TransferSpec().apply(configure)
+  return spec.await(copyToFileAsFlow(targetFile, spec))
+}
+
+/** Moves this file into an existing [targetFile], replacing its content. */
+public suspend fun StorageFile.moveToFile(
+  targetFile: StorageFile,
+  configure: TransferSpec.() -> Unit = {},
+): TransferResult<StorageFile> {
+  val spec = TransferSpec().apply(configure)
+  return spec.await(moveToFileAsFlow(targetFile, spec))
+}
+
 /** Compresses these files/folders into [targetZipFile], which must already exist. */
 public suspend fun List<StorageFile>.zipTo(
   targetZipFile: StorageFile,
@@ -168,6 +197,16 @@ public fun List<StorageFile>.moveToAsFlow(
   targetFolder: StorageFile,
   spec: TransferSpec = TransferSpec(),
 ): Flow<TransferEvent> = multiTransferFlow(this, targetFolder, spec, move = true)
+
+public fun StorageFile.copyToFileAsFlow(
+  targetFile: StorageFile,
+  spec: TransferSpec = TransferSpec(),
+): Flow<TransferEvent> = fileTargetFlow(this, targetFile, spec, move = false)
+
+public fun StorageFile.moveToFileAsFlow(
+  targetFile: StorageFile,
+  spec: TransferSpec = TransferSpec(),
+): Flow<TransferEvent> = fileTargetFlow(this, targetFile, spec, move = true)
 
 public fun List<StorageFile>.zipToAsFlow(
   targetZipFile: StorageFile,
@@ -375,6 +414,60 @@ private fun transferFlow(
         }
       )
     )
+  }
+}
+
+private fun fileTargetFlow(
+  source: StorageFile,
+  targetFile: StorageFile,
+  spec: TransferSpec,
+  move: Boolean,
+): Flow<TransferEvent> = channelFlow<TransferEvent> {
+  val context = source.appContext
+  if (targetFile.isDirectory) {
+    send(failure(TransferErrorCode.INVALID_TARGET, "Target is a folder - use copyTo() instead"))
+    return@channelFlow
+  }
+  val sourceDoc = (source as? DocumentStorageFile)?.doc
+  if (sourceDoc == null) {
+    send(
+      failure(TransferErrorCode.SOURCE_NOT_FOUND, "Source must be backed by a DocumentFile")
+    )
+    return@channelFlow
+  }
+
+  when (targetFile) {
+    is MediaStorageFile -> {
+      val checker = spec.sizeChecker()
+      val flow =
+        if (move) {
+          sourceDoc.moveFileTo(context, targetFile.media, spec.updateInterval, checker)
+        } else {
+          sourceDoc.copyFileTo(context, targetFile.media, spec.updateInterval, checker)
+        }
+      flow.collect { send(it.toTransferEvent(context, spec)) }
+    }
+    is DocumentStorageFile -> {
+      // A document target is the folder path with the name pinned and the conflict pre-answered,
+      // so it reuses the engine rather than growing a second copy loop.
+      // `parentFile` is null for a DocumentFile built straight from a java.io.File, so go through
+      // findParent(), which falls back to resolving the path.
+      val parent = targetFile.doc.findParent(context)
+      if (parent == null) {
+        send(failure(TransferErrorCode.INVALID_TARGET, "Target file has no accessible parent"))
+        return@channelFlow
+      }
+      val pinned =
+        TransferSpec().apply {
+          updateInterval = spec.updateInterval
+          checkAvailableSpace = spec.checkAvailableSpace
+          skipEmptyFiles = spec.skipEmptyFiles
+          fileDescription = FileDescription(targetFile.name)
+          progressListener = spec.progressListener
+          onConflict { ConflictResolution.REPLACE }
+        }
+      transferFlow(source, parent.toStorageFile(context), pinned, move).collect { send(it) }
+    }
   }
 }
 

@@ -8,6 +8,8 @@ import com.anggrayudi.storage.callback.SingleFolderConflictCallback
 import com.anggrayudi.storage.file.copyTo
 import com.anggrayudi.storage.file.moveTo
 import com.anggrayudi.storage.result.MultipleFilesResult
+import com.anggrayudi.storage.media.FileDescription
+import com.anggrayudi.storage.media.MediaStoreCompat
 import com.anggrayudi.storage.transfer.Conflict
 import com.anggrayudi.storage.transfer.ConflictResolution
 import com.anggrayudi.storage.transfer.TransferErrorCode
@@ -244,6 +246,73 @@ class MultipleFilesEngineTest {
 
     val result =
       listOf(StorageFile.from(context, file)).copyTo(StorageFile.from(context, notAFolder))
+
+    assertTrue("expected Failure but was $result", result is TransferResult.Failure)
+    assertEquals(TransferErrorCode.INVALID_TARGET, (result as TransferResult.Failure).errorCode)
+  }
+
+  // TC-35: copyToFile writes into an existing MediaStore entry
+  @Test
+  fun tc35_copyIntoMediaStoreEntry() = runBlocking {
+    val src = File(playground, "src").apply { mkdirs() }
+    val file = File(src, "report.txt").apply { writeText("v3 into media") }
+    val entry =
+      MediaStoreCompat.createDownload(
+        context,
+        FileDescription("tc35_${System.nanoTime()}.txt"),
+      )!!
+    try {
+      val result =
+        StorageFile.from(context, file).copyToFile(entry.toStorageFile(context))
+
+      assertTrue("expected success but was $result", result.isSuccess)
+      assertEquals("v3 into media", entry.openInputStream()?.use { String(it.readBytes()) })
+      assertTrue("source should survive a copy", file.exists())
+    } finally {
+      entry.delete()
+    }
+  }
+
+  // TC-36: copyToFile replaces the content of an existing document
+  @Test
+  fun tc36_copyIntoExistingDocument() = runBlocking {
+    val src = File(playground, "src").apply { mkdirs() }
+    val file = File(src, "new.txt").apply { writeText("fresh") }
+    val targetFolder = File(playground, "target").apply { mkdirs() }
+    val existing = File(targetFolder, "old.txt").apply { writeText("stale") }
+
+    val result =
+      StorageFile.from(context, file).copyToFile(StorageFile.from(context, existing))
+
+    assertTrue("expected success but was $result", result.isSuccess)
+    assertEquals("fresh", existing.readText())
+    assertEquals("the target must not be duplicated", 1, targetFolder.listFiles()!!.size)
+  }
+
+  // TC-37: moveToFile removes the source
+  @Test
+  fun tc37_moveIntoExistingDocument() = runBlocking {
+    val src = File(playground, "src").apply { mkdirs() }
+    val file = File(src, "new.txt").apply { writeText("moved") }
+    val targetFolder = File(playground, "target").apply { mkdirs() }
+    val existing = File(targetFolder, "old.txt").apply { writeText("stale") }
+
+    val result =
+      StorageFile.from(context, file).moveToFile(StorageFile.from(context, existing))
+
+    assertTrue("expected success but was $result", result.isSuccess)
+    assertEquals("moved", existing.readText())
+    assertFalse("source should be gone after a move", file.exists())
+  }
+
+  // TC-38: a folder target is rejected instead of silently copying into it
+  @Test
+  fun tc38_folderTargetIsRejected() = runBlocking {
+    val src = File(playground, "src").apply { mkdirs() }
+    val file = File(src, "a.txt").apply { writeText("a") }
+    val folder = File(playground, "target").apply { mkdirs() }
+
+    val result = StorageFile.from(context, file).copyToFile(StorageFile.from(context, folder))
 
     assertTrue("expected Failure but was $result", result is TransferResult.Failure)
     assertEquals(TransferErrorCode.INVALID_TARGET, (result as TransferResult.Failure).errorCode)

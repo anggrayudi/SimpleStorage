@@ -170,6 +170,11 @@ progress, got []`.
 | TC-33 | P1 | v3 multi-source move | `tc33_v3MultiSourceMove` | both files at the target, both sources gone | **PASS** |
 | TC-34 | P1 | v3 multi-source invalid target | `tc34_v3MultiSourceInvalidTarget`: target is a file | `Failure(INVALID_TARGET)` rather than a hang | **PASS** |
 
+| TC-35 | P0 | Copy into a MediaStore entry | `tc35_copyIntoMediaStoreEntry`: create a Downloads entry, `copyToFile` into it | entry holds the source bytes, source survives | **PASS** |
+| TC-36 | P0 | Copy into an existing document | `tc36_copyIntoExistingDocument` | content replaced, no duplicate file created next to it | **PASS** |
+| TC-37 | P1 | Move into an existing document | `tc37_moveIntoExistingDocument` | content replaced and the source is gone | **PASS** |
+| TC-38 | P1 | Folder target is rejected | `tc38_folderTargetIsRejected` | `Failure(INVALID_TARGET)` pointing at `copyTo` | **PASS** |
+
 Negative test: removing `conflictedFiles.clear()` again fails TC-28 and TC-30 with
 `no Completed event; events=[Validating, Preparing, CountingFiles, Starting(...)]` while TC-29 stays
 green, so these tests do cover the defect rather than merely passing.
