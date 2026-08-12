@@ -24,6 +24,20 @@ Notes for the implementer:
 | TC-03 | P0 | MediaStore backend | Insert a file into `MediaStore.Downloads` (resolver.insert + write bytes); `StorageFile.from(context, mediaUri)` | Returns MediaStore-backed instance: `isFile`, correct `name`/`length`; `openInputStream()` returns the written bytes | **PASS** — `StorageFileFactoryTest.tc03_mediaStoreBackend`; bytes verified byte-for-byte via `assertArrayEquals`. |
 | TC-04 | P1 | Children & child() | Folder with 2 files + 1 subfolder; `list()`, `child("sub/x.txt")` | `list()` size 3; nested child resolves; missing child → null | **PASS** — `StorageFileFactoryTest.tc04_childrenAndChild`. |
 
+### Group 1b — creating files & folders (`StorageFileFactoryTest`)
+
+| ID | Pri | Case | Steps | Expected | Status |
+|----|-----|------|-------|----------|--------|
+| TC-05 | P0 | `createFile`, flat and nested | create `report.txt`, write and read it back; then create `docs/2026/invoice.pdf` | both exist on disk at exactly those paths | **PASS** (emulator API 36 + SM-A525F) |
+| TC-06 | P0 | `CreateMode` applies to the file | create `note.txt` with content, then create it again with CREATE_NEW / REUSE / REPLACE | `note (1).txt` created and the original untouched; REUSE keeps the content; REPLACE empties it | **PASS** |
+| TC-07 | P1 | `createFolder`, nesting, and a non-folder receiver | create `invoices`, then `invoices/2026/q3`; then call both creators on a file | folders exist; both calls on a file return `null` | **PASS** |
+
+TC-05 caught a real design question on its first run: delegating straight to v2's `makeFile` applied
+`CreateMode.CREATE_NEW` to the *intermediate* folders too, so `createFile("docs/2026/invoice.pdf")`
+landed in `docs (1)/2026/` whenever `docs` already existed. The v3 API now reuses the parent chain
+and applies the mode only to the last segment; the test asserts the resulting path, so the
+behaviour is pinned.
+
 ## Group 2 — One-shot transfers (happy paths)
 
 | ID | Pri | Case | Steps | Expected | Status |

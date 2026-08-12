@@ -3,8 +3,12 @@ package com.anggrayudi.storage
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import com.anggrayudi.storage.file.CreateMode
 import com.anggrayudi.storage.file.DocumentFileCompat
+import com.anggrayudi.storage.file.MimeType
 import com.anggrayudi.storage.file.PublicDirectory
+import com.anggrayudi.storage.file.makeFile
+import com.anggrayudi.storage.file.makeFolder
 import com.anggrayudi.storage.extension.openInputStream
 import com.anggrayudi.storage.extension.openOutputStream
 import com.anggrayudi.storage.file.child
@@ -67,6 +71,27 @@ public sealed interface StorageFile {
 
   /** Resolves a direct or nested child by path like `docs/report.pdf`. */
   public fun child(path: String, requiresWriteAccess: Boolean = false): StorageFile?
+
+  /**
+   * Creates a file in this folder and returns it, or `null` when this is not a writable folder or
+   * the file could not be created.
+   *
+   * [name] may carry subfolders (`docs/report.pdf`); missing ones are created and existing ones
+   * are reused. [mode] applies to the file itself, not to that chain: with the default
+   * [CreateMode.CREATE_NEW] an existing `report.pdf` is left alone and `report (1).pdf` is created
+   * instead, [CreateMode.REPLACE] overwrites it, and [CreateMode.REUSE] returns it as is.
+   */
+  public fun createFile(
+    name: String,
+    mimeType: String = MimeType.UNKNOWN,
+    mode: CreateMode = CreateMode.CREATE_NEW,
+  ): StorageFile?
+
+  /**
+   * Creates a folder in this folder and returns it, or `null` when this is not a writable folder.
+   * [name] may be nested (`invoices/2026`), and [mode] behaves as in [createFile].
+   */
+  public fun createFolder(name: String, mode: CreateMode = CreateMode.CREATE_NEW): StorageFile?
 
   public fun delete(): Boolean
 
@@ -211,6 +236,26 @@ internal class DocumentStorageFile(
   override fun child(path: String, requiresWriteAccess: Boolean): StorageFile? =
     doc.child(context, path, requiresWriteAccess)?.let { DocumentStorageFile(context, it) }
 
+  override fun createFile(name: String, mimeType: String, mode: CreateMode): StorageFile? =
+    parentFor(name)
+      ?.makeFile(context, name.trim('/').substringAfterLast('/'), mimeType, mode)
+      ?.let { DocumentStorageFile(context, it) }
+
+  override fun createFolder(name: String, mode: CreateMode): StorageFile? =
+    parentFor(name)
+      ?.makeFolder(context, name.trim('/').substringAfterLast('/'), mode)
+      ?.let { DocumentStorageFile(context, it) }
+
+  /**
+   * Resolves the folder that will hold the last segment of [name], creating the chain when needed.
+   * The chain is always REUSEd: passing the mode down would turn `createFile("docs/a.txt",
+   * CREATE_NEW)` into `docs (1)/a.txt` whenever `docs` already existed.
+   */
+  private fun parentFor(name: String): DocumentFile? {
+    val subFolder = name.trim('/').substringBeforeLast('/', "")
+    return if (subFolder.isEmpty()) doc else doc.makeFolder(context, subFolder, CreateMode.REUSE)
+  }
+
   override fun delete(): Boolean = doc.delete()
 
   override fun asDocumentFile(): DocumentFile = doc
@@ -275,6 +320,11 @@ internal class MediaStorageFile(
   override fun list(): List<StorageFile> = emptyList()
 
   override fun child(path: String, requiresWriteAccess: Boolean): StorageFile? = null
+
+  // A MediaStore entry is a file, never a folder, so nothing can be created inside it.
+  override fun createFile(name: String, mimeType: String, mode: CreateMode): StorageFile? = null
+
+  override fun createFolder(name: String, mode: CreateMode): StorageFile? = null
 
   override fun delete(): Boolean = media.delete()
 

@@ -64,6 +64,8 @@ returns `null` (not `""`) when a physical path cannot be resolved. Escape hatche
 | `DocumentFile.copyFolderTo/moveFolderTo(…)` | same `copyTo`/`moveTo` — folders are detected | same |
 | `List<DocumentFile>.compressToZip(context, zip, …)` | `List<StorageFile>.zipTo(zipFile) { }` | `zipToAsFlow(zipFile)` |
 | `DocumentFile.decompressZip(context, folder, …)` | `StorageFile.unzipTo(folder) { }` | `unzipToAsFlow(folder)` |
+| `DocumentFile.makeFile(context, name, mimeType, mode)` | `StorageFile.createFile(name, mimeType, mode)` | — |
+| `DocumentFile.makeFolder(context, name, mode)` | `StorageFile.createFolder(name, mode)` | — |
 | `DocumentFile.deleteRecursively(context)` | `StorageFile.deleteRecursively()` (suspend) | — |
 | `DocumentFile.search(…)` | — | `StorageFile.search(…)` |
 
@@ -134,5 +136,5 @@ run identical code underneath. Migrating changes the API you write against, not 
 get.
 
 **Support policy:** the 2.x branch receives no further releases — not even critical bugfixes.
-Everything ships in 3.x, where the deprecated 2.x API keeps compiling and delegates to the v3
-engine, so upgrading to 3.x is the way to get a fix and you can migrate call sites afterwards.
+Everything ships in 3.x, where the deprecated 2.x API keeps compiling and runs the same engine v3
+runs, so upgrading to 3.x is the way to get a fix and you can migrate call sites afterwards.

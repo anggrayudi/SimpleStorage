@@ -6,6 +6,7 @@
 * [Overview](#overview)
 * [Why v3?](#why-v3)
 * [Getting a `StorageFile`](#getting-a-storagefile)
+* [Creating files & folders](#creating-files--folders)
 * [Copy & move](#copy--move)
 * [Conflict resolution — a suspend lambda](#conflict-resolution--a-suspend-lambda)
 * [Zip & unzip](#zip--unzip)
@@ -107,6 +108,24 @@ val g = mediaFile.toStorageFile(context)
 `absolutePath` and `path` return **`null`** when the file has no resolvable physical path (v2
 returned a confusing empty string). Escape hatches back to the underlying worlds:
 `asDocumentFile()`, `asMediaFile()`, `asRawFile()`.
+
+## Creating files & folders
+
+```kotlin
+val folder = StorageFile.fromPath(context, StoragePath.primary("Documents"))!!
+
+val report = folder.createFile("report.txt", "text/plain")          // report (1).txt if taken
+val invoice = folder.createFile("invoices/2026/q3.pdf", "application/pdf")   // parents created
+val archive = folder.createFolder("archive")
+
+report?.openOutputStream()?.use { it.write("hello".toByteArray()) }
+```
+
+`name` may carry subfolders; missing ones are created and existing ones are reused. The
+[`CreateMode`](storage/src/main/java/com/anggrayudi/storage/file/CreateMode.kt) applies to the last
+segment only — `CREATE_NEW` (default) keeps an existing file and creates `report (1).txt` beside it,
+`REPLACE` overwrites it, `REUSE` returns it untouched. Both functions return `null` when the
+receiver is not a writable folder, which is always the case for a MediaStore-backed `StorageFile`.
 
 ## Copy & move
 

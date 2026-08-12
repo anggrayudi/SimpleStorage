@@ -37,6 +37,9 @@ boolean isDirectory = file.isDirectory();
 String absolutePath = file.getAbsolutePath();   // null when the file has no physical path
 StoragePath path = file.getPath();
 
+StorageFile report = folder.createFile("report.txt", "text/plain", CreateMode.CREATE_NEW);
+StorageFile archive = folder.createFolder("archive", CreateMode.CREATE_NEW);
+
 List<StorageFile> children = file.list();
 StorageFile child = file.child("docs/report.pdf", false);
 try (InputStream input = file.openInputStream()) {
@@ -51,8 +54,8 @@ Two things to watch:
 
 * Kotlin's `exists` and `canWrite` properties compile to `getExists()` and `getCanWrite()`, not
   `exists()` / `canWrite()`.
-* `child()` and `openOutputStream()` are interface methods, so their Kotlin default arguments do
-  not reach Java — pass every argument explicitly.
+* `child()`, `openOutputStream()`, `createFile()` and `createFolder()` are interface methods, so
+  their Kotlin default arguments do not reach Java — pass every argument explicitly.
 
 ## Pickers and storage access
 

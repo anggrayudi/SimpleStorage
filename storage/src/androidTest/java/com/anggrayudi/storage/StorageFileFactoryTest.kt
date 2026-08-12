@@ -1,6 +1,7 @@
 package com.anggrayudi.storage
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.anggrayudi.storage.file.CreateMode
 import com.anggrayudi.storage.file.StorageId
 import java.io.File
 import kotlinx.coroutines.runBlocking
@@ -109,6 +110,65 @@ class StorageFileFactoryTest {
 
     val missing = storageFolder.child("sub/does_not_exist.txt")
     assertNull("missing child should be null", missing)
+  }
+
+  // TC-05: createFile writes a real file, including nested names
+  @Test
+  fun tc05_createFile() {
+    val folder = StorageFile.from(context, playground)
+
+    val file = folder.createFile("report.txt", "text/plain")
+    assertNotNull("createFile returned null", file)
+    assertEquals("report.txt", file!!.name)
+    assertTrue("created entry should be a file", file.isFile)
+    file.openOutputStream()?.use { it.write("hello".toByteArray()) }
+    assertEquals("hello", file.openInputStream()?.use { String(it.readBytes()) })
+    assertTrue(File(playground, "report.txt").exists())
+
+    val nested = folder.createFile("docs/2026/invoice.pdf", "application/pdf")
+    assertNotNull("nested createFile returned null", nested)
+    assertEquals("invoice.pdf", nested!!.name)
+    assertTrue(File(playground, "docs/2026/invoice.pdf").exists())
+  }
+
+  // TC-06: CreateMode decides what happens to an existing name
+  @Test
+  fun tc06_createFileModes() {
+    val folder = StorageFile.from(context, playground)
+    folder.createFile("note.txt", "text/plain")!!.openOutputStream()?.use {
+      it.write("first".toByteArray())
+    }
+
+    val createNew = folder.createFile("note.txt", "text/plain")
+    assertEquals("CREATE_NEW must not overwrite", "note (1).txt", createNew?.name)
+    assertEquals("first", File(playground, "note.txt").readText())
+
+    val reused = folder.createFile("note.txt", "text/plain", CreateMode.REUSE)
+    assertEquals("note.txt", reused?.name)
+    assertEquals("REUSE must keep the content", "first", File(playground, "note.txt").readText())
+
+    val replaced = folder.createFile("note.txt", "text/plain", CreateMode.REPLACE)
+    assertEquals("note.txt", replaced?.name)
+    assertEquals("REPLACE must empty the file", 0, File(playground, "note.txt").length())
+  }
+
+  // TC-07: createFolder, nested folders, and the non-folder receiver
+  @Test
+  fun tc07_createFolderAndInvalidReceiver() {
+    val folder = StorageFile.from(context, playground)
+
+    val created = folder.createFolder("invoices")
+    assertNotNull("createFolder returned null", created)
+    assertTrue("created entry should be a directory", created!!.isDirectory)
+    assertTrue(File(playground, "invoices").isDirectory)
+
+    val nested = folder.createFolder("invoices/2026/q3")
+    assertNotNull(nested)
+    assertTrue(File(playground, "invoices/2026/q3").isDirectory)
+
+    val file = folder.createFile("plain.txt", "text/plain")!!
+    assertNull("a file is not a folder to create in", file.createFile("nope.txt"))
+    assertNull("a file is not a folder to create in", file.createFolder("nope"))
   }
 }
 
