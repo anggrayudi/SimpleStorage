@@ -1,73 +1,103 @@
 # Java Compatibility
 
-Kotlin is compatible with Java, meaning that Kotlin code is readable in Java.
+Simple Storage is written in Kotlin, and v3 is Kotlin-first. Java can still do the synchronous
+half of the library — wrapping files, reading metadata, navigating folders, opening streams, and
+running the pickers. The long-running operations (copy, move, zip, unzip, search) are `suspend`
+functions and cannot be called from Java at all.
 
-## How to use?
+If your project is Java-only and you need those operations, keep those call sites in Kotlin (the
+two languages mix freely in one module). Staying on
+[v1.5.6](https://github.com/anggrayudi/SimpleStorage/releases/tag/1.5.6) is the other option, but
+that version is no longer maintained.
 
-Simple Storage contains utility functions stored in `object` class, e.g. `DocumentFileCompat` and `MediaStoreCompat`.
-These classes contain only static functions.
+## `StorageFile` from Java
 
-Additionally, this library also has extension functions, e.g. `DocumentFileExtKt` and `FileExtKt`.
-You can learn it [here](https://www.raywenderlich.com/10986797-extension-functions-and-properties-in-kotlin).
-
-### Extension Functions
-
-Common extension functions are stored in package `com.anggrayudi.storage.extension`. The others are in `com.anggrayudi.storage.file`.
-You'll find that the most useful extension functions come from `DocumentFileExtKt` and `FileExtKt`. They are:
-* `DocumentFile.getStorageId()` and `File.getStorageId()` → Get storage ID. Returns `primary` for external storage and something like `AAAA-BBBB` for SD card.
-* `DocumentFile.getAbsolutePath()` → Get file's absolute path. Returns something like `/storage/AAAA-BBBB/Music/My Love.mp3`.
-* `DocumentFile.copyFileTo()` and `File.copyFileTo()`
-* `DocumentFile.search()` and `File.search()`, etc.
-
-Note that some long-running functions like copy, move, search, compress, and unzip are now only available in Kotlin.
-You can still use these Java features in your project, but you will need [v1.5.6](https://github.com/anggrayudi/SimpleStorage/releases/tag/1.5.6) which is the latest version that
-supports Java.
-
-Suppose that you want to get storage ID of the file:
-
-#### In Kotlin
-
-```kotlin
-val file = ...
-val storageId = file.getStorageId(context)
-```
-
-#### In Java
+The factories are `@JvmStatic`, so they are plain static methods. Every one of them returns `null`
+when the location is not accessible.
 
 ```java
-DocumentFile file = ...
+StorageFile fromUri = StorageFile.from(context, uri);
+StorageFile fromFile = StorageFile.from(context, new File("/storage/emulated/0/Download/movie.mp4"));
+StorageFile fromPath = StorageFile.fromPath(context, StoragePath.primary("Download"));
+StorageFile fromAbsolute = StorageFile.fromPath(context, "/storage/emulated/0/Download/movie.mp4");
+StorageFile inDownloads =
+    StorageFile.fromPublicDirectory(context, PublicDirectory.DOWNLOADS, "movie.mp4", false);
+```
+
+`StoragePath` is a data class with `@JvmStatic` factories: `StoragePath.primary(basePath)`,
+`StoragePath.fromAbsolutePath(context, fullPath)`, and `StoragePath.from(context, file)`.
+
+## Metadata, navigation, and streams
+
+```java
+String name = file.getName();
+long size = file.getLength();
+String mimeType = file.getMimeType();
+boolean isDirectory = file.isDirectory();
+String absolutePath = file.getAbsolutePath();   // null when the file has no physical path
+StoragePath path = file.getPath();
+
+List<StorageFile> children = file.list();
+StorageFile child = file.child("docs/report.pdf", false);
+try (InputStream input = file.openInputStream()) {
+  // read
+}
+file.delete();
+
+DocumentFile documentFile = file.asDocumentFile();   // escape hatch, also asMediaFile()/asRawFile()
+```
+
+Two things to watch:
+
+* Kotlin's `exists` and `canWrite` properties compile to `getExists()` and `getCanWrite()`, not
+  `exists()` / `canWrite()`.
+* `child()` and `openOutputStream()` are interface methods, so their Kotlin default arguments do
+  not reach Java — pass every argument explicitly.
+
+## Pickers and storage access
+
+`StorageAccessManager` is suspend-based and therefore Kotlin-only, but the `ActivityResultContract`
+classes it is built on are ordinary Java-callable classes, and their `Options` constructors carry
+`@JvmOverloads`:
+
+```java
+ActivityResultLauncher<OpenFolderPickerContract.Options> folderPicker =
+    registerForActivityResult(
+        new OpenFolderPickerContract(this),
+        result -> {
+          if (result instanceof FolderPickerResult.Picked) {
+            DocumentFile folder = ((FolderPickerResult.Picked) result).getFolder();
+          } else if (result instanceof FolderPickerResult.AccessDenied) {
+            // ask again
+          }
+        });
+
+folderPicker.launch(new OpenFolderPickerContract.Options());
+```
+
+The same shape works for `OpenFilePickerContract`, `FileCreationContract`,
+`RequestStorageAccessContract`, and `StoragePermissionContract`. Results are sealed classes, so
+`instanceof` covers every case, and the object cases are singletons — e.g.
+`FolderPickerResult.CanceledByUser.INSTANCE`.
+
+## The 2.x API from Java
+
+The 2.x surface still ships in 3.x as deprecated API and is removed in 4.0. From Java, extension
+functions appear as static methods on `*Utils` classes, and `object` singletons need `INSTANCE`
+unless the member is `@JvmStatic`:
+
+```java
 String storageId = DocumentFileUtils.getStorageId(file, context);
+DocumentFile file =
+    DocumentFileCompat.INSTANCE.fromSimplePath(context, "AAAA-BBBB", "Music/My Love.mp3");
 ```
 
-All extension functions work like static methods in Java. Note that since `0.4.2`,
-their class names are renamed from using suffix `ExtKt` to `Utils`.
+Its long-running operations were already Kotlin-only, so nothing new is lost by migrating to
+`StorageFile`.
 
-### Utility Functions
+## Sample code
 
-I will refer to utility functions stored in Kotlin `object` class so you can understand it easily.
-You can find the most useful utility functions in `DocumentFileCompat` and `MediaStoreCompat`.
-
-Suppose that I want to get file from SD card with the following simple path: `AAAA-BBBB:Music/My Love.mp3`.
-BTW, `AAAA-BBBB` is the SD card's storage ID for this example.
-
-#### In Kotlin
-
-```kotlin
-val file = DocumentFileCompat.fromSimplePath(context, "AAAA-BBBB", "Music/My Love.mp3")
-```
-
-#### In Java
-
-```java
-DocumentFile file = DocumentFileCompat.INSTANCE.fromSimplePath(context, "AAAA-BBBB", "Music/My Love.mp3");
-```
-
-In Java, you need to append `INSTANCE` after the utility class name.
-Anyway, if the function is annotated with `@JvmStatic`, you don't need to append `INSTANCE`.
-Just go to the source code to check whether it has the annotation.
-
-## Sample Code
-
-* More sample code in Java can be found in
-[`JavaActivity`](https://github.com/anggrayudi/SimpleStorage/blob/master/sample/src/main/java/com/anggrayudi/storage/sample/activity/JavaActivity.java)
-* Learn Kotlin on [Udacity](https://classroom.udacity.com/courses/ud9011). It's easy and free!
+* [`JavaActivity`](https://github.com/anggrayudi/SimpleStorage/blob/master/sample/src/main/java/com/anggrayudi/storage/sample/activity/JavaActivity.java)
+  demonstrates the 2.x API from Java.
+* The v3 API is documented in [README-v3.md](README-v3.md); the Kotlin snippets there translate to
+  Java exactly as shown above for everything that is not `suspend`.

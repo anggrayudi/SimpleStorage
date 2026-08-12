@@ -80,12 +80,17 @@ from the 2.x branch, so fixes land in 3.x only. Everyone is encouraged to move t
 
 ### Java Compatibility
 
-Simple Storage is built in Kotlin. Follow this [documentation](JAVA_COMPATIBILITY.md) to use it in your Java project.
+Simple Storage is built in Kotlin and v3 is Kotlin-first, but the synchronous half of the library
+is Java-callable: `StorageFile` and its `@JvmStatic` factories, metadata and folder navigation,
+streams, and the `ActivityResultContract` pickers.
 
-Note that some long-running functions like copy, move, search, compress, and unzip are now only available in Kotlin.
-They are powered by Kotlin Coroutines & Flow, which are easy to use.
-You can still use these Java features in your project, but you will need [v1.5.6](https://github.com/anggrayudi/SimpleStorage/releases/tag/1.5.6) which is the latest version that
-supports Java.
+The long-running operations — copy, move, zip, unzip, search — are `suspend` functions and cannot
+be called from Java, and neither can `StorageAccessManager`. Keep those call sites in Kotlin;
+the two languages mix freely in one module. Staying on
+[v1.5.6](https://github.com/anggrayudi/SimpleStorage/releases/tag/1.5.6) is the other option, but
+that version is no longer maintained.
+
+Follow this [documentation](JAVA_COMPATIBILITY.md) for the details and code samples.
 
 ### Jetpack Compose
 
