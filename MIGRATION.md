@@ -70,6 +70,15 @@ returns `null` (not `""`) when a physical path cannot be resolved. Escape hatche
 Options that used to be positional parameters (`updateInterval`, `skipEmptyFiles`,
 `fileDescription`, space checking) now live in the `TransferSpec` lambda.
 
+Three 2.x operations have **no v3 equivalent yet** and are therefore not deprecated — keep using
+them for now:
+
+| 2.x, still current | Why |
+|---|---|
+| `List<DocumentFile>.copyTo/moveTo(context, targetParentFolder, …)` | v3 has no multi-source transfer; `List<StorageFile>` only supports `zipTo` |
+| `DocumentFile.copyFileTo/moveFileTo(context, targetFile: MediaFile, …)` | v3 transfers always target a **folder**, never an existing file |
+| `copyFileToDownloadMedia` / `copyFileToPictureMedia` and their `move` twins | same reason: these write into a MediaStore entry, not a folder |
+
 ### Results
 
 | 2.x | 3.0 |
@@ -116,8 +125,13 @@ Existing `rememberLauncherFor*` composables are unchanged. New in 3.0:
 | Phase | What happens |
 |---|---|
 | 3.0.0-alpha | `SimpleStorage`, `SimpleStorageHelper`, and the picker/access callback interfaces are `@Deprecated` |
-| 3.0.0-rc | `DocumentFile`/`MediaFile` operation extensions become `@Deprecated`, delegating to the v3 engine |
+| 3.0.0-rc | `DocumentFile`/`MediaFile` operation extensions become `@Deprecated`, except the three above that v3 cannot express yet |
 | 4.0 | Deprecated 2.x API is removed |
+
+Deprecated does not mean reimplemented: v3 is a layer over the same engine those extensions
+already were, so a call through `StorageFile.copyTo` and a call through `DocumentFile.copyFileTo`
+run identical code underneath. Migrating changes the API you write against, not the behavior you
+get.
 
 **Support policy:** the 2.x branch receives no further releases — not even critical bugfixes.
 Everything ships in 3.x, where the deprecated 2.x API keeps compiling and delegates to the v3

@@ -40,6 +40,14 @@ import kotlinx.coroutines.flow.flowOn
  *
  * @author Anggrayudi H
  */
+@Deprecated(
+  "Superseded in v3 by List<StorageFile>.zipTo() (suspend) or zipToAsFlow(). See MIGRATION.md.",
+  ReplaceWith(
+    "map { it.toStorageFile(context) }.zipToAsFlow(targetZipFile.toStorageFile(context))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.zipToAsFlow",
+  ),
+)
 public fun List<MediaFile>.compressToZip(
   context: Context,
   targetZipFile: DocumentFile,
@@ -154,6 +162,14 @@ public fun List<MediaFile>.compressToZip(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
+@Deprecated(
+  "Superseded in v3 by StorageFile.unzipTo() (suspend) or unzipToAsFlow(). See MIGRATION.md.",
+  ReplaceWith(
+    "toStorageFile(context).unzipToAsFlow(targetFolder.toStorageFile(context))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.unzipToAsFlow",
+  ),
+)
 public fun MediaFile.decompressZip(
   context: Context,
   targetFolder: DocumentFile,

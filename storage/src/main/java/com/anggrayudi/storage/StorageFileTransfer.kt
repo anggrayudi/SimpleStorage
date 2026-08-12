@@ -1,3 +1,7 @@
+// The v3 API is a thin layer over the v2 engine, so every call below is deliberately to a
+// deprecated function. Removing the suppression means 12 warnings that say nothing new.
+@file:Suppress("DEPRECATION")
+
 package com.anggrayudi.storage
 
 import android.content.Context

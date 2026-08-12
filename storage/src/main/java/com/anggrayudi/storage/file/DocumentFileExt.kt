@@ -1061,6 +1061,9 @@ public fun DocumentFile.findFileLiterally(name: String): DocumentFile? =
  *   words
  * @param updateInterval in milliseconds. Set to `0` to emit all results at once.
  */
+@Deprecated(
+  "Superseded in v3 by StorageFile.search(), which emits List<StorageFile> snapshots. Convert the receiver with toStorageFile(context) first. See MIGRATION.md.",
+)
 @OptIn(DelicateCoroutinesApi::class)
 @JvmOverloads
 public fun DocumentFile.search(
@@ -1319,6 +1322,14 @@ private fun DocumentFile.walkFileTreeAndGetFilesOnly(): List<DocumentFile> {
  * password. Simple Storage library must be lightweight, so avoid adding external library unless it
  * is really needed.
  */
+@Deprecated(
+  "Superseded in v3 by List<StorageFile>.zipTo() (suspend) or zipToAsFlow(). See MIGRATION.md.",
+  ReplaceWith(
+    "map { it.toStorageFile(context) }.zipToAsFlow(targetZipFile.toStorageFile(context))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.zipToAsFlow",
+  ),
+)
 public fun List<DocumentFile>.compressToZip(
   context: Context,
   targetZipFile: DocumentFile,
@@ -1548,6 +1559,14 @@ public fun List<DocumentFile>.compressToZip(
  * It can't unzip password-protected archives. You'll need
  * [Zip4j](https://github.com/srikanth-lingala/zip4j) to unzip encrypted archives.
  */
+@Deprecated(
+  "Superseded in v3 by StorageFile.unzipTo() (suspend) or unzipToAsFlow(). See MIGRATION.md.",
+  ReplaceWith(
+    "toStorageFile(context).unzipToAsFlow(targetFolder.toStorageFile(context))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.unzipToAsFlow",
+  ),
+)
 public fun DocumentFile.decompressZip(
   context: Context,
   targetFolder: DocumentFile,
@@ -2309,6 +2328,14 @@ private fun DocumentFile.tryMoveFolderByRenamingPath(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
+@Deprecated(
+  "Superseded in v3 by StorageFile.moveTo() (suspend) or moveToAsFlow(), which detect folders automatically and take a suspend conflict resolver. See MIGRATION.md.",
+  ReplaceWith(
+    "toStorageFile(context).moveToAsFlow(targetParentFolder.toStorageFile(context))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.moveToAsFlow",
+  ),
+)
 public fun DocumentFile.moveFolderTo(
   context: Context,
   targetParentFolder: DocumentFile,
@@ -2334,6 +2361,14 @@ public fun DocumentFile.moveFolderTo(
  * The returned flow is main-safe: it already flows on [Dispatchers.IO], so it can be
  * collected from any thread, including the main thread.
  */
+@Deprecated(
+  "Superseded in v3 by StorageFile.copyTo() (suspend) or copyToAsFlow(), which detect folders automatically and take a suspend conflict resolver. See MIGRATION.md.",
+  ReplaceWith(
+    "toStorageFile(context).copyToAsFlow(targetParentFolder.toStorageFile(context))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.copyToAsFlow",
+  ),
+)
 public fun DocumentFile.copyFolderTo(
   context: Context,
   targetParentFolder: DocumentFile,
@@ -2748,6 +2783,16 @@ private fun DocumentFile.doesMeetFolderCopyRequirements(
  *
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
+@Deprecated(
+  "Superseded in v3 by StorageFile.copyTo() (suspend) or copyToAsFlow(). See MIGRATION.md.",
+  ReplaceWith(
+    "toStorageFile(context).copyToAsFlow(StorageFile.from(context, targetFolder))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.StorageFile",
+    "com.anggrayudi.storage.copyToAsFlow",
+  ),
+)
+@Suppress("DEPRECATION") // delegates to its deprecated sibling
 public fun DocumentFile.copyFileTo(
   context: Context,
   targetFolder: File,
@@ -2773,6 +2818,10 @@ public fun DocumentFile.copyFileTo(
  * @param targetFolderAbsolutePath use [DocumentFileCompat.buildAbsolutePath] to construct the path
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
+@Deprecated(
+  "Superseded in v3 by StorageFile.copyTo() (suspend) or copyToAsFlow(). No ReplaceWith: StorageFile.fromPath() returns null when the path is not accessible, so the target has to be resolved and null-checked first. See MIGRATION.md.",
+)
+@Suppress("DEPRECATION") // delegates to its deprecated sibling
 public fun DocumentFile.copyFileTo(
   context: Context,
   targetFolderAbsolutePath: String,
@@ -2805,6 +2854,14 @@ public fun DocumentFile.copyFileTo(
  *
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
+@Deprecated(
+  "Superseded in v3 by StorageFile.copyTo() (suspend) or copyToAsFlow(). See MIGRATION.md.",
+  ReplaceWith(
+    "toStorageFile(context).copyToAsFlow(targetFolder.toStorageFile(context))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.copyToAsFlow",
+  ),
+)
 public fun DocumentFile.copyFileTo(
   context: Context,
   targetFolder: DocumentFile,
@@ -3025,6 +3082,16 @@ private fun DocumentFile.copyFileStream(
  *
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
+@Deprecated(
+  "Superseded in v3 by StorageFile.moveTo() (suspend) or moveToAsFlow(). See MIGRATION.md.",
+  ReplaceWith(
+    "toStorageFile(context).moveToAsFlow(StorageFile.from(context, targetFolder))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.StorageFile",
+    "com.anggrayudi.storage.moveToAsFlow",
+  ),
+)
+@Suppress("DEPRECATION") // delegates to its deprecated sibling
 public fun DocumentFile.moveFileTo(
   context: Context,
   targetFolder: File,
@@ -3050,6 +3117,10 @@ public fun DocumentFile.moveFileTo(
  * @param targetFolderAbsolutePath use [DocumentFileCompat.buildAbsolutePath] to construct the path
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
+@Deprecated(
+  "Superseded in v3 by StorageFile.moveTo() (suspend) or moveToAsFlow(). No ReplaceWith: StorageFile.fromPath() returns null when the path is not accessible, so the target has to be resolved and null-checked first. See MIGRATION.md.",
+)
+@Suppress("DEPRECATION") // delegates to its deprecated sibling
 public fun DocumentFile.moveFileTo(
   context: Context,
   targetFolderAbsolutePath: String,
@@ -3082,6 +3153,14 @@ public fun DocumentFile.moveFileTo(
  *
  * @param fileDescription Use it if you want to change file name and type in the destination.
  */
+@Deprecated(
+  "Superseded in v3 by StorageFile.moveTo() (suspend) or moveToAsFlow(). See MIGRATION.md.",
+  ReplaceWith(
+    "toStorageFile(context).moveToAsFlow(targetFolder.toStorageFile(context))",
+    "com.anggrayudi.storage.toStorageFile",
+    "com.anggrayudi.storage.moveToAsFlow",
+  ),
+)
 public fun DocumentFile.moveFileTo(
   context: Context,
   targetFolder: DocumentFile,
@@ -3251,6 +3330,7 @@ private fun DocumentFile.simpleCheckSourceFile(scope: ProducerScope<SingleFileRe
   return false
 }
 
+@Suppress("DEPRECATION") // delegates to its deprecated sibling
 private fun DocumentFile.copyFileToMedia(
   context: Context,
   fileDescription: FileDescription,
