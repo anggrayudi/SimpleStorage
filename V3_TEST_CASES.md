@@ -280,6 +280,26 @@ always false. The contract now asks for what the API level can actually grant �
 read-only on 30–32, both below that — and the manager returns `true` when there is nothing to ask
 for. This contradicted both the KDoc ("`true` elsewhere") and `V3_PLAN.md` §6.
 
+## Group 11 — `:storage-compose` (`StoragePermissionComposeTest`)
+
+> First instrumentation test in the Compose module; it existed only as declared dependencies until
+> now. Runs on an API 36 emulator.
+
+| ID | Pri | Case | Steps | Expected | Status |
+|----|-----|------|-------|----------|--------|
+| TC-98 | P0 | `rememberLauncherForStoragePermission` answers on modern API | launch it from a Compose host activity and wait for the callback | callback fires exactly once with `true`, no system dialog | **PASS after the fix** |
+
+The Compose launcher kept its own hardcoded `WRITE_EXTERNAL_STORAGE` + `READ_EXTERNAL_STORAGE`
+pair instead of asking `StoragePermissionContract`, so it carried the TC-95 defect in a worse form:
+from API 33 the platform ignores the request, the result map arrives empty, and
+`onRequestPermissionsResult` treated empty as *interrupted* — meaning the caller's callback was
+**never invoked at all**, not even with `false`. Proved by reverting the fix: the test then failed
+with `expected:<1> but was:<0>` callbacks.
+
+The version matrix behind it is pinned by Robolectric unit tests
+(`StoragePermissionContractTest`): both permissions below API 30, read-only on 30–32, nothing from
+33 up, and a non-null synchronous result from 33 up so no dialog is ever shown.
+
 ## Library bugs found during this pass
 
 ### Confirmed and fixed: folder-merge conflict resolution silently reports failure despite full success

@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+          Host for StoragePermissionComposeTest: rememberLauncherForStoragePermission registers an
+          ActivityResult launcher, so it needs a real ComponentActivity to live in.
+        -->
+        <activity
+            android:name="com.anggrayudi.storage.compose.ComposePermissionTestActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+    </application>
+</manifest>

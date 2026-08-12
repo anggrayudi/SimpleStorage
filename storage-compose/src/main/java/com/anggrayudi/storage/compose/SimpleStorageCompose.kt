@@ -1,6 +1,5 @@
 package com.anggrayudi.storage.compose
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ActivityNotFoundException
@@ -89,7 +88,12 @@ public class PermissionRequestCompose(
 
   private fun onRequestPermissionsResult(result: Map<String, Boolean>) {
     if (result.isEmpty()) {
-      callback.onPermissionRequestInterrupted(permissions)
+      if (permissions.isEmpty()) {
+        // Nothing was worth requesting on this API level, so there is nothing to be denied.
+        callback.onPermissionsChecked(PermissionResult(emptyList()), false)
+      } else {
+        callback.onPermissionRequestInterrupted(permissions)
+      }
       return
     }
     val reports =
@@ -142,10 +146,9 @@ public fun rememberLauncherForStoragePermission(
   val request =
     PermissionRequestCompose(
       context,
-      arrayOf(
-        Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        Manifest.permission.READ_EXTERNAL_STORAGE,
-      ),
+      // Ask the contract instead of hardcoding the pair: WRITE is ungrantable from API 30 and both
+      // are ignored from API 33, so a fixed list makes this report failure on modern devices.
+      StoragePermissionContract().getPermissions(),
       callback =
         object : PermissionCallback {
           override fun onPermissionsChecked(result: PermissionResult, fromSystemDialog: Boolean) {
