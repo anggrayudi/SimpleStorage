@@ -17,6 +17,7 @@
 * [Java Compatibility](#java-compatibility)
 * [Using the 2.x API](#using-the-2x-api)
 * [FAQ](#faq)
+* [Contributing](#contributing)
 * [Other SimpleStorage Usage Examples](#other-simplestorage-usage-examples)
 * [License](#license)
 
@@ -327,6 +328,11 @@ each call to its v3 replacement.
 ## FAQ
 
 Having trouble? Read the [Frequently Asked Questions](FAQ.md) or join the [Discussions](https://github.com/anggrayudi/SimpleStorage/discussions).
+
+## Contributing
+
+[CONTRIBUTING.md](CONTRIBUTING.md) covers the formatting rules (ktfmt, Google style), what makes a
+comment worth keeping, and how the test suites are run.
 
 ## Other SimpleStorage Usage Examples
 
