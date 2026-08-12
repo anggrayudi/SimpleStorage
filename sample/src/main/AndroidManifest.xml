@@ -17,45 +17,26 @@
         android:theme="@style/AppTheme"
         tools:ignore="AllowBackup,LockedOrientationActivity">
         <activity
-            android:name=".activity.MainActivity"
-            android:exported="true"
-            android:screenOrientation="portrait">
+            android:name=".HomeActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="*/*" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND_MULTIPLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="*/*" />
-            </intent-filter>
         </activity>
+
+        <activity android:name=".screen.AccessScreen" />
+        <activity android:name=".screen.CreateScreen" />
+        <activity android:name=".screen.TransferScreen" />
+        <activity android:name=".screen.ZipScreen" />
+        <activity android:name=".screen.SearchScreen" />
+        <activity android:name=".screen.StorageInfoScreen" />
+        <activity android:name=".screen.JavaScreen" />
 
         <activity
             android:name=".compose.StorageComposeActivity"
             android:label="@string/compose_screen"
             android:theme="@style/ComposeTheme" />
-
-        <activity
-            android:name=".activity.SampleFragmentActivity"
-            android:screenOrientation="portrait" />
-
-        <activity
-            android:name=".activity.SettingsActivity"
-            android:screenOrientation="portrait" />
-
-        <activity
-            android:name=".activity.FileCompressionActivity"
-            android:screenOrientation="portrait" />
-
-        <activity
-            android:name=".activity.FileDecompressionActivity"
-            android:screenOrientation="portrait" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
