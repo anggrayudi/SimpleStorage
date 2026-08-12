@@ -3,11 +3,14 @@ package com.anggrayudi.storage
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.provider.MediaStore
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.UiScrollable
+import androidx.test.uiautomator.UiSelector
 import androidx.test.uiautomator.Until
 import com.anggrayudi.storage.access.AccessResult
 import com.anggrayudi.storage.access.StorageAccessManager
@@ -233,17 +236,21 @@ class StorageAccessUiTest {
       MediaStoreCompat.createDownload(context, FileDescription(name), CreateMode.REPLACE)
         ?: error("could not seed a file in Downloads through MediaStore")
     media.openOutputStream()?.use { it.write("pick me".toByteArray()) }
-    val deadline = System.currentTimeMillis() + 10_000
-    while (media.length <= 0 && System.currentTimeMillis() < deadline) {
-      Thread.sleep(100)
-    }
-    check(media.length > 0) { "seeded file never materialised in MediaStore" }
-    return media.name ?: name
-  }
 
-  private fun shell(command: String) {
-    InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command).close()
-    device.waitForIdle(1_000)
+    // Wait on MediaStore's own _size column, not on StorageFile.length: since the length fix the
+    // latter answers from the file descriptor and would return instantly, while DocumentsUI lists
+    // this folder from MediaProvider's database and only sees the file once that column is filled.
+    val deadline = System.currentTimeMillis() + 10_000
+    var size = 0L
+    while (size <= 0 && System.currentTimeMillis() < deadline) {
+      size =
+        context.contentResolver
+          .query(media.uri, arrayOf(MediaStore.MediaColumns.SIZE), null, null, null)
+          ?.use { if (it.moveToFirst()) it.getLong(0) else 0L } ?: 0L
+      if (size <= 0) Thread.sleep(100)
+    }
+    check(size > 0) { "MediaStore never committed the seeded file's size" }
+    return media.name ?: name
   }
 
   /** Puts one image in MediaStore so the photo picker has something to show. */
@@ -293,24 +300,23 @@ class StorageAccessUiTest {
   }
 
   /**
-   * Like [tapText], but scrolls the list first: UiAutomator only sees rendered nodes, so a file
-   * below the fold in a busy Download folder is invisible to a plain lookup.
+   * Like [tapText], but scrolls the list first. [UiScrollable] is used deliberately: the earlier
+   * `By.scrollable(true).scroll(...)` version never actually moved the list, and only looked
+   * correct because the folder under test happened to be short enough to fit on one screen.
    */
   private fun scrollToAndTapText(text: String, what: String) {
+    val list = UiScrollable(UiSelector().scrollable(true)).apply { setMaxSearchSwipes(20) }
+    val found =
+      runCatching { list.scrollIntoView(UiSelector().textContains(text)) }.getOrDefault(false)
     val pattern =
       Pattern.compile(".*${Pattern.quote(text)}.*", Pattern.CASE_INSENSITIVE or Pattern.DOTALL)
-    repeat(10) {
-      device.findObject(By.text(pattern))?.let {
-        it.click()
-        device.waitForIdle(5_000)
-        return
-      }
-      val list = device.findObject(By.scrollable(true)) ?: return@repeat
-      list.scroll(androidx.test.uiautomator.Direction.DOWN, 0.8f)
-      device.waitForIdle(2_000)
+    val target = device.findObject(By.text(pattern))
+    if (target == null) {
+      dumpUi("$what: '$text' not found (scrollIntoView=$found)")
+      error("$what: could not find '$text' in the list")
     }
-    dumpUi("$what: '$text' not found after scrolling")
-    error("$what: could not find '$text' within the list")
+    target.click()
+    device.waitForIdle(5_000)
   }
 
   private fun tapText(text: String, what: String) {

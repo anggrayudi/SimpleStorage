@@ -250,6 +250,16 @@ reboot survival. One device, one drive, one filesystem.
 > - `setUp` runs `pm clear com.google.android.documentsui`: DocumentsUI remembers its last folder
 >   across launches, which otherwise leaks one test's navigation into the next and makes results
 >   depend on run order.
+>
+> TC-94 needs two more things, both learned from a failure on a second emulator whose Download
+> folder was not empty:
+> - **Scrolling has to be real.** The first version called `By.scrollable(true).scroll(...)`, which
+>   never moved the list; it passed only because that device's folder fitted on one screen — a check
+>   that could not fail. It now uses `UiScrollable.scrollIntoView`, proved by seeding 41 files and
+>   asserting the target was off-screen *before* scrolling and reachable after.
+> - **The seed must wait for MediaProvider's `_size` column**, not for `StorageFile.length`. Since
+>   the length fix (Group 1b note) the latter answers from the file descriptor and returns
+>   immediately, while DocumentsUI lists this folder from MediaProvider's database.
 
 | ID | Pri | Case | Steps | Expected | Status |
 |----|-----|------|-------|----------|--------|
