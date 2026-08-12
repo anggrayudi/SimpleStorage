@@ -137,6 +137,7 @@ behaviour is pinned.
 | TC-70 | P0 | AOSP claim: public volume name == filesystem UUID | Mount a public (removable) volume; compare `sm list-volumes public` fsUuid against the `/storage/` mountpoint segment | The same UUID appears in both | **PASS** — emulator-5556 (Pixel_9_API_36, API 36). `sm list-volumes public` → `public:7,433 mounted 4145-0BEA`; `ls /storage/` → `4145-0BEA emulated self`; `df /storage/4145-0BEA` shows a mounted 512 MB fuse volume with the standard dirs (Alarms…Ringtones) created by vold/MediaProvider. The volume-name-is-fsUuid claim holds on-device. |
 | TC-71 | P0 | End-to-end recognition of a real removable volume | `RemovableVolumeTest.tc71_endToEndRemovableVolumeRecognition`: find the SD app-specific dir via `getExternalFilesDirs` (index > 0, non-emulated; Assume-SKIP when absent), derive ID via `getStorageId`, check `isMountedVolumeId` + `StorageType.fromStorageId(context, id) == SD_CARD`, create a real file, resolve with `StorageFile.fromPath`, `copyTo` a sibling folder on the same volume | ID == `/storage/` segment, mounted-volume check true, classified SD_CARD, file resolves with correct name/length and `path.storageId == id`, copy succeeds | **PASS** — emulator-5556 (API 36). Logcat evidence: `TC-71: volumeId=4145-0BEA dir=/storage/4145-0BEA/Android/data/com.anggrayudi.storage.test/files source=tc71_….txt(43b) resolved.path=4145-0BEA:Android/data/…/files/tc71_….txt copied=…(43b) targetListing=[tc71_….txt]`. Not skipped (XML `skipped="0"`), so the removable-volume path genuinely executed. Free-space reporting on the virtual volume was sane (df: ~510 MB available), so the default `checkAvailableSpace=true` stayed on. |
 | TC-72 | P0 | Regex fallback classifies an unmounted NTFS ID | `RemovableVolumeTest.tc72_unmountedVolumeIdRegexFallback`: `isMountedVolumeId(context, "A0E69251E6922814")` and `StorageType.fromStorageId(context, "A0E69251E6922814")` | `false` (no such volume mounted) and `SD_CARD` — proving the regex fallback, not the mount check, does the classifying | **PASS** — emulator-5556 (API 36). Documents that a 16-hex NTFS serial is classified SD_CARD purely by `SD_CARD_STORAGE_ID_REGEX` while the volume is absent. |
+| TC-73 | P0 | A mounted removable volume is enumerated | `RemovableVolumeTest.tc73_removableVolumeIsEnumerated`: `DocumentFileCompat.getStorageIds` / `getSdCardIds` with a physical USB OTG drive attached | both contain the volume's UUID, and `getStorageIds` still contains `primary` | **PASS** — SM-A525F, `storageIds=[primary, 62B2-D5A4]`. Reverting the fix fails it with `[primary] should contain 62B2-D5A4`, so the test measures the defect |
 
 Note on TC-15: the original flake was not a test-tolerance problem. Every progress timer was
 started with `startCoroutineTimer(repeatMillis = updateInterval)`, whose `delayMillis` defaults to
@@ -234,6 +235,14 @@ what closes it, because a grant can remain listed while throwing on use.
 
 **Not covered**: OEMs that renumber volume IDs across replugs (the original worry behind A1), and
 reboot survival. One device, one drive, one filesystem.
+
+Bug found from a user report (the sample's "Show granted paths" dialog): a granted, mounted USB OTG
+drive never appeared in the storage list. `getStorageIds` derived its answer from
+`context.getExternalFilesDirs(null)`, and Android creates `Android/data/<pkg>/files` on SD cards but
+not on this OTG drive — measured on SM-A525F, `getExternalFilesDirs` returned the primary path only
+while `StorageManager.storageVolumes` listed both volumes. The persisted-grant fallback that would
+have covered it only ran on API 27 and below. It now unions app-specific dirs, mounted volumes and
+granted volumes on every API level.
 
 ## Group 10 — StorageAccessManager, interactive (`StorageAccessUiTest`)
 

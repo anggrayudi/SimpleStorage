@@ -1,7 +1,11 @@
 package com.anggrayudi.storage
 
+import android.content.Context
+import android.os.Environment
+import android.os.storage.StorageManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.anggrayudi.storage.file.DocumentFileCompat
+import com.anggrayudi.storage.file.StorageId
 import com.anggrayudi.storage.file.StorageType
 import com.anggrayudi.storage.transfer.getOrNull
 import com.anggrayudi.storage.transfer.isSuccess
@@ -115,5 +119,25 @@ class RemovableVolumeTest {
     )
     // Not mounted, but the regex fallback still classifies it as a removable volume by ID shape.
     assertEquals(StorageType.SD_CARD, StorageType.fromStorageId(context, unmountedNtfsId))
+  }
+
+  // TC-73: a mounted removable volume must appear in getStorageIds()
+  @Test
+  fun tc73_removableVolumeIsEnumerated() {
+    val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
+    val removable =
+      storageManager.storageVolumes.firstOrNull {
+        !it.isPrimary && it.uuid != null && it.state == Environment.MEDIA_MOUNTED
+      }
+    assumeTrue("no removable volume mounted - skipping TC-73", removable != null)
+
+    val ids = DocumentFileCompat.getStorageIds(context)
+    println("TC-73: storageIds=$ids volume=${removable!!.uuid}")
+    assertTrue("$ids should contain ${removable.uuid}", ids.contains(removable.uuid))
+    assertTrue("$ids should contain primary", ids.contains(StorageId.PRIMARY))
+    assertTrue(
+      "getSdCardIds should report it too",
+      DocumentFileCompat.getSdCardIds(context).contains(removable.uuid),
+    )
   }
 }

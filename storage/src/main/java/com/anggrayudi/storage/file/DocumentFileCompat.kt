@@ -563,7 +563,7 @@ public object DocumentFileCompat {
   @JvmStatic
   public fun getStorageIds(context: Context): List<String> {
     val externalStoragePath = SimpleStorage.externalStoragePath
-    val storageIds =
+    val fromAppSpecificDirs =
       context.getExternalFilesDirs(null).filterNotNull().map {
         val path = it.path
         if (path.startsWith(externalStoragePath)) {
@@ -574,20 +574,18 @@ public object DocumentFileCompat {
           path.substringAfter("/storage/").substringBefore('/')
         }
       }
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      storageIds
-    } else {
-      val persistedStorageIds =
-        context.contentResolver.persistedUriPermissions
-          .filter {
-            it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument
-          }
-          .mapNotNull { it.uri.path?.run { substringBefore(':').substringAfterLast('/') } }
-      storageIds.toMutableList().run {
-        addAll(persistedStorageIds)
-        distinct()
-      }
-    }
+    // App-specific dirs alone miss USB OTG drives: Android creates Android/data/<pkg>/files on SD
+    // cards but not on every removable volume, so a mounted, granted OTG drive was invisible here.
+    val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
+    val mountedVolumes =
+      storageManager.storageVolumes
+        .filter { it.state == Environment.MEDIA_MOUNTED }
+        .mapNotNull { if (it.isPrimary) PRIMARY else it.uuid }
+    val persistedStorageIds =
+      context.contentResolver.persistedUriPermissions
+        .filter { it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument }
+        .mapNotNull { it.uri.path?.run { substringBefore(':').substringAfterLast('/') } }
+    return (fromAppSpecificDirs + mountedVolumes + persistedStorageIds).distinct()
   }
 
   @JvmStatic public fun getSdCardIds(context: Context): List<String> = getStorageIds(context).filter { it != PRIMARY }
