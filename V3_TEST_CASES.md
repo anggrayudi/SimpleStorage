@@ -24,6 +24,21 @@ Notes for the implementer:
 | TC-03 | P0 | MediaStore backend | Insert a file into `MediaStore.Downloads` (resolver.insert + write bytes); `StorageFile.from(context, mediaUri)` | Returns MediaStore-backed instance: `isFile`, correct `name`/`length`; `openInputStream()` returns the written bytes | **PASS** — `StorageFileFactoryTest.tc03_mediaStoreBackend`; bytes verified byte-for-byte via `assertArrayEquals`. |
 | TC-04 | P1 | Children & child() | Folder with 2 files + 1 subfolder; `list()`, `child("sub/x.txt")` | `list()` size 3; nested child resolves; missing child → null | **PASS** — `StorageFileFactoryTest.tc04_childrenAndChild`. |
 
+Note on TC-03 (OPEN_ITEMS C9): this test used to fail intermittently — always as
+`expected:<17> but was:<0>` — and the cause was in the library, not the test. `MediaFile.length`
+fell back to MediaStore's `_size` column whenever the file has no accessible raw path, and
+MediaProvider fills that column **asynchronously** after the stream closes. Measured on both an API
+36 emulator and an SM-A525F at the same instant: `_size` = 0 while `openFileDescriptor(uri).statSize`
+= 17 and the bytes were fully readable; the column caught up ~250 ms later. `length` now trusts the
+descriptor when the column reports 0, and TC-08 pins both directions (fresh write reports its real
+size; a genuinely empty file still reports 0). TC-03 then passed 10/10 on the emulator and 5/5 on
+the Samsung.
+
+Honest limit: the end-to-end "fails without the fix" reproduction is timing-dependent and did
+**not** reproduce on demand afterwards (3/3 passed with the fix reverted on the Samsung, which had
+failed consistently earlier the same day). What is proved by measurement is the mechanism and that
+the two sources disagree at the moment of the read — not a deterministic red-to-green flip.
+
 ### Group 1b — creating files & folders (`StorageFileFactoryTest`)
 
 | ID | Pri | Case | Steps | Expected | Status |

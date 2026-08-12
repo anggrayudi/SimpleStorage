@@ -112,6 +112,27 @@ class StorageFileFactoryTest {
     assertNull("missing child should be null", missing)
   }
 
+  // TC-08: length is right the instant a MediaStore file is written, and 0 stays 0
+  @Test
+  fun tc08_mediaLengthIsImmediate() {
+    val content = "seventeen bytes!!".toByteArray()
+    val written = insertDownloadsMedia("tc08_${System.nanoTime()}.txt", content)
+    try {
+      // Read with no delay: MediaProvider fills the _size column asynchronously, so this is the
+      // window where the column still says 0 while the bytes are already on disk.
+      assertEquals(content.size.toLong(), StorageFile.from(context, written.uri)?.length)
+    } finally {
+      written.delete()
+    }
+
+    val empty = insertDownloadsMedia("tc08_empty_${System.nanoTime()}.txt", ByteArray(0))
+    try {
+      assertEquals("an empty file must still report 0", 0L, StorageFile.from(context, empty.uri)?.length)
+    } finally {
+      empty.delete()
+    }
+  }
+
   // TC-05: createFile writes a real file, including nested names
   @Test
   fun tc05_createFile() {

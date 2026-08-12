@@ -136,7 +136,21 @@ public class MediaFile(context: Context, public val uri: Uri) {
 
   @Suppress("DEPRECATION")
   public var length: Long
-    get() = toRawFile()?.length() ?: getColumnInfoLong(MediaStore.MediaColumns.SIZE)
+    get() {
+      toRawFile()?.let {
+        return it.length()
+      }
+      val fromColumn = getColumnInfoLong(MediaStore.MediaColumns.SIZE)
+      if (fromColumn > 0) return fromColumn
+      // MediaProvider fills _size asynchronously after the stream closes, so a file that was just
+      // written reports 0 for a moment while its bytes are already on disk. Only the ambiguous 0
+      // costs a descriptor; the file itself always knows its size.
+      return runCatching {
+          context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize }
+        }
+        .getOrNull()
+        ?.takeIf { it >= 0 } ?: fromColumn
+    }
     set(value) {
       try {
         val contentValues = ContentValues(1).apply { put(MediaStore.MediaColumns.SIZE, value) }
