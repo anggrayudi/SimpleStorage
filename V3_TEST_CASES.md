@@ -170,6 +170,42 @@ multi-file engine's manual REPLACE handling behave correctly for CREATE_NEW reso
 | TC-83 | P1 | volumeMountEvents emits on remount | `VolumeMountEventsTest.tc83_volumeMountEventsEmitsOnRemount`: collect the flow, then `sm unmount public:7,433` + `sm mount public:7,433` via `UiAutomation.executeShellCommand` | flow emits a `StorageVolume` with `uuid == 4145-0BEA` within the timeout | **PASS** — emulator-5556 (API 36). Logcat: unmount at 04:11:49.9, mount at 04:11:53.14, `received MEDIA_MOUNTED for uuid=4145-0BEA description=Virtual SD card state=mounted` at 04:11:53.147 (~5 ms after the mount command). No side effects: the volume stayed `mounted` afterwards and the process was not killed (it held no open files on the volume); no re-run of other groups was needed. |
 | TC-84 | P2 | Label-fallback re-grant via SAF | `VolumeLabelFallbackTest.tc84_labelFallbackRegrantsAndUpdatesBookmark`: bookmark with wrong `storageId` (`DEADBEEFDEADBEEF`) but the real label ("Virtual SD card"), `basePath=Documents`; UiAutomator clicks "Use this folder" → "Allow" | `Granted` with **updated** `bookmark.storageId` == real UUID | **PASS** — emulator-5556 (API 36). Logcat: `TC-84: label fallback re-granted. old id=DEADBEEFDEADBEEF new id=4145-0BEA folder=/storage/4145-0BEA/Documents`. That the SAF dialog genuinely appeared is proven by ActivityTaskManager: `START … act=android.intent.action.OPEN_DOCUMENT_TREE … com.google.android.documentsui/….PickActivity … from uid 10227 (com.anggrayudi.storage.test)`. The persisted grant is released again in `@After` so later runs start clean. |
 
+## Group 9b — OTG grant survival on real hardware (`OtgGrantProbeTest`, manual)
+
+> Answers OPEN_ITEMS A1 on the owner's **Samsung SM-A525F** (One UI, wireless debugging) with a
+> physical USB OTG drive, `62B2-D5A4`, label `ANGGRAYUDI`, exFAT. Opt-in: the tests skip unless run
+> with `-e otgProbe true`, so the automated suite never waits on a SAF dialog. Verified both ways —
+> without the flag the probe prints nothing at all.
+
+**Question**: after the user unplugs and replugs a removable volume, is the persisted SAF grant
+still there, and is it still *usable*?
+
+**Answer: yes, on this device, for a surprise removal.** Measured twice; the drive was pulled
+physically both times, with no "eject" tap.
+
+| | Before unplug | After replug |
+|---|---|---|
+| persisted URI permissions | 1 — `tree/62B2-D5A4:`, read+write | identical, `persistedTime` unchanged |
+| storage ID | `62B2-D5A4` | `62B2-D5A4` |
+| `StorageFile.fromPath(root, write=true)` | resolves | resolves |
+| `canRead` / `canWrite` | true / true | true / true |
+| directory listing | 8 entries | same 8 entries |
+| real write (create → write → read back → delete) | — | succeeded |
+
+The second cycle is proved by the device log rather than by trusting the report: `vold: Eject
+external storage before unmounting` → `PublicVolume::doUnmount()` → `StorageManagerService:
+[BAD_REMOVAL_USB]` → `state=EJECTING` at 23:58:49, then `VOLUME_STATE_CHANGED` → `MediaStore:
+Examining volume public:8,97 … state mounted` → `StorageNotification: Current USB Memory UUID is
+same as 62B2-D5A4` at 23:58:55. Six seconds off the bus, same UUID back, grant intact.
+
+Consequence for the library: on this hardware `VolumeBookmark` re-resolves purely by `storageId`
+with no user interaction, and the label-fallback path is a safety net rather than the main route —
+the assumption `0b69fac` was built on. `canWrite` alone was not treated as proof; the write test is
+what closes it, because a grant can remain listed while throwing on use.
+
+**Not covered**: OEMs that renumber volume IDs across replugs (the original worry behind A1), and
+reboot survival. One device, one drive, one filesystem.
+
 ## Group 10 — StorageAccessManager, interactive (`StorageAccessUiTest`)
 
 > Small_Phone_API_36 (API 36), 8/8 green on three consecutive runs. Each test starts the suspend
