@@ -149,6 +149,15 @@ The first progress event arrives one `updateInterval` after the transfer starts,
 carries measured numbers — and a transfer that finishes within one interval reports no progress at
 all, just its result.
 
+Several sources at once share one event stream and come back as a list:
+
+```kotlin
+val result = listOf(photos, notes).copyTo(backupFolder) {
+  onConflict { ConflictResolution.REPLACE }
+}
+val copied: List<StorageFile>? = result.getOrNull()
+```
+
 `moveTo` has the same shape. Folders are detected automatically — `copyTo` on a directory copies
 recursively. All options live in the [`TransferSpec`](storage/src/main/java/com/anggrayudi/storage/transfer/TransferSpec.kt)
 block: `updateInterval`, `checkAvailableSpace`, `skipEmptyFiles` (note: also skips empty

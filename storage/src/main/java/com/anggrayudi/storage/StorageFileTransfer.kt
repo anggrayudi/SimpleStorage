@@ -6,6 +6,7 @@ package com.anggrayudi.storage
 
 import android.content.Context
 import androidx.documentfile.provider.DocumentFile
+import com.anggrayudi.storage.callback.MultipleFilesConflictCallback
 import com.anggrayudi.storage.callback.SingleFileConflictCallback
 import com.anggrayudi.storage.callback.SingleFolderConflictCallback
 import com.anggrayudi.storage.file.CheckFileSize
@@ -13,16 +14,20 @@ import com.anggrayudi.storage.file.DocumentFileType
 import com.anggrayudi.storage.file.compressToZip
 import com.anggrayudi.storage.file.copyFileTo
 import com.anggrayudi.storage.file.copyFolderTo
+import com.anggrayudi.storage.file.copyTo as copyDocumentsTo
 import com.anggrayudi.storage.file.decompressZip
 import com.anggrayudi.storage.file.defaultFileSizeChecker
 import com.anggrayudi.storage.file.deleteRecursively
 import com.anggrayudi.storage.file.moveFileTo
 import com.anggrayudi.storage.file.moveFolderTo
+import com.anggrayudi.storage.file.moveTo as moveDocumentsTo
 import com.anggrayudi.storage.file.search
 import com.anggrayudi.storage.media.MediaFile
 import com.anggrayudi.storage.media.decompressZip
 import com.anggrayudi.storage.result.FolderErrorCode
 import com.anggrayudi.storage.result.SingleFileErrorCode
+import com.anggrayudi.storage.result.MultipleFilesErrorCode
+import com.anggrayudi.storage.result.MultipleFilesResult
 import com.anggrayudi.storage.result.SingleFileResult
 import com.anggrayudi.storage.result.SingleFolderResult
 import com.anggrayudi.storage.result.ZipCompressionErrorCode
@@ -86,6 +91,33 @@ public suspend fun StorageFile.moveTo(
   return spec.await(moveToAsFlow(targetFolder, spec))
 }
 
+/**
+ * Copies every file or folder in this list into [targetFolder], reporting one event stream for the
+ * whole batch.
+ *
+ * ```kotlin
+ * val result = listOf(photos, notes).copyTo(backupFolder) {
+ *   onConflict { ConflictResolution.REPLACE }
+ * }
+ * ```
+ */
+public suspend fun List<StorageFile>.copyTo(
+  targetFolder: StorageFile,
+  configure: TransferSpec.() -> Unit = {},
+): TransferResult<List<StorageFile>> {
+  val spec = TransferSpec().apply(configure)
+  return spec.awaitList(copyToAsFlow(targetFolder, spec))
+}
+
+/** Moves every file or folder in this list into [targetFolder]. */
+public suspend fun List<StorageFile>.moveTo(
+  targetFolder: StorageFile,
+  configure: TransferSpec.() -> Unit = {},
+): TransferResult<List<StorageFile>> {
+  val spec = TransferSpec().apply(configure)
+  return spec.awaitList(moveToAsFlow(targetFolder, spec))
+}
+
 /** Compresses these files/folders into [targetZipFile], which must already exist. */
 public suspend fun List<StorageFile>.zipTo(
   targetZipFile: StorageFile,
@@ -126,6 +158,16 @@ public fun StorageFile.moveToAsFlow(
   targetFolder: StorageFile,
   spec: TransferSpec = TransferSpec(),
 ): Flow<TransferEvent> = transferFlow(this, targetFolder, spec, move = true)
+
+public fun List<StorageFile>.copyToAsFlow(
+  targetFolder: StorageFile,
+  spec: TransferSpec = TransferSpec(),
+): Flow<TransferEvent> = multiTransferFlow(this, targetFolder, spec, move = false)
+
+public fun List<StorageFile>.moveToAsFlow(
+  targetFolder: StorageFile,
+  spec: TransferSpec = TransferSpec(),
+): Flow<TransferEvent> = multiTransferFlow(this, targetFolder, spec, move = true)
 
 public fun List<StorageFile>.zipToAsFlow(
   targetZipFile: StorageFile,
@@ -334,6 +376,194 @@ private fun transferFlow(
       )
     )
   }
+}
+
+private fun multiTransferFlow(
+  sources: List<StorageFile>,
+  target: StorageFile,
+  spec: TransferSpec,
+  move: Boolean,
+): Flow<TransferEvent> = channelFlow<TransferEvent> {
+  val context = sources.firstOrNull()?.appContext ?: target.appContext
+  val targetDoc = target.asDocumentFile()
+  if (targetDoc == null || !targetDoc.isDirectory) {
+    send(failureList(TransferErrorCode.INVALID_TARGET, "Target must be an accessible folder"))
+    return@channelFlow
+  }
+  if (sources.isEmpty()) {
+    send(TransferEvent.Completed(TransferResult.Success(emptyList<StorageFile>())))
+    return@channelFlow
+  }
+  // The v2 multi-file engine walks DocumentFiles; a MediaStore entry has no tree to walk.
+  val sourceDocs = sources.map { it.asDocumentFile() }
+  if (sourceDocs.any { it == null }) {
+    send(
+      failureList(
+        TransferErrorCode.SOURCE_NOT_FOUND,
+        "Every source must be backed by a DocumentFile",
+      )
+    )
+    return@channelFlow
+  }
+
+  val state = TransferState()
+  val adapter = multipleFilesConflictAdapter(context, spec, this, state)
+  val docs = sourceDocs.filterNotNull()
+  val flow =
+    if (move) {
+      docs.moveDocumentsTo(context, targetDoc, spec.skipEmptyFiles, spec.updateInterval, spec.sizeChecker(), adapter)
+    } else {
+      docs.copyDocumentsTo(context, targetDoc, spec.skipEmptyFiles, spec.updateInterval, spec.sizeChecker(), adapter)
+    }
+
+  var finished = false
+  flow.collect { result ->
+    val event = result.toTransferEvent(context, spec)
+    if (event is TransferEvent.Completed<*>) finished = true
+    send(event)
+  }
+  if (!finished) {
+    // Same guard as the single-source path: the engine can close without a terminal event when the
+    // resolver skips everything, and a caller must never be left waiting on a result.
+    send(
+      TransferEvent.Completed(
+        TransferResult.Success(emptyList<StorageFile>(), TransferStats(filesSkipped = state.filesSkipped.get()))
+      )
+    )
+  }
+}
+
+private fun MultipleFilesResult.toTransferEvent(
+  context: Context,
+  spec: TransferSpec,
+): TransferEvent =
+  when (this) {
+    MultipleFilesResult.Validating -> phase(TransferPhase.VALIDATING)
+    MultipleFilesResult.Preparing -> phase(TransferPhase.PREPARING)
+    MultipleFilesResult.CountingFiles -> phase(TransferPhase.COUNTING_FILES)
+    MultipleFilesResult.DeletingConflictedFiles -> phase(TransferPhase.DELETING_CONFLICTED_FILES)
+    is MultipleFilesResult.Starting -> phase(TransferPhase.STARTING)
+    is MultipleFilesResult.InProgress ->
+      TransferEvent.Progress(
+        progress,
+        bytesMoved,
+        bytesPerSecond(writeSpeed, spec.updateInterval),
+        fileCount,
+        0,
+      )
+    is MultipleFilesResult.Completed -> {
+      val stats = TransferStats(totalFilesToCopy, totalCopiedFiles, 0)
+      if (success) {
+        TransferEvent.Completed(
+          TransferResult.Success(files.map { it.toStorageFile(context) }, stats)
+        )
+      } else {
+        TransferEvent.Completed<List<StorageFile>>(
+          TransferResult.Failure(
+            TransferErrorCode.UNKNOWN_IO_ERROR,
+            "Some files could not be transferred",
+            partialStats = stats,
+          )
+        )
+      }
+    }
+    is MultipleFilesResult.Error ->
+      TransferEvent.Completed<List<StorageFile>>(
+        TransferResult.Failure(
+          errorCode.toTransferError(),
+          message,
+          cause,
+          completedData?.let { TransferStats(it.totalFilesToCopy, it.totalCopiedFiles, 0) },
+        )
+      )
+  }
+
+private fun multipleFilesConflictAdapter(
+  context: Context,
+  spec: TransferSpec,
+  scope: CoroutineScope,
+  state: TransferState,
+): MultipleFilesConflictCallback =
+  object : MultipleFilesConflictCallback(scope) {
+    override fun onParentConflict(
+      destinationParentFolder: DocumentFile,
+      conflictedFolders: MutableList<ParentConflict>,
+      conflictedFiles: MutableList<ParentConflict>,
+      action: ParentFolderConflictAction,
+    ) {
+      scope.launch {
+        (conflictedFolders + conflictedFiles).forEach { conflict ->
+          val target = conflict.target.toStorageFile(context)
+          val resolution =
+            if (conflict.target.isDirectory) {
+              spec.conflictResolver.resolve(Conflict.TargetFolder(target, conflict.canMerge))
+            } else {
+              spec.conflictResolver.resolve(Conflict.TargetFile(target))
+            }
+          if (resolution == com.anggrayudi.storage.transfer.ConflictResolution.SKIP) {
+            state.filesSkipped.incrementAndGet()
+          }
+          conflict.solution = resolution.toV2FolderResolution(conflict.canMerge)
+        }
+        action.confirmResolution(conflictedFolders + conflictedFiles)
+      }
+    }
+
+    override fun onContentConflict(
+      destinationParentFolder: DocumentFile,
+      conflictedFiles: MutableList<SingleFolderConflictCallback.FileConflict>,
+      action: SingleFolderConflictCallback.FolderContentConflictAction,
+    ) {
+      scope.launch {
+        conflictedFiles.forEach { conflict ->
+          val solution =
+            spec.conflictResolver
+              .resolve(Conflict.TargetFile(conflict.target.toStorageFile(context)))
+              .toV2FileResolution()
+          if (solution == SingleFileConflictCallback.ConflictResolution.SKIP) {
+            state.filesSkipped.incrementAndGet()
+          }
+          conflict.solution = solution
+        }
+        action.confirmResolution(conflictedFiles)
+      }
+    }
+  }
+
+private fun ConflictResolution.toV2FolderResolution(
+  canMerge: Boolean
+): SingleFolderConflictCallback.ConflictResolution =
+  when (this) {
+    ConflictResolution.REPLACE -> SingleFolderConflictCallback.ConflictResolution.REPLACE
+    ConflictResolution.MERGE ->
+      if (canMerge) SingleFolderConflictCallback.ConflictResolution.MERGE
+      else SingleFolderConflictCallback.ConflictResolution.CREATE_NEW
+    ConflictResolution.CREATE_NEW -> SingleFolderConflictCallback.ConflictResolution.CREATE_NEW
+    ConflictResolution.SKIP -> SingleFolderConflictCallback.ConflictResolution.SKIP
+  }
+
+private fun failureList(code: TransferErrorCode, message: String? = null) =
+  TransferEvent.Completed<List<StorageFile>>(TransferResult.Failure(code, message))
+
+private suspend fun TransferSpec.awaitList(
+  flow: Flow<TransferEvent>
+): TransferResult<List<StorageFile>> {
+  var terminal: TransferResult<List<StorageFile>>? = null
+  flow.collect { event ->
+    when (event) {
+      is TransferEvent.Progress -> progressListener?.invoke(event)
+      is TransferEvent.Completed<*> -> {
+        @Suppress("UNCHECKED_CAST")
+        terminal = event.result as TransferResult<List<StorageFile>>
+      }
+      is TransferEvent.PhaseChanged -> Unit
+    }
+  }
+  return terminal
+    ?: TransferResult.Failure(
+      TransferErrorCode.UNKNOWN_IO_ERROR,
+      "Transfer finished without a terminal event",
+    )
 }
 
 /** Per-transfer signals written by the conflict adapters, read when the engine flow ends. */
@@ -611,6 +841,19 @@ private fun FolderErrorCode.toTransferError(): TransferErrorCode =
     FolderErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER ->
       TransferErrorCode.TARGET_SAME_AS_SOURCE
     FolderErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH -> TransferErrorCode.NO_SPACE_LEFT_ON_TARGET
+  }
+
+private fun MultipleFilesErrorCode.toTransferError(): TransferErrorCode =
+  when (this) {
+    MultipleFilesErrorCode.STORAGE_PERMISSION_DENIED -> TransferErrorCode.STORAGE_PERMISSION_DENIED
+    MultipleFilesErrorCode.CANNOT_CREATE_FILE_IN_TARGET ->
+      TransferErrorCode.CANNOT_CREATE_FILE_IN_TARGET
+    MultipleFilesErrorCode.SOURCE_FILE_NOT_FOUND -> TransferErrorCode.SOURCE_NOT_FOUND
+    MultipleFilesErrorCode.INVALID_TARGET_FOLDER -> TransferErrorCode.INVALID_TARGET
+    MultipleFilesErrorCode.UNKNOWN_IO_ERROR -> TransferErrorCode.UNKNOWN_IO_ERROR
+    MultipleFilesErrorCode.CANCELED -> TransferErrorCode.CANCELED
+    MultipleFilesErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH ->
+      TransferErrorCode.NO_SPACE_LEFT_ON_TARGET
   }
 
 private fun ZipCompressionErrorCode.toTransferError(): TransferErrorCode =

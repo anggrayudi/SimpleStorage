@@ -165,6 +165,11 @@ progress, got []`.
 | TC-29 | P1 | Control: same transfer with no conflict | `tc29_multiFileWithoutConflictReportsCompletion` | `Completed(success=true, totalCopiedFiles=2)` | **PASS** both before and after the fix — isolating the conflict path as the trigger |
 | TC-30 | P0 | `moveTo` with a conflict deletes the source | `tc30_multiFileMoveWithConflictDeletesSource`: same shape via `moveTo` | Merged target and the source folder gone | **PASS** after the fix. Before it, the missing `finalize()` also skipped `forceDelete` of the source roots, so a move silently left the source tree behind |
 
+| TC-31 | P0 | v3 multi-source copy | `tc31_v3MultiSourceCopy`: `listOf(folder, file).copyTo(target)` | `Success<List<StorageFile>>` naming both entries, `filesTransferred=2`, both present on disk | **PASS** |
+| TC-32 | P0 | v3 multi-source merge with a conflict | `tc32_v3MultiSourceMergeWithConflict`: resolver returns MERGE for the folder and REPLACE for the file | terminal `Success`, target holds the source content plus the new file | **PASS** — exercises both adapter callbacks, since CREATE_NEW would leave the stale content in place |
+| TC-33 | P1 | v3 multi-source move | `tc33_v3MultiSourceMove` | both files at the target, both sources gone | **PASS** |
+| TC-34 | P1 | v3 multi-source invalid target | `tc34_v3MultiSourceInvalidTarget`: target is a file | `Failure(INVALID_TARGET)` rather than a hang | **PASS** |
+
 Negative test: removing `conflictedFiles.clear()` again fails TC-28 and TC-30 with
 `no Completed event; events=[Validating, Preparing, CountingFiles, Starting(...)]` while TC-29 stays
 green, so these tests do cover the defect rather than merely passing.

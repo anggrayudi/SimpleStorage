@@ -8,6 +8,11 @@ import com.anggrayudi.storage.callback.SingleFolderConflictCallback
 import com.anggrayudi.storage.file.copyTo
 import com.anggrayudi.storage.file.moveTo
 import com.anggrayudi.storage.result.MultipleFilesResult
+import com.anggrayudi.storage.transfer.Conflict
+import com.anggrayudi.storage.transfer.ConflictResolution
+import com.anggrayudi.storage.transfer.TransferErrorCode
+import com.anggrayudi.storage.transfer.TransferResult
+import com.anggrayudi.storage.transfer.isSuccess
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -165,5 +170,82 @@ class MultipleFilesEngineTest {
     assertTrue("no Completed event; events=$events", completed.isNotEmpty())
     assertTrue("Completed reported success=false: ${completed.last()}", completed.last().success)
     assertEquals(2, completed.last().totalCopiedFiles)
+  }
+
+  // TC-31: the v3 multi-source API reports every copied file
+  @Test
+  fun tc31_v3MultiSourceCopy() = runBlocking {
+    val src = File(playground, "src").apply { mkdirs() }
+    val folder = File(src, "docs").apply { mkdirs() }
+    File(folder, "a.txt").writeText("a")
+    val loneFile = File(src, "note.txt").apply { writeText("note") }
+    val target = File(playground, "target").apply { mkdirs() }
+
+    val result =
+      listOf(StorageFile.from(context, folder), StorageFile.from(context, loneFile))
+        .copyTo(StorageFile.from(context, target))
+
+    assertTrue("expected success but was $result", result.isSuccess)
+    val copied = (result as TransferResult.Success<List<StorageFile>>).result
+    assertEquals(setOf("docs", "note.txt"), copied.map { it.name }.toSet())
+    assertEquals(2, result.stats.filesTransferred)
+    assertEquals("a", File(target, "docs/a.txt").readText())
+    assertEquals("note", File(target, "note.txt").readText())
+  }
+
+  // TC-32: a resolved conflict still ends with a terminal result, through v3 this time
+  @Test
+  fun tc32_v3MultiSourceMergeWithConflict() = runBlocking {
+    val src = File(playground, "src").apply { mkdirs() }
+    val folder = File(src, "docs").apply { mkdirs() }
+    File(folder, "common.txt").writeText("from source")
+    File(folder, "onlyInSource.txt").writeText("new file")
+    val target = File(playground, "target").apply { mkdirs() }
+    File(target, "docs").mkdirs()
+    File(target, "docs/common.txt").writeText("stale target content")
+
+    val result =
+      listOf(StorageFile.from(context, folder)).copyTo(StorageFile.from(context, target)) {
+        onConflict { conflict ->
+          if (conflict is Conflict.TargetFolder) ConflictResolution.MERGE
+          else ConflictResolution.REPLACE
+        }
+      }
+
+    assertTrue("expected success but was $result", result.isSuccess)
+    assertEquals("from source", File(target, "docs/common.txt").readText())
+    assertTrue(File(target, "docs/onlyInSource.txt").exists())
+  }
+
+  // TC-33: moveTo through v3 removes the sources
+  @Test
+  fun tc33_v3MultiSourceMove() = runBlocking {
+    val src = File(playground, "src").apply { mkdirs() }
+    val one = File(src, "one.txt").apply { writeText("1") }
+    val two = File(src, "two.txt").apply { writeText("2") }
+    val target = File(playground, "target").apply { mkdirs() }
+
+    val result =
+      listOf(StorageFile.from(context, one), StorageFile.from(context, two))
+        .moveTo(StorageFile.from(context, target))
+
+    assertTrue("expected success but was $result", result.isSuccess)
+    assertTrue(File(target, "one.txt").exists())
+    assertTrue(File(target, "two.txt").exists())
+    assertFalse("sources should be gone after a move", one.exists() || two.exists())
+  }
+
+  // TC-34: a target that is not a folder fails instead of hanging
+  @Test
+  fun tc34_v3MultiSourceInvalidTarget() = runBlocking {
+    val src = File(playground, "src").apply { mkdirs() }
+    val file = File(src, "a.txt").apply { writeText("a") }
+    val notAFolder = File(playground, "not_a_folder.txt").apply { writeText("x") }
+
+    val result =
+      listOf(StorageFile.from(context, file)).copyTo(StorageFile.from(context, notAFolder))
+
+    assertTrue("expected Failure but was $result", result is TransferResult.Failure)
+    assertEquals(TransferErrorCode.INVALID_TARGET, (result as TransferResult.Failure).errorCode)
   }
 }

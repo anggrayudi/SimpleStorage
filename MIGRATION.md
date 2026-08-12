@@ -62,6 +62,7 @@ returns `null` (not `""`) when a physical path cannot be resolved. Escape hatche
 | `DocumentFile.copyFileTo(context, target, …)` | `StorageFile.copyTo(target) { }` | `copyToAsFlow(target)` |
 | `DocumentFile.moveFileTo(context, target, …)` | `StorageFile.moveTo(target) { }` | `moveToAsFlow(target)` |
 | `DocumentFile.copyFolderTo/moveFolderTo(…)` | same `copyTo`/`moveTo` — folders are detected | same |
+| `List<DocumentFile>.copyTo/moveTo(context, targetParentFolder, …)` | `List<StorageFile>.copyTo(folder) { }` → `TransferResult<List<StorageFile>>` | `copyToAsFlow(folder)` |
 | `List<DocumentFile>.compressToZip(context, zip, …)` | `List<StorageFile>.zipTo(zipFile) { }` | `zipToAsFlow(zipFile)` |
 | `DocumentFile.decompressZip(context, folder, …)` | `StorageFile.unzipTo(folder) { }` | `unzipToAsFlow(folder)` |
 | `DocumentFile.makeFile(context, name, mimeType, mode)` | `StorageFile.createFile(name, mimeType, mode)` | — |
@@ -72,12 +73,11 @@ returns `null` (not `""`) when a physical path cannot be resolved. Escape hatche
 Options that used to be positional parameters (`updateInterval`, `skipEmptyFiles`,
 `fileDescription`, space checking) now live in the `TransferSpec` lambda.
 
-Three 2.x operations have **no v3 equivalent yet** and are therefore not deprecated — keep using
+Two 2.x operations have **no v3 equivalent yet** and are therefore not deprecated — keep using
 them for now:
 
 | 2.x, still current | Why |
 |---|---|
-| `List<DocumentFile>.copyTo/moveTo(context, targetParentFolder, …)` | v3 has no multi-source transfer; `List<StorageFile>` only supports `zipTo` |
 | `DocumentFile.copyFileTo/moveFileTo(context, targetFile: MediaFile, …)` | v3 transfers always target a **folder**, never an existing file |
 | `copyFileToDownloadMedia` / `copyFileToPictureMedia` and their `move` twins | same reason: these write into a MediaStore entry, not a folder |
 
