@@ -99,5 +99,5 @@ Its long-running operations were already Kotlin-only, so nothing new is lost by 
 
 * [`JavaActivity`](https://github.com/anggrayudi/SimpleStorage/blob/master/sample/src/main/java/com/anggrayudi/storage/sample/activity/JavaActivity.java)
   demonstrates the 2.x API from Java.
-* The v3 API is documented in [README-v3.md](README-v3.md); the Kotlin snippets there translate to
-  Java exactly as shown above for everything that is not `suspend`.
+* The v3 API is documented in the [README](README.md); the Kotlin snippets there translate to Java
+  exactly as shown above for everything that is not `suspend`.

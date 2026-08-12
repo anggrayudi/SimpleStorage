@@ -4,27 +4,19 @@
 
 ### Table of Contents
 * [Overview](#overview)
-  + [Java Compatibility](#java-compatibility)
-  + [Jetpack Compose](#jetpack-compose)
+* [Why v3?](#why-v3)
+* [Getting a `StorageFile`](#getting-a-storagefile)
+* [Copy & move](#copy--move)
+* [Conflict resolution — a suspend lambda](#conflict-resolution--a-suspend-lambda)
+* [Zip & unzip](#zip--unzip)
+* [The Flow forms](#the-flow-forms)
+* [Storage access & pickers, without callbacks](#storage-access--pickers-without-callbacks)
+* [Jetpack Compose](#jetpack-compose)
 * [Terminology](#terminology)
-* [Check Accessible Paths](#check-accessible-paths)
-* [Read Files](#read-files)
-  + [`DocumentFileCompat`](#documentfilecompat)
-    - [Example](#example)
-  + [`MediaStoreCompat`](#mediastorecompat)
-    - [Example](#example-1)
-* [Manage Files](#manage-files)
-  + [`DocumentFile`](#documentfile)
-  + [`MediaFile`](#mediafile)
-* [Request Storage Access, Pick Folder & Files, Request Create File, etc.](#request-storage-access-pick-folder--files-request-create-file-etc)
-* [Activity Result Contracts](#activity-result-contracts)
-* [Move & Copy: Files & Folders](#move--copy-files--folders)
-* [Search: Files & Folders](#search-files--folders)
-* [Compress & Unzip: Files & Folders](#compress--unzip-files--folders)
-  + [Compression](#compression)
-  + [Decompression](#decompression)
+* [Java Compatibility](#java-compatibility)
+* [Using the 2.x API](#using-the-2x-api)
 * [FAQ](#faq)
-* [Other SimpleStorage Usage Examples](#other-simpleStorage-usage-examples)
+* [Other SimpleStorage Usage Examples](#other-simplestorage-usage-examples)
 * [License](#license)
 
 ## Overview
@@ -66,19 +58,233 @@ allprojects {
 }
 ```
 
-### Version 3 (beta)
+### Version 3
 
 Version `3.0.0-beta03` introduces a redesigned API: one [`StorageFile`](storage/src/main/java/com/anggrayudi/storage/StorageFile.kt)
 abstraction over `DocumentFile`/`MediaFile`/`java.io.File`, one-shot suspend operations
 (`copyTo`, `moveTo`, `zipTo`, `unzipTo`) with a unified `TransferResult`, suspend-lambda conflict
 resolution, and [`StorageAccessManager`](storage/src/main/java/com/anggrayudi/storage/access/StorageAccessManager.kt)
-replacing `SimpleStorageHelper`. It targets Android 17 (API 37) with minSdk 26. The 2.x API keeps
-working during the 3.x cycle, but 2.x is closed for maintenance: no bugfix releases will be cut
-from the 2.x branch, so fixes land in 3.x only. Everyone is encouraged to move to v3.
+replacing `SimpleStorageHelper`. It requires **minSdk 26** and is compiled against **API 37
+(Android 17)**; all operations need Kotlin coroutines.
 
-**→ [v3 usage guide (README-v3.md)](README-v3.md)** · [migration guide](MIGRATION.md)
+The 2.x API keeps working during the 3.x cycle, but 2.x is closed for maintenance: no bugfix
+releases will be cut from the 2.x branch, so fixes land in 3.x only. Everyone is encouraged to move
+to v3 — see the [migration guide](MIGRATION.md).
 
-### Java Compatibility
+## Why v3?
+
+Three ideas replace most of the 2.x surface:
+
+1. **One file type.** [`StorageFile`](storage/src/main/java/com/anggrayudi/storage/StorageFile.kt)
+   wraps SAF's `DocumentFile`, MediaStore's `MediaFile`, and `java.io.File` behind one interface.
+   You stop caring which world a file lives in.
+2. **One operation vocabulary.** Every long-running operation is a main-safe `suspend` function
+   returning a `TransferResult`, with an optional `Flow<TransferEvent>` form when you need the
+   full event stream.
+3. **One access entry point.** [`StorageAccessManager`](storage/src/main/java/com/anggrayudi/storage/access/StorageAccessManager.kt)
+   turns SAF grants and pickers into plain suspend calls — no request codes, no
+   `onActivityResult`, no callbacks.
+
+## Getting a `StorageFile`
+
+```kotlin
+// From whatever you already have:
+val a = StorageFile.from(context, uri)                  // SAF, file://, or MediaStore URI
+val b = StorageFile.from(context, File("/storage/emulated/0/Download/movie.mp4"))
+val c = StorageFile.fromPath(context, "/storage/emulated/0/Download/movie.mp4")
+val d = StorageFile.fromPath(context, StoragePath(storageId = "AAAA-BBBB", basePath = "Download/movie.mp4"))
+val e = StorageFile.fromPublicDirectory(context, PublicDirectory.DOWNLOADS, "movie.mp4")
+
+// Conversions from the 2.x world:
+val f = documentFile.toStorageFile(context)
+val g = mediaFile.toStorageFile(context)
+```
+
+`StorageFile` holds its `Context` internally — no member function asks for one. Useful properties:
+`name`, `mimeType`, `length`, `isDirectory`, `exists`, `lastModified`, `canRead`, `canWrite`,
+`list()`, `child("sub/file.txt")`, `openInputStream()`, `openOutputStream()`.
+
+`absolutePath` and `path` return **`null`** when the file has no resolvable physical path (v2
+returned a confusing empty string). Escape hatches back to the underlying worlds:
+`asDocumentFile()`, `asMediaFile()`, `asRawFile()`.
+
+## Copy & move
+
+```kotlin
+lifecycleScope.launch {                       // main-safe: call from any dispatcher
+  val result = file.copyTo(targetFolder) {    // this block is optional
+    onConflict { ConflictResolution.REPLACE }
+    onProgress { progressBar.progress = it.percent.toInt() }
+    updateInterval = 250                      // ms between progress events
+  }
+  when (result) {
+    is TransferResult.Success -> toast("Copied ${result.result.name}")
+    is TransferResult.Skipped -> toast("Skipped — ${result.existingTarget?.name} already exists")
+    is TransferResult.Failure -> Log.e(TAG, "${result.errorCode}", result.cause)
+  }
+}
+```
+
+The first progress event arrives one `updateInterval` after the transfer starts, so every event
+carries measured numbers — and a transfer that finishes within one interval reports no progress at
+all, just its result.
+
+`moveTo` has the same shape. Folders are detected automatically — `copyTo` on a directory copies
+recursively. All options live in the [`TransferSpec`](storage/src/main/java/com/anggrayudi/storage/transfer/TransferSpec.kt)
+block: `updateInterval`, `checkAvailableSpace`, `skipEmptyFiles` (note: also skips empty
+*folders*), `fileDescription` (rename in target), `deleteSourceOnSuccess` (zip only).
+
+`TransferResult.Failure` carries a `TransferErrorCode`, an optional `message`, the causing
+`Throwable`, and `partialStats` when something was transferred before the failure.
+
+## Conflict resolution — a suspend lambda
+
+The resolver is a `suspend` function. Show a dialog, await the answer, return it. No callback
+classes, no `CoroutineScope` parameter, no `GlobalScope`:
+
+```kotlin
+val result = folder.copyTo(destination) {
+  onConflict { conflict ->
+    when (conflict) {
+      is Conflict.TargetFolder ->             // whole folder exists; canMerge tells you if MERGE is possible
+        if (conflict.canMerge) ConflictResolution.MERGE else ConflictResolution.CREATE_NEW
+      is Conflict.TargetFile ->               // per-file conflict (also emitted during folder merges)
+        withContext(Dispatchers.Main) { askUserDialog(conflict.target.name) }
+    }
+  }
+}
+```
+
+Resolutions: `REPLACE`, `MERGE` (folders; falls back to `CREATE_NEW` on files), `CREATE_NEW`
+(`report.pdf` → `report (1).pdf`), `SKIP`.
+
+A top-level `SKIP` (single-file conflict, or the whole-folder conflict) ends the operation with a dedicated **`TransferResult.Skipped(existingTarget)`** — not a `Failure`, not a
+`Success`. Per-file skips inside a folder merge keep the operation `Success` and are counted in
+`TransferStats.filesSkipped`.
+
+## Zip & unzip
+
+```kotlin
+val zipResult = listOf(folder, extraFile).zipTo(targetZipFile) {   // target must already exist
+  deleteSourceOnSuccess = false
+}
+val unzipResult = zipFile.unzipTo(targetFolder) {
+  onConflict { ConflictResolution.REPLACE }
+}
+```
+
+## The Flow forms
+
+When you need every event (e.g. WorkManager notifications), use the `*AsFlow` variants:
+
+```kotlin
+file.copyToAsFlow(targetFolder).collect { event ->
+  when (event) {
+    is TransferEvent.PhaseChanged -> Log.d(TAG, "phase: ${event.phase}")
+    is TransferEvent.Progress -> notify(event.percent, event.bytesPerSecond)
+    is TransferEvent.Completed<*> -> handle(event.result)   // exactly one terminal event
+  }
+}
+```
+
+Cancelling the collecting coroutine aborts the transfer. Also available:
+`deleteRecursively()` (suspend) and `search(recursive, name, regex, mimeTypes, updateInterval)`
+returning `Flow<List<StorageFile>>`.
+
+## Storage access & pickers, without callbacks
+
+Create a [`StorageAccessManager`](storage/src/main/java/com/anggrayudi/storage/access/StorageAccessManager.kt)
+in `onCreate` (it registers Activity Result launchers), then everything is a suspend call:
+
+```kotlin
+class MainActivity : AppCompatActivity() {
+
+  private lateinit var storageAccess: StorageAccessManager
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    storageAccess = StorageAccessManager(this)
+
+    btnBackup.setOnClickListener {
+      lifecycleScope.launch {
+        // 1. Make sure we can write to Documents — asks the user through SAF only when needed
+        when (val access = storageAccess.ensureAccess(StoragePath.primary("Documents"))) {
+          is AccessResult.Granted -> myFile.copyTo(access.folder)
+          is AccessResult.WrongRootSelected -> explainAndRetry(access.grantedRoot)
+          AccessResult.CanceledByUser, AccessResult.PermissionDenied -> showError()
+        }
+      }
+    }
+
+    btnPick.setOnClickListener {
+      lifecycleScope.launch {
+        // 2. Pickers are one-liners; results are the contract result types
+        val picked = storageAccess.pickFolder()
+        if (picked is FolderPickerResult.Picked) {
+          use(picked.folder.toStorageFile(this@MainActivity))
+        }
+
+        // 3. System Photo Picker — no permission, no SAF grant
+        val media: List<StorageFile> = storageAccess.pickMedia()
+      }
+    }
+  }
+}
+```
+
+Also available: `pickFiles(allowMultiple, filterMimeTypes)`, `createFile(mimeType, fileName)`,
+`requestStoragePermission()`.
+
+### Remembering removable volumes
+
+A `VolumeBookmark` remembers a location on an SD card or USB OTG drive and re-resolves it after
+replug:
+
+```kotlin
+// After the user grants access once:
+val bookmark = storageAccess.createBookmark(folder)   // persist it yourself
+
+// Later — no UI when the volume ID is unchanged (mainline Android):
+when (val result = storageAccess.resolveBookmark(bookmark)) {
+  is BookmarkResult.Granted -> use(result.folder)     // persist result.bookmark: ID may have changed
+  BookmarkResult.VolumeNotMounted -> askUserToPlugDriveIn()
+  else -> showError()
+}
+
+// Optional (API 30+): react to drives being plugged in
+storageAccess.volumeMountEvents().collect { volume -> maybeResolveBookmarks() }
+```
+
+If the ID changed (some OEM builds, ChromeOS), a volume with the same label triggers a single SAF
+re-grant and `Granted` carries the updated bookmark. There are no built-in dialogs — you own the UX around
+`WrongRootSelected` retries. If you prefer the old guided dialogs, the deprecated
+`SimpleStorageHelper` still works — see [README-2.x.md](README-2.x.md).
+
+## Jetpack Compose
+
+All 2.x launchers still exist, plus the new Photo Picker one:
+
+```kotlin
+val mediaPicker = rememberLauncherForMediaPicker(maxItems = 5) { files: List<StorageFile> ->
+  viewModel.onMediaPicked(files)
+}
+Button(onClick = { mediaPicker.launch() }) { Text("Pick photos") }
+```
+
+Others: `rememberLauncherForStoragePermission`, `rememberLauncherForStorageAccess`,
+`rememberLauncherForFolderPicker`, `rememberLauncherForFilePicker`,
+`rememberLauncherForFileCreation`.
+
+## Terminology
+
+![Alt text](art/terminology.png?raw=true "Simple Storage Terms")
+
+### Other Terminology
+* Storage Permission – related to [runtime permissions](https://developer.android.com/training/permissions/requesting)
+* Storage Access – related to [URI permissions](https://developer.android.com/reference/android/content/ContentResolver#takePersistableUriPermission(android.net.Uri,%20int))
+
+
+## Java Compatibility
 
 Simple Storage is built in Kotlin and v3 is Kotlin-first, but the synchronous half of the library
 is Java-callable: `StorageFile` and its `@JvmStatic` factories, metadata and folder navigation,
@@ -92,393 +298,12 @@ that version is no longer maintained.
 
 Follow this [documentation](JAVA_COMPATIBILITY.md) for the details and code samples.
 
-### Jetpack Compose
-
-`SimpleStorageHelper` is a traditional class that helps you to request storage access, pick folders/files, and create files.
-This class has interactive dialogs, so you don't have to handle storage access & permissions manually.
-In Jetpack Compose, you can achieve the same thing with [`SimpleStorageCompose.kt`](storage-compose/src/main/java/com/anggrayudi/storage/compose/SimpleStorageCompose.kt).
-This class contains composable functions:
-- `rememberLauncherForStoragePermission()`
-- `rememberLauncherForStorageAccess()`
-- `rememberLauncherForFolderPicker()`
-- `rememberLauncherForFilePicker()`
-- `rememberLauncherForFileCreation()`
-
-If you think these composable functions has too many UI manipulations and don't suit your needs, then
-you can copy the logic from [`SimpleStorageCompose.kt`](storage-compose/src/main/java/com/anggrayudi/storage/compose/SimpleStorageCompose.kt)
-and create your own composable functions. Because you might need custom dialogs, custom strings, etc.
-
-Check all available contracts in the [`SimpleStorageResultContracts.kt`](storage/src/main/java/com/anggrayudi/storage/contract/SimpleStorageResultContracts.kt)
-
-## Terminology
-
-![Alt text](art/terminology.png?raw=true "Simple Storage Terms")
-
-### Other Terminology
-* Storage Permission – related to [runtime permissions](https://developer.android.com/training/permissions/requesting)
-* Storage Access – related to [URI permissions](https://developer.android.com/reference/android/content/ContentResolver#takePersistableUriPermission(android.net.Uri,%20int))
-
-## Check Accessible Paths
-
-To check whether you have access to particular paths, call `DocumentFileCompat.getAccessibleAbsolutePaths()`. The results will look like this in breakpoint:
-
-![Alt text](art/getAccessibleAbsolutePaths.png?raw=true "DocumentFileCompat.getAccessibleAbsolutePaths()")
-
-All paths in those locations are accessible via functions `DocumentFileCompat.from*()`, otherwise your action will be denied by the system if you want to
-access paths other than those, then functions `DocumentFileCompat.from*()` (next section) will return null as well. On API 28-, you can obtain it by requesting
-the runtime permission. For API 29+, it is obtained automatically by calling `SimpleStorageHelper#requestStorageAccess()` or
-`SimpleStorageHelper#openFolderPicker()`. The granted paths are persisted by this library via `ContentResolver#takePersistableUriPermission()`,
-so you don't need to remember them in preferences:
-```kotlin
-buttonSelectFolder.setOnClickListener {
-    storageHelper.openFolderPicker()
-}
-
-storageHelper.onFolderSelected = { requestCode, folder ->
-    // tell user the selected path
-}
-```
-
-In the future, if you want to write files into the granted path, use `DocumentFileCompat.fromFullPath()`:
-```kotlin
-val grantedPaths = DocumentFileCompat.getAccessibleAbsolutePaths(this)
-val path = grantedPaths.values.firstOrNull()?.firstOrNull() ?: return
-val folder = DocumentFileCompat.fromFullPath(this, path, requiresWriteAccess = true)
-val file = folder?.makeFile(this, "notes", "text/plain")
-```
-
-## Read Files
-
-In Simple Storage, `DocumentFile` is used to access files when your app has been granted full storage access,
-included URI permissions for read and write. Whereas `MediaFile` is used to access media files from `MediaStore`
-without URI permissions to the storage.
-
-You can read file with helper functions in `DocumentFileCompat` and `MediaStoreCompat`:
-
-### `DocumentFileCompat`
-
-* `DocumentFileCompat.fromFullPath()`
-* `DocumentFileCompat.fromSimplePath()`
-* `DocumentFileCompat.fromFile()`
-* `DocumentFileCompat.fromPublicFolder()`
-
-#### Example
-```kotlin
-val fileFromExternalStorage = DocumentFileCompat.fromSimplePath(context, basePath = "Download/MyMovie.mp4")
-
-val fileFromSdCard = DocumentFileCompat.fromSimplePath(context, storageId = "9016-4EF8", basePath = "Download/MyMovie.mp4")
-```
-
-### `MediaStoreCompat`
-
-* `MediaStoreCompat.fromMediaId()`
-* `MediaStoreCompat.fromFileName()`
-* `MediaStoreCompat.fromRelativePath()`
-* `MediaStoreCompat.fromFileNameContains()`
-* `MediaStoreCompat.fromMimeType()`
-* `MediaStoreCompat.fromMediaType()`
-
-#### Example
-```kotlin
-val myVideo = MediaStoreCompat.fromFileName(context, MediaType.DOWNLOADS, "MyMovie.mp4")
-
-val imageList = MediaStoreCompat.fromMediaType(context, MediaType.IMAGE)
-```
-
-## Manage Files
-
-### `DocumentFile`
-
-Since `java.io.File` has been deprecated in Android 10, thus you have to use `DocumentFile` for file management.
-
-Simple Storage adds Kotlin extension functions to `DocumentFile`, so you can manage files like this:
-* `DocumentFile.getStorageId()`
-* `DocumentFile.getStorageType()`
-* `DocumentFile.getBasePath()`
-* `DocumentFile.copyFileTo()`
-* `List<DocumentFile>.moveTo()`
-* `DocumentFile.search()`
-* `DocumentFile.deleteRecursively()`
-* `DocumentFile.getProperties()`
-* `DocumentFile.openOutputStream()`, and many more…
-
-### `MediaFile`
-
-For media files, you can have similar capabilities to `DocumentFile`, i.e.:
-* `MediaFile.absolutePath`
-* `MediaFile.isPending`
-* `MediaFile.delete()`
-* `MediaFile.renameTo()`
-* `MediaFile.copyFileTo()`
-* `MediaFile.moveFileTo()`
-* `MediaFile.openInputStream()`
-* `MediaFile.openOutputStream()`, etc.
-
-## Request Storage Access, Pick Folder & Files, Request Create File, etc.
-
-Although user has granted read and write permissions during runtime, your app may still does not have full access to the storage,
-thus you cannot search, move and copy files. You can check whether you have the storage access via `SimpleStorage.hasStorageAccess()` or
-`DocumentFileCompat.getAccessibleAbsolutePaths()`.
-
-To enable full storage access, you need to open SAF and let user grant URI permissions for read and write access.
-This library provides you an helper class named `SimpleStorageHelper` to ease the request process:
-
-```kotlin
-class MainActivity : AppCompatActivity() {
-
-    private val storageHelper = SimpleStorageHelper(this)
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        // Only setup required callbacks, based on your need:
-        storageHelper.onStorageAccessGranted = { requestCode, root ->
-            // do stuff
-        }
-        storageHelper.onFolderSelected = { requestCode, folder ->
-            // do stuff
-        }
-        storageHelper.onFileSelected = { requestCode, files ->
-            // do stuff
-        }
-        storageHelper.onFileCreated = { requestCode, file ->
-            // do stuff
-        }
-
-        // Depends on your actions:
-        btnRequestStorageAccess.setOnClickListener { storageHelper.requestStorageAccess() }
-        btnOpenFolderPicker.setOnClickListener { storageHelper.openFolderPicker() }
-        btnOpenFilePicker.setOnClickListener { storageHelper.openFilePicker() }
-        btnCreateFile.setOnClickListener { storageHelper.createFile("text/plain", "Test create file") }
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        storageHelper.onSaveInstanceState(outState)
-        super.onSaveInstanceState(outState)
-    }
-
-    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        super.onRestoreInstanceState(savedInstanceState)
-        storageHelper.onRestoreInstanceState(savedInstanceState)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        // Mandatory for direct subclasses of android.app.Activity,
-        // but not for subclasses of androidx.fragment.app.Fragment, androidx.activity.ComponentActivity, androidx.appcompat.app.AppCompatActivity
-        storageHelper.storage.onActivityResult(requestCode, resultCode, data)
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        // Mandatory for direct subclasses of android.app.Activity,
-        // but not for subclasses of androidx.fragment.app.Fragment, androidx.activity.ComponentActivity, androidx.appcompat.app.AppCompatActivity
-        storageHelper.onRequestPermissionsResult(requestCode, permissions, grantResults)
-    }
-}
-```
-
-Simple, right?
-
-This helper class contains default styles for managing storage access.
-If you want to use custom dialogs for `SimpleStorageHelper`, just copy the logic from this class.
-
-## Activity Result Contracts
-
-If you want to use `ActivityResultContract` instead of `SimpleStorageHelper`, you can use contracts
-provided in [`SimpleStorageResultContracts.kt`](storage/src/main/java/com/anggrayudi/storage/contract/SimpleStorageResultContracts.kt):
-- `RequestStorageAccessContract`
-- `StoragePermissionContract`
-- `FileCreationContract`
-- `OpenFilePickerContract`
-- `OpenFolderPickerContract`
-
-Then use them like this:
-```kotlin
-class MainActivity : AppCompatActivity() {
-  lateinit var requestStorageAccessLauncher: ActivityResultLauncher<RequestStorageAccessContract.Options>
-
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    // setContentView(R.layout.activity_main)
-    val contract = RequestStorageAccessContract(
-        expectedStorageId = StorageId.PRIMARY,
-        expectedBasePath = "Documents"
-    )
-    requestStorageAccessLauncher = registerForActivityResult(contract) { result -> 
-      when (result) {
-        is RequestStorageAccessResult.RootPathNotSelected -> {
-          // Ask user to select the root path.
-        }
-        is RequestStorageAccessResult.ExpectedStorageNotSelected -> {
-          // Ask the user to select the expected storage.
-          // This can happen if you set expectedBasePath or expectedStorageType to the contract.
-        }
-        is RequestStorageAccessResult.RootPathPermissionGranted -> {
-          // Access granted to the root path
-        }
-      }
-    }
-
-    btnRequestStorageAccess.setOnClickListener {
-      val options = RequestStorageAccessContract.Options(
-        initialPath = FileFullPath(
-          baseContext,
-          storageId = StorageId.PRIMARY,
-          basePath = "Documents"
-        )
-      )
-      requestStorageAccessLauncher.launch(options)
-    }
-  }
-}
-```
-
-This way, you don't need to maintain the instance of `SimpleStorageHelper`, dealing with `onActivityResult()`, `onSaveInstanceState()`, etc.
-
-## Move & Copy: Files & Folders
-
-Simple Storage helps you in copying/moving files & folders via:
-* `DocumentFile.copyFileTo()`
-* `DocumentFile.moveFileTo()`
-* `DocumentFile.copyFolderTo()`
-* `DocumentFile.moveFolderTo()`
-
-For example, you can move a folder with few lines of code:
-
-```kotlin
-val folder: DocumentFile = ...
-val targetFolder: DocumentFile = ...
-
-val job = ioScope.launch {
-  folder.moveFolderTo(applicationContext, targetFolder, skipEmptyFiles = false, updateInterval = 1000, onConflict = object : FolderConflictCallback(uiScope) {
-    override fun onParentConflict(destinationFolder: DocumentFile, action: ParentFolderConflictAction, canMerge: Boolean) {
-      handleParentFolderConflict(destinationFolder, action, canMerge)
-    }
-
-    override fun onContentConflict(
-      destinationFolder: DocumentFile,
-      conflictedFiles: MutableList<FileConflict>,
-      action: FolderContentConflictAction
-    ) {
-      handleFolderContentConflict(action, conflictedFiles)
-    }
-  }).onCompletion {
-    if (it is CancellationException) {
-      Timber.d("Folder move is aborted")
-    }
-  }.collect { result ->
-    when (result) {
-      is FolderResult.Validating -> Timber.d("Validating...")
-      is FolderResult.Preparing -> Timber.d("Preparing...")
-      is FolderResult.CountingFiles -> Timber.d("Counting files...")
-      is FolderResult.DeletingConflictedFiles -> Timber.d("Deleting conflicted files...")
-      is FolderResult.Starting -> Timber.d("Starting...")
-      is FolderResult.InProgress -> Timber.d("Progress: ${result.progress.toInt()}% | ${result.fileCount} files")
-      is FolderResult.Completed -> uiScope.launch {
-        Timber.d("Completed: ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files")
-        Toast.makeText(baseContext, "Moved ${result.totalCopiedFiles} of ${result.totalFilesToCopy} files", Toast.LENGTH_SHORT).show()
-      }
-
-      is FolderResult.Error -> uiScope.launch {
-        Timber.e(result.errorCode.name)
-        Toast.makeText(baseContext, "An error has occurred: ${result.errorCode.name}", Toast.LENGTH_SHORT).show()
-      }
-    }
-  }
-}
-
-// call this function somewhere, for example in a dialog with a cancel button:
-job.cancel() // it will abort the process
-```
-
-The coolest thing of this library is you can ask users to choose Merge, Replace, Create New, or Skip Duplicate folders & files
-whenever a conflict is found via `onConflict()`. Here're screenshots of the sample code when dealing with conflicts:
-
-![Alt text](art/parent-folder-conflict.png?raw=true "Parent Folder Conflict")
-![Alt text](art/folder-content-conflict.png?raw=true "Folder Content Conflict")
-
-Read [`MainActivity`](sample/src/main/java/com/anggrayudi/storage/sample/activity/MainActivity.kt)
-from the sample code if you want to mimic above dialogs.
-
-## Search: Files & Folders
-
-You can search files and folders by using `DocumentFile.search()` extension function:
-
-```kotlin
-ioScope.launch {
-  val nameToFind = "nicko" // search files with name containing "nicko"
-  folder.search(recursive = true, regex = Regex("^.*$nameToFind.*\$"), updateInterval = 1000).collect {
-    // update results every 1 second
-    Timber.d("Found ${it.size} files, last: ${it.lastOrNull()?.fullName}")
-  }
-}
-```
-
-## Compress & Unzip: Files & Folders
-
-### Compression
-
-To compress files and folders, use `List<DocumentFile>.compressToZip()` extension function:
-
-```kotlin
-ioScope.launch {
-  // make sure you have an URI access to /storage/emulated/0/Documents, otherwise it will return null
-  val targetZipFile = DocumentFileCompat.createFile(baseContext, basePath = "Documents/compress test.zip", mimeType = "application/zip")
-  if (targetZipFile != null) {
-    listOf(folder).compressToZip(baseContext, targetZipFile, deleteSourceWhenComplete = false, updateInterval = 500).collect {
-      when (it) {
-        is ZipCompressionResult.CountingFiles -> Timber.d("Calculating...")
-        is ZipCompressionResult.Compressing -> Timber.d("Compressing... ${it.progress.toInt()}%")
-        is ZipCompressionResult.Completed -> Timber.d("Completed: ${it.zipFile.fullName}")
-        is ZipCompressionResult.Error -> Timber.e(it.errorCode.name)
-        is ZipCompressionResult.DeletingEntryFiles -> Timber.d("Deleting ...") // will be emitted if `deleteSourceWhenComplete` is true
-      }
-    }
-  }
-}
-```
-
-If you don't have any URI access, then you can request the user to create a ZIP file in the desired location:
-
-```kotlin
-storageHelper.onFileCreated = { requestCode, file ->
-  ioScope.launch {
-    listOf(folder).compressToZip(baseContext, file).collect {
-      // do stuff
-    }
-  }
-}
-storageHelper.createFile(mimeType = "application/zip", fileName = "compress test", initialPath = FileFullPath(baseContext, StorageId.PRIMARY, "Documents"))
-```
-
-### Decompression
-
-FYI, decompressing ZIP files is also easy:
-
-```kotlin
-ioScope.launch {
-  file.decompressZip(baseContext, targetFolder)
-    .onCompletion {
-      if (it is CancellationException) {
-        Timber.d("Decompression is aborted")
-      }
-    }.collect {
-      when (it) {
-        is ZipDecompressionResult.Validating -> Timber.d("Validating...")
-        is ZipDecompressionResult.Decompressing -> Timber.d("Decompressing... ${it.bytesDecompressed}")
-        is ZipDecompressionResult.Completed -> uiScope.launch {
-          Toast.makeText(baseContext, "Decompressed successfully", Toast.LENGTH_SHORT).show()
-        }
-
-        is ZipDecompressionResult.Error -> uiScope.launch {
-          Toast.makeText(baseContext, "An error has occurred: ${it.errorCode.name}", Toast.LENGTH_SHORT).show()
-        }
-      }
-    }
-}
-```
+## Using the 2.x API
+
+The 2.x surface (`SimpleStorage`, `SimpleStorageHelper`, `DocumentFileCompat`, the `DocumentFile`
+and `MediaFile` extensions) still ships inside 3.x as `@Deprecated` and is removed in 4.0. Its
+documentation now lives in **[README-2.x.md](README-2.x.md)**, and [MIGRATION.md](MIGRATION.md) maps
+each call to its v3 replacement.
 
 ## FAQ
 
