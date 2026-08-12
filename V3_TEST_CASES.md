@@ -243,8 +243,14 @@ with no user interaction, and the label-fallback path is a safety net rather tha
 the assumption `0b69fac` was built on. `canWrite` alone was not treated as proof; the write test is
 what closes it, because a grant can remain listed while throwing on use.
 
-**Not covered**: OEMs that renumber volume IDs across replugs (the original worry behind A1), and
-reboot survival. One device, one drive, one filesystem.
+**Reboot survives too.** After the owner rebooted the phone (confirmed independently: uptime 7
+minutes and a fresh `BOOT_COMPLETED` in the log, rather than taking the report on trust), the same
+probe reported the grant intact — one persisted URI permission with an **unchanged**
+`persistedTime`, so nothing was re-granted, and the write test created, wrote, read back and
+deleted a file on the drive.
+
+**Not covered**: OEMs that renumber volume IDs across replugs (the original worry behind A1). One
+device, one drive, one filesystem.
 
 Bug found from a user report (the sample's "Show granted paths" dialog): a granted, mounted USB OTG
 drive never appeared in the storage list. `getStorageIds` derived its answer from
