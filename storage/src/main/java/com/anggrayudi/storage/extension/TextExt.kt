@@ -65,7 +65,7 @@ public fun String.parent(): String {
   }
   val parentPath = folderTree.take(folderTree.size - 1).joinToString("/", "/")
   return if (
-    parentPath.startsWith(SimpleStorage.externalStoragePath) ||
+    parentPath.startsWith(DocumentFileCompat.externalStoragePath) ||
       parentPath.matches(DocumentFileCompat.SD_CARD_STORAGE_PATH_REGEX)
   ) {
     parentPath

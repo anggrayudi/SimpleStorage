@@ -242,7 +242,7 @@ public class MediaFile(context: Context, public val uri: Uri) {
                 val relativePath =
                   cursor.getString(MediaStore.MediaColumns.RELATIVE_PATH) ?: return ""
                 val name = cursor.getString(MediaStore.MediaColumns.DISPLAY_NAME)
-                "${SimpleStorage.externalStoragePath}/$relativePath/$name"
+                "${DocumentFileCompat.externalStoragePath}/$relativePath/$name"
                   .trimEnd('/')
                   .replaceCompletely("//", "/")
               } else ""
@@ -253,7 +253,7 @@ public class MediaFile(context: Context, public val uri: Uri) {
     }
 
   public val basePath: String
-    get() = absolutePath.substringAfter(SimpleStorage.externalStoragePath).trimFileSeparator()
+    get() = absolutePath.substringAfter(DocumentFileCompat.externalStoragePath).trimFileSeparator()
 
   /** @see MediaStore.MediaColumns.RELATIVE_PATH */
   @Suppress("DEPRECATION")
@@ -265,7 +265,7 @@ public class MediaFile(context: Context, public val uri: Uri) {
         file != null -> {
           file.path
             .substringBeforeLast('/')
-            .replaceFirst(SimpleStorage.externalStoragePath, "")
+            .replaceFirst(DocumentFileCompat.externalStoragePath, "")
             .trimFileSeparator() + "/"
         }
 
@@ -281,7 +281,7 @@ public class MediaFile(context: Context, public val uri: Uri) {
                       .orEmpty()
                       .substringBeforeLast('/')
                   realFolderAbsolutePath
-                    .replaceFirst(SimpleStorage.externalStoragePath, "")
+                    .replaceFirst(DocumentFileCompat.externalStoragePath, "")
                     .trimFileSeparator() + "/"
                 } else ""
               }

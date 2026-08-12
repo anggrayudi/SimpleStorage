@@ -31,13 +31,13 @@ import java.io.IOException
  */
 public fun File.getStorageId(context: Context): String =
   when {
-    path.startsWith(SimpleStorage.externalStoragePath) -> PRIMARY
+    path.startsWith(DocumentFileCompat.externalStoragePath) -> PRIMARY
     path.startsWith(context.dataDirectory.path) -> DATA
     else -> path.substringAfter("/storage/", "").substringBefore('/')
   }
 
 public val File.inPrimaryStorage: Boolean
-  get() = path.startsWith(SimpleStorage.externalStoragePath)
+  get() = path.startsWith(DocumentFileCompat.externalStoragePath)
 
 public fun File.inDataStorage(context: Context): Boolean = path.startsWith(context.dataDirectory.path)
 
@@ -70,7 +70,7 @@ public val Context.dataDirectory: File
   get() = dataDir
 
 public fun File.getBasePath(context: Context): String {
-  val externalStoragePath = SimpleStorage.externalStoragePath
+  val externalStoragePath = DocumentFileCompat.externalStoragePath
   if (path.startsWith(externalStoragePath)) {
     return path.substringAfter(externalStoragePath, "").trimFileSeparator()
   }
@@ -85,7 +85,7 @@ public fun File.getBasePath(context: Context): String {
 public fun File.getRootPath(context: Context): String {
   val storageId = getStorageId(context)
   return when {
-    storageId == PRIMARY || storageId == HOME -> SimpleStorage.externalStoragePath
+    storageId == PRIMARY || storageId == HOME -> DocumentFileCompat.externalStoragePath
     storageId == DATA -> context.dataDirectory.path
     storageId.isNotEmpty() -> "/storage/$storageId"
     else -> ""
@@ -155,8 +155,8 @@ public fun File.isWritable(context: Context): Boolean = canWrite() && (isFile ||
 public fun File.isExternalStorageManager(context: Context): Boolean =
   Build.VERSION.SDK_INT > Build.VERSION_CODES.Q && Environment.isExternalStorageManager(this) ||
     Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
-      path.startsWith(SimpleStorage.externalStoragePath) &&
-      SimpleStorage.hasStoragePermission(context) ||
+      path.startsWith(DocumentFileCompat.externalStoragePath) &&
+      DocumentFileCompat.hasStoragePermission(context) ||
     context.writableDirs.any { path.startsWith(it.path) }
 
 /**

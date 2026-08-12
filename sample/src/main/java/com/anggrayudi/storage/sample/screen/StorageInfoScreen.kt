@@ -36,5 +36,10 @@ class StorageInfoScreen : SampleScreen() {
           }
       )
     }
+
+    button("Clean up redundant grants") {
+      DocumentFileCompat.cleanupRedundantUriPermissions(context)
+      log("Done — ${context.contentResolver.persistedUriPermissions.size} grant(s) left")
+    }
   }
 }

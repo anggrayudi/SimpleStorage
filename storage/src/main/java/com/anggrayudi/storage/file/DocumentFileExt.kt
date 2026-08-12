@@ -289,7 +289,7 @@ public fun DocumentFile.inInternalStorage(context: Context): Boolean = inInterna
  */
 public fun DocumentFile.inPrimaryStorage(context: Context): Boolean =
   isTreeDocumentFile && getStorageId(context) == PRIMARY ||
-    isRawFile && uri.path.orEmpty().startsWith(SimpleStorage.externalStoragePath)
+    isRawFile && uri.path.orEmpty().startsWith(DocumentFileCompat.externalStoragePath)
 
 /** `true` if this file is located on a removable volume (SD card, USB OTG drive, etc.) */
 public fun DocumentFile.inSdCardStorage(context: Context): Boolean =
@@ -339,7 +339,7 @@ public fun DocumentFile.toRawFile(context: Context): File? {
   return when {
     isRawFile -> File(uri.path ?: return null)
     inPrimaryStorage(context) ->
-      File("${SimpleStorage.externalStoragePath}/${getBasePath(context)}")
+      File("${DocumentFileCompat.externalStoragePath}/${getBasePath(context)}")
     else ->
       getStorageId(context).let { storageId ->
         if (storageId.isNotEmpty()) {
@@ -562,7 +562,7 @@ public fun DocumentFile.getBasePath(context: Context): String {
           }
         }
 
-        else -> path.substringAfterLast(SimpleStorage.externalStoragePath, "").trimFileSeparator()
+        else -> path.substringAfterLast(DocumentFileCompat.externalStoragePath, "").trimFileSeparator()
       }
     }
 
@@ -609,7 +609,7 @@ private fun DocumentFile.getSubPath(context: Context, otherFolderAbsolutePath: S
  * * For file picked from [Intent.ACTION_OPEN_DOCUMENT] or [Intent.ACTION_CREATE_DOCUMENT], it will
  *   return empty `String`
  * * For file stored in external or primary storage, it will return
- *   [SimpleStorage.externalStoragePath].
+ *   [DocumentFileCompat.externalStoragePath].
  * * For file stored in SD Card, it will return something like `/storage/6881-2249`
  */
 public fun DocumentFile.getRootPath(context: Context): String =
@@ -617,7 +617,7 @@ public fun DocumentFile.getRootPath(context: Context): String =
     isRawFile -> uri.path?.let { File(it).getRootPath(context) }.orEmpty()
     !isTreeDocumentFile -> ""
     inSdCardStorage(context) -> "/storage/${getStorageId(context)}"
-    else -> SimpleStorage.externalStoragePath
+    else -> DocumentFileCompat.externalStoragePath
   }
 
 public fun DocumentFile.getRelativePath(context: Context): String =
@@ -654,7 +654,7 @@ public fun DocumentFile.getAbsolutePath(context: Context): String {
     isExternalStorageDocument && path.contains("/document/$storageID:") -> {
       val basePath = path.substringAfterLast("/document/$storageID:", "").trimFileSeparator()
       if (storageID == PRIMARY) {
-        "${SimpleStorage.externalStoragePath}/$basePath".trimEnd('/')
+        "${DocumentFileCompat.externalStoragePath}/$basePath".trimEnd('/')
       } else {
         "/storage/$storageID/$basePath".trimEnd('/')
       }
@@ -681,7 +681,7 @@ public fun DocumentFile.getAbsolutePath(context: Context): String {
             while (parent.parentFile?.also { parent = it } != null) {
               parentTree.add(parent.name.orEmpty())
             }
-            "${SimpleStorage.externalStoragePath}/${parentTree.reversed().joinToString("/")}"
+            "${DocumentFileCompat.externalStoragePath}/${parentTree.reversed().joinToString("/")}"
               .trimEnd('/')
           } else {
             // An msf/msd ID is not a MediaFile ID, so the relative path cannot be looked up.
@@ -695,7 +695,7 @@ public fun DocumentFile.getAbsolutePath(context: Context): String {
 
     !isTreeDocumentFile -> ""
     inPrimaryStorage(context) ->
-      "${SimpleStorage.externalStoragePath}/${getBasePath(context)}".trimEnd('/')
+      "${DocumentFileCompat.externalStoragePath}/${getBasePath(context)}".trimEnd('/')
     else -> "/storage/$storageID/${getBasePath(context)}".trimEnd('/')
   }
 }

@@ -75,6 +75,22 @@ returns `null` (not `""`) when a physical path cannot be resolved. Escape hatche
 Options that used to be positional parameters (`updateInterval`, `skipEmptyFiles`,
 `fileDescription`, space checking) now live in the `TransferSpec` lambda.
 
+### Storage utilities
+
+These were only reachable through the deprecated `SimpleStorage` class, which would have taken them
+with it in 4.0. They now live on `DocumentFileCompat`, and the old names delegate:
+
+| 2.x | 3.0 |
+|---|---|
+| `SimpleStorage.externalStoragePath` | `DocumentFileCompat.externalStoragePath` |
+| `SimpleStorage.isSdCardPresent` | `DocumentFileCompat.isSdCardPresent` |
+| `SimpleStorage.getDefaultExternalStorageIntent(context)` | `DocumentFileCompat.getDefaultExternalStorageIntent(context)` |
+| `SimpleStorage.hasStoragePermission(context)` | `DocumentFileCompat.hasStoragePermission(context)` |
+| `SimpleStorage.hasStorageReadPermission(context)` | `DocumentFileCompat.hasStorageReadPermission(context)` |
+| `SimpleStorage.hasFullDiskAccess(context, storageId)` | `DocumentFileCompat.hasFullDiskAccess(context, storageId)` |
+| `SimpleStorage.hasStorageAccess(context, path)` | `DocumentFileCompat.hasStorageAccess(context, path)` |
+| `SimpleStorage.cleanupRedundantUriPermissions(context)` | `DocumentFileCompat.cleanupRedundantUriPermissions(context)` |
+
 ### Results
 
 | 2.x | 3.0 |

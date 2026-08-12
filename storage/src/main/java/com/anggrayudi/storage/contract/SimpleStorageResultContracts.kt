@@ -17,11 +17,11 @@ import androidx.activity.result.contract.ActivityResultContracts.RequestMultiple
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.EmptyActivity
-import com.anggrayudi.storage.SimpleStorage.Companion.cleanupRedundantUriPermissions
-import com.anggrayudi.storage.SimpleStorage.Companion.externalStoragePath
-import com.anggrayudi.storage.SimpleStorage.Companion.getDefaultExternalStorageIntent
-import com.anggrayudi.storage.SimpleStorage.Companion.hasStoragePermission
-import com.anggrayudi.storage.SimpleStorage.Companion.isSdCardPresent
+import com.anggrayudi.storage.file.DocumentFileCompat.cleanupRedundantUriPermissions
+import com.anggrayudi.storage.file.DocumentFileCompat.externalStoragePath
+import com.anggrayudi.storage.file.DocumentFileCompat.getDefaultExternalStorageIntent
+import com.anggrayudi.storage.file.DocumentFileCompat.hasStoragePermission
+import com.anggrayudi.storage.file.DocumentFileCompat.isSdCardPresent
 import com.anggrayudi.storage.callback.StorageAccessCallback
 import com.anggrayudi.storage.extension.fromSingleUri
 import com.anggrayudi.storage.extension.fromTreeUri

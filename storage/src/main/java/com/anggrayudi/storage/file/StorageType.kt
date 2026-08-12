@@ -13,7 +13,7 @@ public enum class StorageType {
   /**
    * Equals to primary storage.
    *
-   * @see [SimpleStorage.externalStoragePath]
+   * @see [DocumentFileCompat.externalStoragePath]
    */
   EXTERNAL,
   DATA,

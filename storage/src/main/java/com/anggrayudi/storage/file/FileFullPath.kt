@@ -47,9 +47,9 @@ public class FileFullPath : Parcelable {
   public constructor(context: Context, fullPath: String) {
     if (fullPath.startsWith('/')) {
       when {
-        fullPath.startsWith(SimpleStorage.externalStoragePath) -> {
+        fullPath.startsWith(DocumentFileCompat.externalStoragePath) -> {
           storageId = StorageId.PRIMARY
-          val rootPath = SimpleStorage.externalStoragePath
+          val rootPath = DocumentFileCompat.externalStoragePath
           basePath = fullPath.substringAfter(rootPath, "").trimFileSeparator()
           simplePath = "$storageId:$basePath"
           absolutePath = "$rootPath/$basePath".trimEnd('/')
@@ -121,7 +121,7 @@ public class FileFullPath : Parcelable {
     if (storageId.isEmpty()) ""
     else
       when (storageId) {
-        StorageId.PRIMARY -> "${SimpleStorage.externalStoragePath}/$basePath".trimEnd('/')
+        StorageId.PRIMARY -> "${DocumentFileCompat.externalStoragePath}/$basePath".trimEnd('/')
         StorageId.DATA -> "${context.dataDirectory.path}/$basePath".trimEnd('/')
         else -> "/storage/$storageId/$basePath".trimEnd('/')
       }

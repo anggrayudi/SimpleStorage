@@ -6,18 +6,15 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.provider.DocumentsContract
 import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.annotation.WorkerThread
-import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.fragment.app.Fragment
 import com.anggrayudi.storage.SimpleStorage.Companion.hasStoragePermission
 import com.anggrayudi.storage.callback.CreateFileCallback
@@ -35,14 +32,10 @@ import com.anggrayudi.storage.contract.RequestStorageAccessContract
 import com.anggrayudi.storage.contract.RequestStorageAccessResult
 import com.anggrayudi.storage.contract.StoragePermissionDeniedException
 import com.anggrayudi.storage.contract.intentToDocumentFiles
-import com.anggrayudi.storage.extension.fromTreeUri
-import com.anggrayudi.storage.extension.getStorageId
-import com.anggrayudi.storage.extension.isExternalStorageDocument
 import com.anggrayudi.storage.file.DocumentFileCompat
 import com.anggrayudi.storage.file.FileFullPath
 import com.anggrayudi.storage.file.StorageId.PRIMARY
 import com.anggrayudi.storage.file.StorageType
-import com.anggrayudi.storage.file.isWritable
 import java.io.File
 
 /**
@@ -56,7 +49,10 @@ import java.io.File
 public class SimpleStorage private constructor(private val wrapper: ComponentWrapper) {
 
   // For unknown Activity type
-  public constructor(activity: Activity, savedState: Bundle? = null) : this(ActivityWrapper(activity)) {
+  public constructor(
+    activity: Activity,
+    savedState: Bundle? = null,
+  ) : this(ActivityWrapper(activity)) {
     savedState?.let { onRestoreInstanceState(it) }
   }
 
@@ -68,7 +64,10 @@ public class SimpleStorage private constructor(private val wrapper: ComponentWra
     (wrapper as ComponentActivityWrapper).storage = this
   }
 
-  public constructor(fragment: Fragment, savedState: Bundle? = null) : this(FragmentWrapper(fragment)) {
+  public constructor(
+    fragment: Fragment,
+    savedState: Bundle? = null,
+  ) : this(FragmentWrapper(fragment)) {
     savedState?.let { onRestoreInstanceState(it) }
     (wrapper as FragmentWrapper).storage = this
   }
@@ -193,10 +192,7 @@ public class SimpleStorage private constructor(private val wrapper: ComponentWra
     context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
   }
 
-  /**
-   * Show interactive UI to create a file.
-   *
-   */
+  /** Show interactive UI to create a file. */
   @Deprecated(
     "This function doesn't follow Google's latest method, because it still uses startActivityForResult() manually.",
     ReplaceWith("FileCreationContract() with ActivityResultLauncher"),
@@ -537,18 +533,15 @@ public class SimpleStorage private constructor(private val wrapper: ComponentWra
       LIBRARY_PACKAGE_NAME + ".requestCodeStorageAccess"
     private const val KEY_REQUEST_CODE_FOLDER_PICKER =
       LIBRARY_PACKAGE_NAME + ".requestCodeFolderPicker"
-    private const val KEY_REQUEST_CODE_FILE_PICKER =
-      LIBRARY_PACKAGE_NAME + ".requestCodeFilePicker"
-    private const val KEY_REQUEST_CODE_CREATE_FILE =
-      LIBRARY_PACKAGE_NAME + ".requestCodeCreateFile"
+    private const val KEY_REQUEST_CODE_FILE_PICKER = LIBRARY_PACKAGE_NAME + ".requestCodeFilePicker"
+    private const val KEY_REQUEST_CODE_CREATE_FILE = LIBRARY_PACKAGE_NAME + ".requestCodeCreateFile"
     private const val KEY_REQUEST_CODE_FRAGMENT_PICKER =
       LIBRARY_PACKAGE_NAME + ".requestCodeFragmentPicker"
     private const val KEY_EXPECTED_STORAGE_TYPE_FOR_ACCESS_REQUEST =
       LIBRARY_PACKAGE_NAME + ".expectedStorageTypeForAccessRequest"
     private const val KEY_EXPECTED_BASE_PATH_FOR_ACCESS_REQUEST =
       LIBRARY_PACKAGE_NAME + ".expectedBasePathForAccessRequest"
-    private const val KEY_LAST_VISITED_FOLDER =
-      LIBRARY_PACKAGE_NAME + ".lastVisitedFolder"
+    private const val KEY_LAST_VISITED_FOLDER = LIBRARY_PACKAGE_NAME + ".lastVisitedFolder"
     private const val TAG = "SimpleStorage"
 
     private const val DEFAULT_REQUEST_CODE_STORAGE_ACCESS: Int = 1
@@ -556,142 +549,97 @@ public class SimpleStorage private constructor(private val wrapper: ComponentWra
     private const val DEFAULT_REQUEST_CODE_FILE_PICKER: Int = 3
     private const val DEFAULT_REQUEST_CODE_CREATE_FILE: Int = 4
 
+    @Deprecated(
+      "Moved to DocumentFileCompat, which is not going away in 4.0.",
+      ReplaceWith(
+        "DocumentFileCompat.externalStoragePath",
+        "com.anggrayudi.storage.file.DocumentFileCompat",
+      ),
+    )
     @JvmStatic
     public val externalStoragePath: String
-      get() = Environment.getExternalStorageDirectory().absolutePath
+      get() = DocumentFileCompat.externalStoragePath
 
+    @Deprecated(
+      "Moved to DocumentFileCompat, which is not going away in 4.0.",
+      ReplaceWith(
+        "DocumentFileCompat.isSdCardPresent",
+        "com.anggrayudi.storage.file.DocumentFileCompat",
+      ),
+    )
     @JvmStatic
     public val isSdCardPresent: Boolean
-      get() = Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED
+      get() = DocumentFileCompat.isSdCardPresent
 
+    @Deprecated(
+      "Moved to DocumentFileCompat, which is not going away in 4.0.",
+      ReplaceWith(
+        "DocumentFileCompat.getDefaultExternalStorageIntent(context)",
+        "com.anggrayudi.storage.file.DocumentFileCompat",
+      ),
+    )
     @JvmStatic
-    public fun getDefaultExternalStorageIntent(context: Context): Intent {
-      return Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-        .putExtra(
-          DocumentsContract.EXTRA_INITIAL_URI,
-          context.fromTreeUri(DocumentFileCompat.createDocumentUri(PRIMARY))?.uri,
-        )
-    }
+    public fun getDefaultExternalStorageIntent(context: Context): Intent =
+      DocumentFileCompat.getDefaultExternalStorageIntent(context)
 
-    /** For read and write permissions */
+    @Deprecated(
+      "Moved to DocumentFileCompat, which is not going away in 4.0.",
+      ReplaceWith(
+        "DocumentFileCompat.hasStoragePermission(context)",
+        "com.anggrayudi.storage.file.DocumentFileCompat",
+      ),
+    )
     @JvmStatic
-    public fun hasStoragePermission(context: Context): Boolean {
-      return checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
-        PackageManager.PERMISSION_GRANTED && hasStorageReadPermission(context)
-    }
+    public fun hasStoragePermission(context: Context): Boolean =
+      DocumentFileCompat.hasStoragePermission(context)
 
-    /** For read permission only */
+    @Deprecated(
+      "Moved to DocumentFileCompat, which is not going away in 4.0.",
+      ReplaceWith(
+        "DocumentFileCompat.hasStorageReadPermission(context)",
+        "com.anggrayudi.storage.file.DocumentFileCompat",
+      ),
+    )
     @JvmStatic
-    public fun hasStorageReadPermission(context: Context): Boolean {
-      return checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) ==
-        PackageManager.PERMISSION_GRANTED
-    }
+    public fun hasStorageReadPermission(context: Context): Boolean =
+      DocumentFileCompat.hasStorageReadPermission(context)
 
+    @Deprecated(
+      "Moved to DocumentFileCompat, which is not going away in 4.0.",
+      ReplaceWith(
+        "DocumentFileCompat.hasFullDiskAccess(context, storageId)",
+        "com.anggrayudi.storage.file.DocumentFileCompat",
+      ),
+    )
     @JvmStatic
-    public fun hasFullDiskAccess(context: Context, storageId: String): Boolean {
-      return hasStorageAccess(context, DocumentFileCompat.buildAbsolutePath(context, storageId, ""))
-    }
+    public fun hasFullDiskAccess(context: Context, storageId: String): Boolean =
+      DocumentFileCompat.hasFullDiskAccess(context, storageId)
 
-    /**
-     * In API 29+, `/storage/emulated/0` may not be granted for URI permission, but all directories
-     * under `/storage/emulated/0/Download` are granted and accessible.
-     *
-     * @param requiresWriteAccess `true` if you expect this path should be writable
-     * @return `true` if you have URI access to this path
-     * @see [DocumentFileCompat.buildAbsolutePath]
-     * @see [DocumentFileCompat.buildSimplePath]
-     */
+    @Deprecated(
+      "Moved to DocumentFileCompat, which is not going away in 4.0.",
+      ReplaceWith(
+        "DocumentFileCompat.hasStorageAccess(context, fullPath, requiresWriteAccess)",
+        "com.anggrayudi.storage.file.DocumentFileCompat",
+      ),
+    )
     @JvmStatic
     @JvmOverloads
     public fun hasStorageAccess(
       context: Context,
       fullPath: String,
       requiresWriteAccess: Boolean = true,
-    ): Boolean {
-      return DocumentFileCompat.getAccessibleRootDocumentFile(
-        context,
-        fullPath,
-        requiresWriteAccess,
-      ) != null &&
-        (Build.VERSION.SDK_INT > Build.VERSION_CODES.P ||
-          requiresWriteAccess && hasStoragePermission(context) ||
-          !requiresWriteAccess && hasStorageReadPermission(context))
-    }
+    ): Boolean = DocumentFileCompat.hasStorageAccess(context, fullPath, requiresWriteAccess)
 
-    /**
-     * Max persistable URI per app is 128, so cleanup redundant URI permissions. Given the following
-     * URIs:
-     * 1) `content://com.android.externalstorage.documents/tree/primary%3AMovies`
-     * 2) `content://com.android.externalstorage.documents/tree/primary%3AMovies%2FHorror`
-     *
-     * Then remove the second URI, because it has been covered by the first URI.
-     *
-     * Read
-     * [Count Your SAF Uri Persisted Permissions!](https://commonsware.com/blog/2020/06/13/count-your-saf-uri-permission-grants.html)
-     */
+    @Deprecated(
+      "Moved to DocumentFileCompat, which is not going away in 4.0.",
+      ReplaceWith(
+        "DocumentFileCompat.cleanupRedundantUriPermissions(context)",
+        "com.anggrayudi.storage.file.DocumentFileCompat",
+      ),
+    )
     @JvmStatic
     @WorkerThread
-    public fun cleanupRedundantUriPermissions(context: Context) {
-      val resolver = context.contentResolver
-      // e.g. content://com.android.externalstorage.documents/tree/primary%3AMusic
-      val persistedUris =
-        resolver.persistedUriPermissions
-          .filter {
-            it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument
-          }
-          .map { it.uri }
-      val writeFlags =
-        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-      val uniqueUriParents =
-        DocumentFileCompat.findUniqueParents(
-          context,
-          persistedUris.mapNotNull { it.path?.substringAfter("/tree/") },
-        )
-      persistedUris.forEach {
-        if (
-          DocumentFileCompat.buildAbsolutePath(
-            context,
-            it.path.orEmpty().substringAfter("/tree/"),
-          ) !in uniqueUriParents
-        ) {
-          resolver.releasePersistableUriPermission(it, writeFlags)
-          Log.d(TAG, "Removed redundant URI permission => $it")
-        }
-      }
-    }
-
-    /**
-     * It will remove URI permissions that are no longer writable. Maybe you have access to the URI
-     * once, but the access is gone now for some reasons, for example when the SD card is
-     * changed/replaced. Each SD card has their own unique storage ID.
-     *
-     * Grants on removable volumes that are merely not mounted right now (e.g. an unplugged USB OTG
-     * drive) are kept: their URIs become valid again when the volume is remounted with the same
-     * filesystem UUID, so releasing them would silently lose access the user already granted.
-     */
-    @JvmStatic
-    @WorkerThread
-    public fun removeObsoleteUriPermissions(context: Context) {
-      val resolver = context.contentResolver
-      val persistedUris =
-        resolver.persistedUriPermissions
-          .filter {
-            it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument
-          }
-          .map { it.uri }
-      val writeFlags =
-        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-      persistedUris.forEach {
-        // A removable volume that is merely unplugged (e.g. a USB OTG drive) must keep its grant:
-        // the URI becomes valid again when the volume is remounted with the same filesystem UUID.
-        val storageId = it.getStorageId(context)
-        val volumePresent =
-          storageId == PRIMARY || DocumentFileCompat.isMountedVolumeId(context, storageId)
-        if (volumePresent && DocumentFileCompat.fromUri(context, it)?.isWritable(context) != true) {
-          resolver.releasePersistableUriPermission(it, writeFlags)
-          Log.d(TAG, "Removed invalid URI permission => $it")
-        }
-      }
-    }
+    public fun cleanupRedundantUriPermissions(context: Context): Unit =
+      DocumentFileCompat.cleanupRedundantUriPermissions(context)
   }
 }
