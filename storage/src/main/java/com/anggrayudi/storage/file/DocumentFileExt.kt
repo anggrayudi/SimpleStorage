@@ -2122,6 +2122,9 @@ private fun List<DocumentFile>.copyTo(
         }
         it.solution != SingleFileConflictCallback.ConflictResolution.SKIP
       }
+  // Same trap as `copyFolderTo` above: the second `finalize()` re-reads this list, so leaving it
+  // populated swallows MultipleFilesResult.Completed after every conflict has been resolved.
+  conflictedFiles.clear()
 
   val leftoverSize = totalSizeToCopy - bytesMoved
   startTimer(solutions.isNotEmpty() && leftoverSize > 10 * FileSize.MB)

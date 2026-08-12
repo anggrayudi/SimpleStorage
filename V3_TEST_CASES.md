@@ -123,6 +123,26 @@ fails part (a) with `must not report progress, got [Progress(percent=1.40625, �
 progress emission fails part (b) with `copy ran 52ms at a 10ms interval but reported no measured
 progress, got []`.
 
+## Group 3b — 2.x multi-file engine (`List<DocumentFile>.copyTo/moveTo`)
+
+> Audit of OPEN_ITEMS B2: the `finalize()`/`conflictedFiles` pattern fixed in `449d90e` for
+> `copyFolderTo` also existed here. v3 does not wrap this engine yet, but it is shipped public API
+> and the sample app uses it. `MultipleFilesEngineTest`, Small_Phone_API_36 (API 36).
+
+| ID | Pri | Case | Steps | Expected | Status |
+|----|-----|------|-------|----------|--------|
+| TC-28 | P0 | Resolved per-file conflict still ends the flow | `tc28_multiFileMergeReportsCompletion`: copy `[docs/]` into a target that already has `docs/common.txt`; parent conflict → MERGE, content conflict → REPLACE | Target holds the source content plus the new file, and the flow ends with `Completed(success=true, totalCopiedFiles=2)` | **PASS** after the fix. **Reproduced the bug first**: on-disk merge was complete, yet the flow closed after `[Validating, Preparing, CountingFiles, Starting]` — no terminal event at all |
+| TC-29 | P1 | Control: same transfer with no conflict | `tc29_multiFileWithoutConflictReportsCompletion` | `Completed(success=true, totalCopiedFiles=2)` | **PASS** both before and after the fix — isolating the conflict path as the trigger |
+| TC-30 | P0 | `moveTo` with a conflict deletes the source | `tc30_multiFileMoveWithConflictDeletesSource`: same shape via `moveTo` | Merged target and the source folder gone | **PASS** after the fix. Before it, the missing `finalize()` also skipped `forceDelete` of the source roots, so a move silently left the source tree behind |
+
+Negative test: removing `conflictedFiles.clear()` again fails TC-28 and TC-30 with
+`no Completed event; events=[Validating, Preparing, CountingFiles, Starting(...)]` while TC-29 stays
+green, so these tests do cover the defect rather than merely passing.
+
+Checked and found sound in the same pass: `makeFile`'s default `CreateMode.CREATE_NEW` makes the
+multi-file engine's manual REPLACE handling behave correctly for CREATE_NEW resolutions, and
+`finalize()` exists in exactly two engines (folder and multi-file), both now clearing their list.
+
 ## Group 9 — VolumeBookmark (experimental, slice 2)
 
 > Verifies commit `d30bf9e` (`VolumeBookmark`, `StorageAccessManager.resolveBookmark` /
