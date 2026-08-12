@@ -12,13 +12,9 @@ import com.anggrayudi.storage.file.StorageType
 @Deprecated("Superseded in v3 by StorageAccessManager.ensureAccess(), which returns an AccessResult instead of using callbacks. See MIGRATION.md.")
 public interface StorageAccessCallback {
 
-  public fun onCanceledByUser(requestCode: Int) {
-    // default implementation
-  }
+  public fun onCanceledByUser(requestCode: Int) {}
 
-  public fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
-    // default implementation
-  }
+  public fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {}
 
   /** Triggered on Android 10 and lower. */
   public fun onRootPathNotSelected(

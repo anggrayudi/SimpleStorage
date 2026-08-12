@@ -20,25 +20,19 @@ public fun Context.getAppDirectory(type: String? = null): String = "${getExterna
 public fun Context.startActivitySafely(intent: Intent) {
   try {
     startActivity(intent)
-  } catch (_: ActivityNotFoundException) {
-    // ignore
-  }
+  } catch (_: ActivityNotFoundException) {}
 }
 
 public fun Activity.startActivityForResultSafely(requestCode: Int, intent: Intent) {
   try {
     startActivityForResult(intent, requestCode)
-  } catch (_: ActivityNotFoundException) {
-    // ignore
-  }
+  } catch (_: ActivityNotFoundException) {}
 }
 
 public fun Context.unregisterReceiverSafely(receiver: BroadcastReceiver?) {
   try {
     unregisterReceiver(receiver ?: return)
-  } catch (_: IllegalArgumentException) {
-    // ignore
-  }
+  } catch (_: IllegalArgumentException) {}
 }
 
 public fun Context.fromTreeUri(fileUri: Uri): DocumentFile? =

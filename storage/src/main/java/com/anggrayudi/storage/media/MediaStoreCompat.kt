@@ -178,7 +178,6 @@ public object MediaStoreCompat {
                       ))
                 }
               }
-              // Use existing empty media file
               .firstOrNull { it.hasZeroLength }
               ?.let {
                 return it

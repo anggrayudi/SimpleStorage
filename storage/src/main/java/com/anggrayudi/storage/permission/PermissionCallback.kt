@@ -14,12 +14,8 @@ public interface PermissionCallback {
   /** @param fromSystemDialog true if users agreed/denied the permission from the system dialog. */
   public fun onPermissionsChecked(result: PermissionResult, fromSystemDialog: Boolean)
 
-  public fun onShouldRedirectToSystemSettings(blockedPermissions: List<PermissionReport>) {
-    // default implementation
-  }
+  public fun onShouldRedirectToSystemSettings(blockedPermissions: List<PermissionReport>) {}
 
   /** Triggered when you request another permission when a permission request dialog is showing. */
-  public fun onPermissionRequestInterrupted(permissions: Array<String>) {
-    // default implementation
-  }
+  public fun onPermissionRequestInterrupted(permissions: Array<String>) {}
 }

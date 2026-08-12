@@ -220,10 +220,8 @@ public object DocumentFileCompat {
     considerRawFile: Boolean = true,
   ): DocumentFile? {
     return if (fullPath.startsWith('/')) {
-      // absolute path
       fromFile(context, File(fullPath), documentType, requiresWriteAccess, considerRawFile)
     } else {
-      // simple path
       fromSimplePath(
         context,
         fullPath.substringBefore(':'),
@@ -939,9 +937,7 @@ public object DocumentFileCompat {
           try {
             grantedFile = context.fromTreeUri(createDocumentUri(storageId, folderTree))
             if (grantedFile?.canRead() == true) break
-          } catch (_: SecurityException) {
-            // ignore
-          }
+          } catch (_: SecurityException) {}
         }
         if (grantedFile == null || directorySequence.isEmpty()) {
           grantedFile
@@ -1028,7 +1024,6 @@ public object DocumentFileCompat {
     return if (SimpleStorage.hasStoragePermission(context)) {
       val uniqueParents = findUniqueParents(context, fullPaths)
       val inaccessibleStorageLocations = ArrayList<String>(uniqueParents.size)
-      // if folder not found, try create it and check whether is successful
       mkdirs(context, uniqueParents).forEachIndexed { index, folder ->
         if (folder == null) {
           inaccessibleStorageLocations.add(uniqueParents[index])

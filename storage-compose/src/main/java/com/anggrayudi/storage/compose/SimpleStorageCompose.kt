@@ -318,9 +318,7 @@ public fun rememberLauncherForStorageAccess(
           permissionLauncher.launch(Unit)
         }
 
-        is RequestStorageAccessResult.CanceledByUser -> {
-          // no-op, just dismiss the dialog
-        }
+        is RequestStorageAccessResult.CanceledByUser -> {}
       }
     }
   return accessLauncher
@@ -368,9 +366,7 @@ public fun rememberLauncherForFilePicker(
   filePickerLauncher.launcher =
     rememberLauncherForActivityResult(OpenFilePickerContract(activity)) { result ->
       when (result) {
-        is FilePickerResult.CanceledByUser -> {
-          // no-op, just dismiss the dialog
-        }
+        is FilePickerResult.CanceledByUser -> {}
 
         is FilePickerResult.Picked -> {
           currentFilePickerCallback.value(result.files)
@@ -431,9 +427,7 @@ public fun rememberLauncherForFileCreation(
   fileCreationLauncher.launcher =
     rememberLauncherForActivityResult(FileCreationContract(activity)) { result ->
       when (result) {
-        is FileCreationResult.CanceledByUser -> {
-          // no-op, just dismiss the dialog
-        }
+        is FileCreationResult.CanceledByUser -> {}
 
         is FileCreationResult.Created -> {
           currentFileCreatedCallback.value(result.file)
@@ -518,9 +512,7 @@ public fun rememberLauncherForFolderPicker(
   folderPickerLauncher.value?.launcher =
     rememberLauncherForActivityResult(OpenFolderPickerContract(activity)) { result ->
       when (result) {
-        is FolderPickerResult.CanceledByUser -> {
-          // no-op, just dismiss the dialog
-        }
+        is FolderPickerResult.CanceledByUser -> {}
 
         is FolderPickerResult.Picked -> {
           currentFolderPickerCallback.value(result.folder)

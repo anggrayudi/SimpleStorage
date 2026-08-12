@@ -274,7 +274,7 @@ public class StorageAccessManager(activity: ComponentActivity) {
     return result.isNotEmpty() && result.values.all { it }
   }
 
-  // region Experimental: volume bookmarks
+  // region Volume bookmarks
 
   /**
    * Re-resolves a [VolumeBookmark] created earlier with [createBookmark].

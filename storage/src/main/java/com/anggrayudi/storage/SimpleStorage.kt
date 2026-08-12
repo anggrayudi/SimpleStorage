@@ -448,7 +448,6 @@ public class SimpleStorage private constructor(private val wrapper: ComponentWra
       }
 
       is FileCreationResult.StoragePermissionDenied -> {
-        // This should not happen, but just in case
         Log.e(TAG, "Unexpected result for file creation: $result")
       }
     }

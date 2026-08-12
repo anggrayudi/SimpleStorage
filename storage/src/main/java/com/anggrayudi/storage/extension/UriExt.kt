@@ -82,7 +82,6 @@ public fun Uri.openOutputStream(context: Context, append: Boolean = true): Outpu
 public fun Uri.openInputStream(context: Context): InputStream? {
   return try {
     if (isRawFile) {
-      // handle file from external storage
       FileInputStream(File(path ?: return null))
     } else {
       context.contentResolver.openInputStream(this)

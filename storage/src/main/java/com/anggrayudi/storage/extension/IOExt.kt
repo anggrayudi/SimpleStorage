@@ -16,47 +16,34 @@ import java.util.zip.ZipOutputStream
  * @author Anggrayudi H
  */
 
-/** Closing stream safely */
 public fun OutputStream?.closeStreamQuietly() {
   try {
     this?.close()
-  } catch (_: IOException) {
-    // ignore
-  }
+  } catch (_: IOException) {}
 }
 
-/** Closing stream safely */
 public fun InputStream?.closeStreamQuietly() {
   try {
     this?.close()
-  } catch (_: IOException) {
-    // ignore
-  }
+  } catch (_: IOException) {}
 }
 
-/** Closing stream safely */
 public fun Reader?.closeStreamQuietly() {
   try {
     this?.close()
-  } catch (_: IOException) {
-    // ignore
-  }
+  } catch (_: IOException) {}
 }
 
 public fun ZipInputStream?.closeEntryQuietly() {
   try {
     this?.closeEntry()
-  } catch (_: Exception) {
-    // ignore
-  }
+  } catch (_: Exception) {}
 }
 
 public fun ZipOutputStream?.closeEntryQuietly() {
   try {
     this?.closeEntry()
-  } catch (_: IOException) {
-    // ignore
-  }
+  } catch (_: IOException) {}
 }
 
 public fun Cursor.getString(column: String): String? =

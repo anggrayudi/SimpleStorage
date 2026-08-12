@@ -13,13 +13,9 @@ import com.anggrayudi.storage.file.StorageType
 @Deprecated("Superseded in v3 by StorageAccessManager.pickFolder(), which returns a FolderPickerResult instead of using callbacks. See MIGRATION.md.")
 public interface FolderPickerCallback {
 
-  public fun onCanceledByUser(requestCode: Int) {
-    // default implementation
-  }
+  public fun onCanceledByUser(requestCode: Int) {}
 
-  public fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
-    // default implementation
-  }
+  public fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {}
 
   public fun onStoragePermissionDenied(requestCode: Int)
 

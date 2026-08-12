@@ -488,14 +488,10 @@ public fun DocumentFile.quickFindTreeFile(
               if (childCursor.moveToFirst() && name == childCursor.getString(0))
                 return context.fromTreeUri(documentUri)
             }
-          } catch (_: Exception) {
-            // ignore
-          }
+          } catch (_: Exception) {}
         }
       }
-  } catch (_: Exception) {
-    // ignore
-  }
+  } catch (_: Exception) {}
   return null
 }
 
@@ -561,8 +557,7 @@ public fun DocumentFile.getBasePath(context: Context): String {
             }
             parentTree.reversed().joinToString("/")
           } else {
-            // we can't use msf/msd ID as MediaFile ID to fetch relative path, so just return empty
-            // String
+            // An msf/msd ID is not a MediaFile ID, so the relative path cannot be looked up.
             ""
           }
         }
@@ -689,8 +684,7 @@ public fun DocumentFile.getAbsolutePath(context: Context): String {
             "${SimpleStorage.externalStoragePath}/${parentTree.reversed().joinToString("/")}"
               .trimEnd('/')
           } else {
-            // we can't use msf/msd ID as MediaFile ID to fetch relative path, so just return empty
-            // String
+            // An msf/msd ID is not a MediaFile ID, so the relative path cannot be looked up.
             ""
           }
         }
@@ -1003,7 +997,7 @@ public fun DocumentFile.toWritableDownloadsDocumentFile(context: Context): Docum
       // msd for directories and msf for files
       Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
         (
-        // // If comes from SAF file picker ACTION_OPEN_DOCUMENT on API 30+
+        // If comes from SAF file picker ACTION_OPEN_DOCUMENT on API 30+
         path.matches(Regex("/document/ms[f,d]:\\d+"))
         // If comes from SAF folder picker ACTION_OPEN_DOCUMENT_TREE,
         // e.g.
@@ -1718,8 +1712,8 @@ public fun DocumentFile.decompressZip(
     zis.closeStreamQuietly()
   }
   if (success) {
-    // Sometimes, the decompressed size is smaller than the compressed size, and you may get
-    // negative values. You should worry about this.
+    // Already-compressed content can decompress to less than the ZIP itself, so this ratio
+    // is legitimately negative sometimes.
     val sizeExpansion = (bytesDecompressed - zipSize).toFloat() / zipSize * 100
     send(
       ZipDecompressionResult.Completed(
@@ -1945,8 +1939,7 @@ private fun List<DocumentFile>.copyTo(
   startTimer(totalSizeToCopy > 10 * FileSize.MB)
 
   var targetFile: DocumentFile? = null
-  // This boolean flag is required to prevent the callback from called again on next FOR iteration
-  // after the thread was interrupted
+  // Guards the callback against firing again on the next FOR iteration after an interrupt.
   var canceled = false
   fun notifyCanceled(errorCode: MultipleFilesErrorCode, cause: Throwable? = null) {
     if (!canceled) {
@@ -2496,8 +2489,7 @@ private fun DocumentFile.copyFolderTo(
   startTimer(totalSizeToCopy > 10 * FileSize.MB)
 
   var targetFile: DocumentFile? = null
-  // This boolean flag is required to prevent the callback from called again on next FOR iteration
-  // after the thread was interrupted
+  // Guards the callback against firing again on the next FOR iteration after an interrupt.
   var canceled = false
   fun notifyCanceled(errorCode: FolderErrorCode, cause: Throwable? = null) {
     if (!canceled) {
@@ -2637,11 +2629,9 @@ private fun DocumentFile.copyFolderTo(
         }
         it.solution != SingleFileConflictCallback.ConflictResolution.SKIP
       }
-  // `finalize()` below is called again after the conflicts above are resolved and copied, and it
-  // uses `conflictedFiles.isEmpty()` as its "are we really done" guard. Without clearing it here,
-  // that second call always sees the original (non-empty) list and skips sending
-  // SingleFolderResult.Completed, so the flow closes with no terminal event even though every
-  // file - including the conflicted ones - was copied successfully.
+  // `finalize()` runs again once the conflicts above are copied, and guards on
+  // `conflictedFiles.isEmpty()`. Leave the list populated and that run skips
+  // SingleFolderResult.Completed, closing the flow with no terminal event despite a full copy.
   conflictedFiles.clear()
 
   val leftoverSize = totalSizeToCopy - bytesMoved
@@ -3605,9 +3595,7 @@ private fun handleParentFolderConflict(
         }
       }
 
-      else -> {
-        // skip
-      }
+      else -> {}
     }
     return resolution
   }
@@ -3670,9 +3658,7 @@ private fun List<DocumentFile>.handleParentFolderConflict(
           }
         }
 
-        else -> {
-          // skip
-        }
+        else -> {}
       }
     }
     return resolution.toMutableList().apply {

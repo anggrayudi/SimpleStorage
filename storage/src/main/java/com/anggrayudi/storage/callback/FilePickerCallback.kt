@@ -11,13 +11,9 @@ import androidx.documentfile.provider.DocumentFile
 @Deprecated("Superseded in v3 by StorageAccessManager.pickFiles(), which returns a FilePickerResult instead of using callbacks. See MIGRATION.md.")
 public interface FilePickerCallback {
 
-  public fun onCanceledByUser(requestCode: Int) {
-    // default implementation
-  }
+  public fun onCanceledByUser(requestCode: Int) {}
 
-  public fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
-    // default implementation
-  }
+  public fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {}
 
   /** Called when you have no read permission to current path */
   public fun onStoragePermissionDenied(requestCode: Int, files: List<DocumentFile>?)

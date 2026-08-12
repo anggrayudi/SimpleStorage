@@ -438,9 +438,7 @@ public class SimpleStorageHelper {
   public interface OnFileReceived {
     public fun onFileReceived(files: List<DocumentFile>)
 
-    public fun onNonFileReceived(intent: Intent) {
-      // default implementation
-    }
+    public fun onNonFileReceived(intent: Intent) {}
   }
 
   public companion object {

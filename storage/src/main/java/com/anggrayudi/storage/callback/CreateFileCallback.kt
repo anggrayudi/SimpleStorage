@@ -11,13 +11,9 @@ import androidx.documentfile.provider.DocumentFile
 @Deprecated("Superseded in v3 by StorageAccessManager.createFile(), which returns a FileCreationResult instead of using callbacks. See MIGRATION.md.")
 public interface CreateFileCallback {
 
-  public fun onCanceledByUser(requestCode: Int) {
-    // default implementation
-  }
+  public fun onCanceledByUser(requestCode: Int) {}
 
-  public fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {
-    // default implementation
-  }
+  public fun onActivityHandlerNotFound(requestCode: Int, intent: Intent) {}
 
   public fun onFileCreated(requestCode: Int, file: DocumentFile)
 }
