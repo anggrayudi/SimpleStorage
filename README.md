@@ -368,6 +368,7 @@ Open source projects that depend on this library — a good place to see it used
 * [PhotonCamera](https://github.com/eszdman/PhotonCamera) — computational photography camera
 * [Nextcloud Cookbook](https://codeberg.org/MicMun/nextcloud-cookbook) — recipe client for Nextcloud
 * [Shared Storage for Flutter](https://pub.dev/packages/shared_storage) — SAF bindings for Flutter
+* [AvifKit](https://github.com/alfikri-rizky/AvifKit) — Kotlin Multiplatform AVIF encoder/decoder, and the AVIF Studio converter app built on it
 
 Using SimpleStorage in your project? Open a pull request and add it here.
 
