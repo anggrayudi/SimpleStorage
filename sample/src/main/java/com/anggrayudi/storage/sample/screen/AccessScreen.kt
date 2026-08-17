@@ -1,6 +1,8 @@
 package com.anggrayudi.storage.sample.screen
 
+import android.os.Build
 import android.os.Bundle
+import androidx.annotation.RequiresApi
 import com.anggrayudi.storage.StoragePath
 import com.anggrayudi.storage.access.AccessResult
 import com.anggrayudi.storage.access.StorageAccessManager
@@ -13,6 +15,7 @@ import com.anggrayudi.storage.sample.SampleScreen
  * Everything interactive lives on [StorageAccessManager]: suspend calls that return when the user
  * has answered, with no request codes, no callbacks and no `onActivityResult`.
  */
+@RequiresApi(Build.VERSION_CODES.N)
 class AccessScreen : SampleScreen() {
 
   override val screenTitle = "Storage access & pickers"
