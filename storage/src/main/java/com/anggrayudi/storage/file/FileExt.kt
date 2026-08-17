@@ -67,7 +67,7 @@ public fun File.child(path: String): File = File(this, path)
  * @see [Context.getFilesDir]
  */
 public val Context.dataDirectory: File
-  get() = dataDir
+  get() = if (Build.VERSION.SDK_INT > 23) dataDir else filesDir.parentFile!!
 
 public fun File.getBasePath(context: Context): String {
   val externalStoragePath = DocumentFileCompat.externalStoragePath

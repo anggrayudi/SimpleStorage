@@ -84,6 +84,7 @@ public sealed interface AccessResult {
  *
  * @author Anggrayudi H
  */
+@RequiresApi(Build.VERSION_CODES.N)
 public class StorageAccessManager(activity: ComponentActivity) {
 
   private val appContext: Context = activity.applicationContext

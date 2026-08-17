@@ -30,7 +30,7 @@ android {
 
   defaultConfig {
     applicationId = "com.anggrayudi.storage.sample"
-    minSdk = 26
+    minSdk = 23
     targetSdk = 37
     versionCode = 1
     versionName = rootProject.extra["VERSION_NAME"] as String

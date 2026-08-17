@@ -12,6 +12,7 @@ import android.os.StatFs
 import android.os.storage.StorageManager
 import android.provider.DocumentsContract
 import android.system.Os
+import androidx.annotation.RequiresApi
 import androidx.annotation.RestrictTo
 import androidx.annotation.WorkerThread
 import androidx.core.content.ContextCompat
@@ -116,6 +117,7 @@ public object DocumentFileCompat {
    * format. This is the authoritative check; [SD_CARD_STORAGE_ID_REGEX] is only a fallback for when
    * the volume list cannot be consulted.
    */
+  @RequiresApi(Build.VERSION_CODES.N)
   @JvmStatic
   public fun isMountedVolumeId(context: Context, storageId: String): Boolean {
     if (storageId.isEmpty()) return false
@@ -593,11 +595,14 @@ public object DocumentFileCompat {
   /** Intent that opens the SAF folder picker at the primary volume. */
   @JvmStatic
   public fun getDefaultExternalStorageIntent(context: Context): Intent {
-    return Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-      .putExtra(
-        DocumentsContract.EXTRA_INITIAL_URI,
-        context.fromTreeUri(createDocumentUri(PRIMARY))?.uri,
-      )
+    return Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+      if (Build.VERSION.SDK_INT >= 26) {
+        putExtra(
+          DocumentsContract.EXTRA_INITIAL_URI,
+          context.fromTreeUri(createDocumentUri(PRIMARY))?.uri,
+        )
+      }
+    }
   }
 
   /** Runtime read and write permission. Only meaningful on API 26–29. */
@@ -691,10 +696,11 @@ public object DocumentFileCompat {
     // App-specific dirs alone miss USB OTG drives: Android creates Android/data/<pkg>/files on SD
     // cards but not on every removable volume, so a mounted, granted OTG drive was invisible here.
     val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
-    val mountedVolumes =
+    val mountedVolumes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
       storageManager.storageVolumes
         .filter { it.state == Environment.MEDIA_MOUNTED }
         .mapNotNull { if (it.isPrimary) PRIMARY else it.uuid }
+    } else { emptyList() }
     val persistedStorageIds =
       context.contentResolver.persistedUriPermissions
         .filter { it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument }
@@ -732,7 +738,7 @@ public object DocumentFileCompat {
               "${Environment.getExternalStorageDirectory()}/$rootFolder".trimEnd('/')
             )
           } else if (
-            isMountedVolumeId(context, storageId) || storageId.matches(SD_CARD_STORAGE_ID_REGEX)
+              (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isMountedVolumeId(context, storageId)) || storageId.matches(SD_CARD_STORAGE_ID_REGEX)
           ) {
             val paths = storages[storageId] ?: HashSet()
             paths.add("/storage/$storageId/$rootFolder".trimEnd('/'))

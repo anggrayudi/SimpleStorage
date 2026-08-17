@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions.Companion.ACTION_REQUEST_PERMISSIONS
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions.Companion.EXTRA_PERMISSIONS
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions.Companion.EXTRA_PERMISSION_GRANT_RESULTS
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.anggrayudi.storage.EmptyActivity
@@ -68,6 +69,7 @@ internal fun getExternalStorageRootAccessIntent(context: Context): Intent =
  * != External Storage.
  */
 @Suppress("DEPRECATION")
+@RequiresApi(api = Build.VERSION_CODES.N)
 internal fun getSdCardRootAccessIntent(context: Context): Intent {
   val sm = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
   return sm.storageVolumes
@@ -87,8 +89,10 @@ internal fun getSdCardRootAccessIntent(context: Context): Intent {
 }
 
 internal fun addInitialPathToIntent(context: Context, intent: Intent, initialPath: FileFullPath?) {
-  initialPath?.toDocumentUri(context)?.let {
-    intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, it)
+  if (Build.VERSION.SDK_INT >= 26) {
+    initialPath?.toDocumentUri(context)?.let {
+      intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, it)
+    }
   }
 }
 
@@ -156,7 +160,7 @@ public class OpenFolderPickerContract(context: Context) :
         it == DocumentFileCompat.DOWNLOADS_TREE_URI || it == DocumentFileCompat.DOCUMENTS_TREE_URI
       } ||
         DocumentFileCompat.isRootUri(uri) &&
-          Build.VERSION.SDK_INT == Build.VERSION_CODES.Q &&
+      (Build.VERSION.SDK_INT < Build.VERSION_CODES.N && storageType == StorageType.SD_CARD || Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) &&
           !DocumentFileCompat.isStorageUriPermissionGranted(appContext, storageId)
     ) {
       saveUriPermission(appContext, uri)
@@ -363,7 +367,7 @@ public class RequestStorageAccessContract(
       getExternalStorageRootAccessIntent(context).also {
         addInitialPathToIntent(context, it, input.initialPath)
       }
-    } else if (expectedStorageType == StorageType.SD_CARD) {
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && expectedStorageType == StorageType.SD_CARD) {
       getSdCardRootAccessIntent(context)
     } else {
       getExternalStorageRootAccessIntent(context)
@@ -470,7 +474,8 @@ public class RequestStorageAccessContract(
         )
       } else {
         var sdCardIntent: Intent? = null
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
+          Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
           val sm = appContext.getSystemService(Context.STORAGE_SERVICE) as StorageManager
           @Suppress("DEPRECATION")
           sdCardIntent = sm.storageVolumes.firstOrNull { !it.isPrimary }?.createAccessIntent(null)
