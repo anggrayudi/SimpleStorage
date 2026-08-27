@@ -696,11 +696,14 @@ public object DocumentFileCompat {
     // App-specific dirs alone miss USB OTG drives: Android creates Android/data/<pkg>/files on SD
     // cards but not on every removable volume, so a mounted, granted OTG drive was invisible here.
     val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
-    val mountedVolumes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-      storageManager.storageVolumes
-        .filter { it.state == Environment.MEDIA_MOUNTED }
-        .mapNotNull { if (it.isPrimary) PRIMARY else it.uuid }
-    } else { emptyList() }
+    val mountedVolumes =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        storageManager.storageVolumes
+          .filter { it.state == Environment.MEDIA_MOUNTED }
+          .mapNotNull { if (it.isPrimary) PRIMARY else it.uuid }
+      } else {
+        emptyList()
+      }
     val persistedStorageIds =
       context.contentResolver.persistedUriPermissions
         .filter { it.isReadPermission && it.isWritePermission && it.uri.isExternalStorageDocument }
@@ -738,7 +741,8 @@ public object DocumentFileCompat {
               "${Environment.getExternalStorageDirectory()}/$rootFolder".trimEnd('/')
             )
           } else if (
-              (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isMountedVolumeId(context, storageId)) || storageId.matches(SD_CARD_STORAGE_ID_REGEX)
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
+              isMountedVolumeId(context, storageId)) || storageId.matches(SD_CARD_STORAGE_ID_REGEX)
           ) {
             val paths = storages[storageId] ?: HashSet()
             paths.add("/storage/$storageId/$rootFolder".trimEnd('/'))

@@ -84,7 +84,6 @@ public sealed interface AccessResult {
  *
  * @author Anggrayudi H
  */
-@RequiresApi(Build.VERSION_CODES.N)
 public class StorageAccessManager(activity: ComponentActivity) {
 
   private val appContext: Context = activity.applicationContext
@@ -293,6 +292,7 @@ public class StorageAccessManager(activity: ComponentActivity) {
    *    and returns [BookmarkResult.Granted] with an **updated** bookmark to persist.
    * 3. Nothing matches → [BookmarkResult.VolumeNotMounted].
    */
+  @RequiresApi(Build.VERSION_CODES.N)
   public suspend fun resolveBookmark(
     bookmark: VolumeBookmark,
     requiresWriteAccess: Boolean = true,
@@ -326,6 +326,7 @@ public class StorageAccessManager(activity: ComponentActivity) {
    * Builds a [VolumeBookmark] for [folder] so it can be re-resolved later with [resolveBookmark].
    * Returns `null` when the folder has no resolvable [StorageFile.path].
    */
+  @RequiresApi(Build.VERSION_CODES.N)
   public fun createBookmark(folder: StorageFile): VolumeBookmark? {
     val path = folder.path ?: return null
     val label =
