@@ -66,7 +66,7 @@ Version `3.0.0` introduces a redesigned API: one [`StorageFile`](storage/src/mai
 abstraction over `DocumentFile`/`MediaFile`/`java.io.File`, one-shot suspend operations
 (`copyTo`, `moveTo`, `zipTo`, `unzipTo`) with a unified `TransferResult`, suspend-lambda conflict
 resolution, and [`StorageAccessManager`](storage/src/main/java/com/anggrayudi/storage/access/StorageAccessManager.kt)
-replacing `SimpleStorageHelper`. It requires **minSdk 26** and is compiled against **API 37
+replacing `SimpleStorageHelper`. It requires **minSdk 23** and is compiled against **API 37
 (Android 17)**; all operations need Kotlin coroutines.
 
 The 2.x API keeps working during the 3.x cycle, but 2.x is closed for maintenance: no bugfix

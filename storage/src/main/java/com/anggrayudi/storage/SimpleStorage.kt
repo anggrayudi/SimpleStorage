@@ -192,7 +192,11 @@ public class SimpleStorage private constructor(private val wrapper: ComponentWra
     context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
   }
 
-  /** Show interactive UI to create a file. */
+  /**
+   * Show interactive UI to create a file.
+   *
+   * @param initialPath only takes effect on API 26+
+   */
   @Deprecated(
     "This function doesn't follow Google's latest method, because it still uses startActivityForResult() manually.",
     ReplaceWith("FileCreationContract() with ActivityResultLauncher"),
@@ -222,6 +226,7 @@ public class SimpleStorage private constructor(private val wrapper: ComponentWra
       createFileCallback?.onActivityHandlerNotFound(requestCode, intent)
   }
 
+  /** @param initialPath only works for API 26+ */
   @Deprecated(
     "This function doesn't follow Google's latest method, because it still uses startActivityForResult() manually.",
     ReplaceWith("OpenFolderPickerContract() with ActivityResultLauncher"),
@@ -258,6 +263,7 @@ public class SimpleStorage private constructor(private val wrapper: ComponentWra
 
   private var lastVisitedFolder: File = Environment.getExternalStorageDirectory()
 
+  /** @param initialPath only takes effect on API 26+ */
   @Deprecated(
     "This function doesn't follow Google's latest method, because it still uses startActivityForResult() manually.",
     ReplaceWith("OpenFilePickerContract() with ActivityResultLauncher"),

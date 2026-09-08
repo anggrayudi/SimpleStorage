@@ -5,7 +5,7 @@ formatting and comments — plus the checks a change is expected to pass.
 
 ## Building
 
-* minSdk 26, compileSdk/targetSdk 37, Java 11 source/target level.
+* minSdk 23, compileSdk/targetSdk 37, Java 11 source/target level.
 * `./gradlew :storage:assembleDebug :storage-compose:assembleDebug` builds the libraries.
 * `:storage` and `:storage-compose` compile with `-Xexplicit-api=strict`, so every public
   declaration needs an explicit visibility modifier and an explicit return type. Test sources are

@@ -179,7 +179,12 @@ public class OpenFolderPickerContract(context: Context) :
     }
   }
 
-  public class Options @JvmOverloads constructor(public val initialPath: FileFullPath? = null)
+  public class Options
+  @JvmOverloads
+  constructor(
+    /** It only takes effect on API 26+ */
+    public val initialPath: FileFullPath? = null
+  )
 }
 
 /** This contract may throws [ActivityNotFoundException] */
@@ -218,6 +223,7 @@ public class OpenFilePickerContract(context: Context) :
   @JvmOverloads
   constructor(
     public val allowMultiple: Boolean = false,
+    /** It only takes effect on API 26+ */
     public val initialPath: FileFullPath? = null,
     public val filterMimeTypes: Set<String> = emptySet(),
   )
@@ -329,7 +335,12 @@ public class RequestStorageAccessContract(
   public var expectedBasePath: String = "",
 ) : ActivityResultContract<RequestStorageAccessContract.Options, RequestStorageAccessResult>() {
 
-  public class Options @JvmOverloads constructor(public val initialPath: FileFullPath? = null)
+  public class Options
+  @JvmOverloads
+  constructor(
+    /** It only takes effect on API 26+ */
+    public val initialPath: FileFullPath? = null
+  )
 
   private val appContext = context.applicationContext
 

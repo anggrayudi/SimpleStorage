@@ -8,7 +8,7 @@ Platform changes:
 
 | | 2.x | 3.0 |
 |---|---|---|
-| minSdk | 23 | **26** |
+| minSdk | 23 | 23 — 3.0.x required **26**, lowered back to 23 in **3.1.0** |
 | compileSdk / targetSdk | 36 | **37** (Android 17) |
 | AGP / Gradle (to build this repo) | 8.13 / 8.14 | 9.2 / 9.4 |
 

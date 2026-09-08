@@ -207,6 +207,7 @@ internal data class StorageAccessDialogData(
 public fun rememberLauncherForStorageAccess(
   expectedStorageType: StorageType = StorageType.UNKNOWN,
   expectedBasePath: String = "",
+  /** It only takes effect on API 26+ */
   initialPath: FileFullPath? = null,
   onStorageAccessGranted: (root: DocumentFile) -> Unit,
 ): StorageAccessLauncher {
@@ -350,6 +351,7 @@ internal constructor(
 @Composable
 public fun rememberLauncherForFilePicker(
   allowMultiple: Boolean = false,
+  /** It only takes effect on API 26+ */
   initialPath: FileFullPath? = null,
   filterMimeTypes: Set<String> = emptySet(),
   onFilesPicked: (files: List<DocumentFile>) -> Unit,
@@ -411,6 +413,7 @@ internal constructor(
 public fun rememberLauncherForFileCreation(
   mimeType: String,
   fileName: String? = null,
+  /** It only takes effect on API 26+ */
   initialPath: FileFullPath? = null,
   onFileCreated: (file: DocumentFile) -> Unit,
 ): FileCreationLauncher {
@@ -468,6 +471,7 @@ internal constructor(
 
 @Composable
 public fun rememberLauncherForFolderPicker(
+  /** It only takes effect on API 26+ */
   initialPath: FileFullPath? = null,
   onFolderPicked: (folder: DocumentFile) -> Unit,
 ): FolderPickerLauncher {
